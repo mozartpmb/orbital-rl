@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Compiled C extensions
+*.so
+*.dylib
+
+# wandb local cache (source of truth is wandb cloud)
+wandb/
+
+# Claude Code session state
+.claude/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python envs
+.venv/
+venv/
+env/
+
+# pufferlib subdir — runtime artifacts that its own .gitignore misses
+pufferlib/build/
+pufferlib/logs/
+pufferlib/raylib-5.5_macos/
+pufferlib/raylib-5.5_webassembly/
+pufferlib/box2d-web/
+pufferlib/box2d-macos-arm64/
+
+# Binary test executables
+pufferlib/pufferlib/ocean/orbital/orbital_test

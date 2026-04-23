@@ -1,0 +1,1661 @@
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+W0413 19:00:51.853000 46750 site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+W0413 19:00:53.915000 46762 site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+W0413 19:00:53.936000 46761 site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0 🐡             CPU: 0.0%  GPU: 0.0%  DRAM: 13.7%  VRAM: 0.0%  │
+│                                                                              │
+│  Summary          Value    Evaluate      0s   0%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      0s   0%                             │
+│  Params          136.5K      Env         0s   0%                             │
+│  Steps                0      Copy        0s   0%                             │
+│  SPS                  0      Misc        0s   0%                             │
+│  Epoch                0    Train         0s   0%                             │
+│  Uptime              0s      Forwa…      0s   0%                             │
+│  Remaini…   A hair past      Learn       0s   0%                             │
+│               a freckle      Copy        0s   0%                             │
+│                              Misc        0s   0%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0          🐡      CPU:     GPU: 0.0%  DRAM: 22.5%  VRAM: 0.0%  │
+│                                192.7%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      0s   0%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      0s   0%    policy_loss       0.027  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps           131.1K      Copy        0s   0%    entropy           0.452  │
+│  SPS              32.1K      Misc        0s   0%    old_approx_kl     0.100  │
+│  Epoch                1    Train         0s   0%    approx_kl         0.098  │
+│  Uptime              4s      Forwa…      0s   0%    clipfrac          0.261  │
+│  Remaini…         5m 7s      Learn       0s   0%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.878  │
+│                              Misc        0s   0%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0         🐡       CPU:     GPU: 0.0%  DRAM: 23.2%  VRAM: 0.0%  │
+│                                223.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      0s   0%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      0s   0%    policy_loss      -0.012  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.006  │
+│  Steps           262.1K      Copy        0s   0%    entropy           0.446  │
+│  SPS             112.6K      Misc        0s   0%    old_approx_kl     0.057  │
+│  Epoch                2    Train         0s   0%    approx_kl         0.057  │
+│  Uptime              5s      Forwa…      0s   0%    clipfrac          0.222  │
+│  Remaini…        1m 26s      Learn       0s   0%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.772  │
+│                              Misc        0s   0%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0        🐡        CPU:     GPU: 0.0%  DRAM: 23.8%  VRAM: 0.0%  │
+│                                246.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      0s   0%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      0s   0%    policy_loss      -0.025  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.009  │
+│  Steps           393.2K      Copy        0s   0%    entropy           0.442  │
+│  SPS              95.4K      Misc        0s   0%    old_approx_kl     0.034  │
+│  Epoch                3    Train         0s   0%    approx_kl         0.033  │
+│  Uptime              6s      Forwa…      0s   0%    clipfrac          0.185  │
+│  Remaini…        1m 40s      Learn       0s   0%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.742  │
+│                              Misc        0s   0%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.994    episode_return                7.252  │
+│  episode_length               32.173    fuel_used                     0.139  │
+│  n                          3413.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0       🐡         CPU:     GPU: 0.0%  DRAM: 24.0%  VRAM: 0.0%  │
+│                                262.0%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      0s   0%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      0s   0%    policy_loss      -0.023  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.008  │
+│  Steps           524.3K      Copy        0s   0%    entropy           0.424  │
+│  SPS              94.3K      Misc        0s   0%    old_approx_kl     0.028  │
+│  Epoch                4    Train         0s   0%    approx_kl         0.027  │
+│  Uptime              8s      Forwa…      0s   0%    clipfrac          0.165  │
+│  Remaini…        1m 40s      Learn       0s   0%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.756  │
+│                              Misc        0s   0%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.994    episode_return                7.252  │
+│  episode_length               32.173    fuel_used                     0.139  │
+│  n                          3413.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0      🐡          CPU:     GPU: 0.0%  DRAM: 24.5%  VRAM: 0.0%  │
+│                                292.6%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      1s   0%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      1s   0%    policy_loss      -0.025  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.013  │
+│  Steps           655.4K      Copy        0s   0%    entropy           0.462  │
+│  SPS              96.7K      Misc        0s   0%    old_approx_kl     0.023  │
+│  Epoch                5    Train         5s   0%    approx_kl         0.022  │
+│  Uptime              9s      Forwa…      2s   0%    clipfrac          0.162  │
+│  Remaini…        1m 36s      Learn       2s   0%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.721  │
+│                              Misc        0s   0%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.981    episode_return                6.857  │
+│  episode_length               36.524    fuel_used                     0.140  │
+│  n                          3517.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0     🐡           CPU:     GPU: 0.0%  DRAM: 24.6%  VRAM: 0.0%  │
+│                                299.7%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      1s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      1s  23%    policy_loss      -0.021  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.016  │
+│  Steps           786.4K      Copy        0s   1%    entropy           0.443  │
+│  SPS              99.0K      Misc        0s   0%    old_approx_kl     0.021  │
+│  Epoch                6    Train         5s  74%    approx_kl         0.021  │
+│  Uptime             10s      Forwa…      2s  30%    clipfrac          0.150  │
+│  Remaini…        1m 33s      Learn       2s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.741  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.981    episode_return                6.857  │
+│  episode_length               36.524    fuel_used                     0.140  │
+│  n                          3517.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0    🐡            CPU:     GPU: 0.0%  DRAM: 24.8%  VRAM: 0.0%  │
+│                                313.3%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      1s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      1s  23%    policy_loss      -0.023  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.016  │
+│  Steps           917.5K      Copy        0s   1%    entropy           0.475  │
+│  SPS              97.3K      Misc        0s   0%    old_approx_kl     0.019  │
+│  Epoch                7    Train         5s  74%    approx_kl         0.018  │
+│  Uptime             12s      Forwa…      2s  30%    clipfrac          0.156  │
+│  Remaini…        1m 33s      Learn       2s  41%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.800  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.952    episode_return                6.338  │
+│  episode_length               39.710    fuel_used                     0.140  │
+│  n                          3236.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0   🐡             CPU:     GPU: 0.0%  DRAM: 24.9%  VRAM: 0.0%  │
+│                                319.7%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      1s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      1s  23%    policy_loss      -0.019  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.015  │
+│  Steps             1.0M      Copy        0s   1%    entropy           0.475  │
+│  SPS              96.4K      Misc        0s   0%    old_approx_kl     0.018  │
+│  Epoch                8    Train         5s  74%    approx_kl         0.017  │
+│  Uptime             13s      Forwa…      2s  30%    clipfrac          0.150  │
+│  Remaini…        1m 32s      Learn       2s  41%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.791  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.952    episode_return                6.338  │
+│  episode_length               39.710    fuel_used                     0.140  │
+│  n                          3236.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0  🐡              CPU:     GPU: 0.0%  DRAM: 24.9%  VRAM: 0.0%  │
+│                                323.8%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      1s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      1s  23%    policy_loss      -0.003  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.013  │
+│  Steps             1.2M      Copy        0s   1%    entropy           0.459  │
+│  SPS              96.7K      Misc        0s   0%    old_approx_kl     0.016  │
+│  Epoch                9    Train         5s  74%    approx_kl         0.017  │
+│  Uptime             14s      Forwa…      2s  30%    clipfrac          0.142  │
+│  Remaini…        1m 31s      Learn       2s  41%    importance        1.001  │
+│                              Copy        0s   0%    explained_var…    0.777  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.938    episode_return                6.030  │
+│  episode_length               40.705    fuel_used                     0.140  │
+│  n                          3224.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0 🐡               CPU:     GPU: 0.0%  DRAM: 24.9%  VRAM: 0.0%  │
+│                                331.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      3s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      2s  23%    policy_loss      -0.007  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.008  │
+│  Steps             1.3M      Copy        0s   1%    entropy           0.452  │
+│  SPS              98.4K      Misc        0s   0%    old_approx_kl     0.017  │
+│  Epoch               10    Train        10s  74%    approx_kl         0.017  │
+│  Uptime             16s      Forwa…      4s  30%    clipfrac          0.141  │
+│  Remaini…        1m 28s      Learn       5s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.819  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.938    episode_return                6.030  │
+│  episode_length               40.705    fuel_used                     0.140  │
+│  n                          3224.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0          🐡      CPU:     GPU: 0.0%  DRAM: 25.0%  VRAM: 0.0%  │
+│                                335.6%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      3s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      2s  20%    policy_loss      -0.014  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.006  │
+│  Steps             1.4M      Copy        0s   2%    entropy           0.427  │
+│  SPS              95.7K      Misc        0s   0%    old_approx_kl     0.018  │
+│  Epoch               11    Train        10s  76%    approx_kl         0.018  │
+│  Uptime             17s      Forwa…      4s  32%    clipfrac          0.138  │
+│  Remaini…        1m 29s      Learn       5s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.827  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.973    episode_return                6.728  │
+│  episode_length               38.596    fuel_used                     0.140  │
+│  n                          3496.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0         🐡       CPU:     GPU: 0.0%  DRAM: 25.1%  VRAM: 0.0%  │
+│                                338.9%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      3s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      2s  20%    policy_loss      -0.007  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.005  │
+│  Steps             1.6M      Copy        0s   2%    entropy           0.418  │
+│  SPS              98.4K      Misc        0s   0%    old_approx_kl     0.018  │
+│  Epoch               12    Train        10s  76%    approx_kl         0.018  │
+│  Uptime             18s      Forwa…      4s  32%    clipfrac          0.135  │
+│  Remaini…        1m 25s      Learn       5s  41%    importance        1.001  │
+│                              Copy        0s   0%    explained_var…    0.864  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.973    episode_return                6.728  │
+│  episode_length               38.596    fuel_used                     0.140  │
+│  n                          3496.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0        🐡        CPU:     GPU: 0.0%  DRAM: 26.3%  VRAM: 0.0%  │
+│                                380.0%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      3s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      2s  20%    policy_loss      -0.020  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.003  │
+│  Steps             1.7M      Copy        0s   2%    entropy           0.411  │
+│  SPS             104.9K      Misc        0s   0%    old_approx_kl     0.015  │
+│  Epoch               13    Train        10s  76%    approx_kl         0.014  │
+│  Uptime             20s      Forwa…      4s  32%    clipfrac          0.119  │
+│  Remaini…        1m 19s      Learn       5s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.871  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.990    episode_return                7.106  │
+│  episode_length               36.813    fuel_used                     0.139  │
+│  n                          3567.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0       🐡         CPU:     GPU: 0.0%  DRAM: 26.3%  VRAM: 0.0%  │
+│                                383.9%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      3s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      2s  20%    policy_loss      -0.030  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.004  │
+│  Steps             1.8M      Copy        0s   2%    entropy           0.390  │
+│  SPS             100.2K      Misc        0s   0%    old_approx_kl     0.015  │
+│  Epoch               14    Train        10s  76%    approx_kl         0.015  │
+│  Uptime             21s      Forwa…      4s  32%    clipfrac          0.118  │
+│  Remaini…        1m 21s      Learn       5s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.855  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.990    episode_return                7.106  │
+│  episode_length               36.813    fuel_used                     0.139  │
+│  n                          3567.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0      🐡          CPU:     GPU: 0.0%  DRAM: 26.3%  VRAM: 0.0%  │
+│                                388.7%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      4s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      4s  20%    policy_loss      -0.009  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.003  │
+│  Steps             2.0M      Copy        0s   2%    entropy           0.381  │
+│  SPS             102.0K      Misc        0s   0%    old_approx_kl     0.016  │
+│  Epoch               15    Train        14s  76%    approx_kl         0.015  │
+│  Uptime             22s      Forwa…      6s  32%    clipfrac          0.117  │
+│  Remaini…        1m 18s      Learn       8s  41%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.859  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.994    episode_return                7.142  │
+│  episode_length               36.070    fuel_used                     0.139  │
+│  n                          3620.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0     🐡           CPU:     GPU: 0.0%  DRAM: 26.3%  VRAM: 0.0%  │
+│                                397.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      4s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      4s  22%    policy_loss      -0.016  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.004  │
+│  Steps             2.1M      Copy        0s   2%    entropy           0.403  │
+│  SPS              95.8K      Misc        0s   0%    old_approx_kl     0.018  │
+│  Epoch               16    Train        14s  74%    approx_kl         0.017  │
+│  Uptime             24s      Forwa…      6s  32%    clipfrac          0.129  │
+│  Remaini…        1m 22s      Learn       8s  39%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.851  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.994    episode_return                7.142  │
+│  episode_length               36.070    fuel_used                     0.139  │
+│  n                          3620.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0    🐡            CPU:     GPU: 0.0%  DRAM: 26.2%  VRAM: 0.0%  │
+│                                398.6%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      4s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      4s  22%    policy_loss      -0.026  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.003  │
+│  Steps             2.2M      Copy        0s   2%    entropy           0.394  │
+│  SPS             100.8K      Misc        0s   0%    old_approx_kl     0.015  │
+│  Epoch               17    Train        14s  74%    approx_kl         0.014  │
+│  Uptime             25s      Forwa…      6s  32%    clipfrac          0.114  │
+│  Remaini…        1m 17s      Learn       8s  39%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.875  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.996    episode_return                7.193  │
+│  episode_length               35.808    fuel_used                     0.139  │
+│  n                          3705.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0   🐡             CPU:     GPU: 0.0%  DRAM: 26.2%  VRAM: 0.0%  │
+│                                397.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      4s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      4s  22%    policy_loss      -0.031  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.004  │
+│  Steps             2.4M      Copy        0s   2%    entropy           0.398  │
+│  SPS              98.8K      Misc        0s   0%    old_approx_kl     0.016  │
+│  Epoch               18    Train        14s  74%    approx_kl         0.015  │
+│  Uptime             26s      Forwa…      6s  32%    clipfrac          0.121  │
+│  Remaini…        1m 17s      Learn       8s  39%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.836  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.996    episode_return                7.193  │
+│  episode_length               35.808    fuel_used                     0.139  │
+│  n                          3705.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0  🐡              CPU:     GPU: 0.0%  DRAM: 26.2%  VRAM: 0.0%  │
+│                                398.2%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      4s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      4s  22%    policy_loss      -0.003  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.003  │
+│  Steps             2.5M      Copy        0s   2%    entropy           0.398  │
+│  SPS             107.5K      Misc        0s   0%    old_approx_kl     0.017  │
+│  Epoch               19    Train        14s  74%    approx_kl         0.016  │
+│  Uptime             27s      Forwa…      6s  32%    clipfrac          0.124  │
+│  Remaini…         1m 9s      Learn       8s  39%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.873  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.993    episode_return                7.108  │
+│  episode_length               35.147    fuel_used                     0.139  │
+│  n                          3739.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0 🐡               CPU:     GPU: 0.0%  DRAM: 26.2%  VRAM: 0.0%  │
+│                                396.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      6s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      6s  22%    policy_loss      -0.026  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.003  │
+│  Steps             2.6M      Copy        0s   2%    entropy           0.381  │
+│  SPS              97.3K      Misc        0s   0%    old_approx_kl     0.015  │
+│  Epoch               20    Train        19s  74%    approx_kl         0.015  │
+│  Uptime             29s      Forwa…      8s  32%    clipfrac          0.116  │
+│  Remaini…        1m 15s      Learn      10s  39%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.880  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.993    episode_return                7.108  │
+│  episode_length               35.147    fuel_used                     0.139  │
+│  n                          3739.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0          🐡      CPU:     GPU: 0.0%  DRAM: 26.3%  VRAM: 0.0%  │
+│                                397.5%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      6s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      6s  23%    policy_loss      -0.035  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.003  │
+│  Steps             2.8M      Copy        0s   1%    entropy           0.361  │
+│  SPS             106.0K      Misc        0s   0%    old_approx_kl     0.014  │
+│  Epoch               21    Train        19s  74%    approx_kl         0.013  │
+│  Uptime             30s      Forwa…      8s  31%    clipfrac          0.108  │
+│  Remaini…         1m 8s      Learn      10s  40%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.873  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.996    episode_return                7.147  │
+│  episode_length               34.740    fuel_used                     0.139  │
+│  n                          3804.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0         🐡       CPU:     GPU: 0.0%  DRAM: 26.3%  VRAM: 0.0%  │
+│                                397.8%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      6s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      6s  23%    policy_loss      -0.010  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.003  │
+│  Steps             2.9M      Copy        0s   1%    entropy           0.335  │
+│  SPS              97.8K      Misc        0s   0%    old_approx_kl     0.014  │
+│  Epoch               22    Train        19s  74%    approx_kl         0.013  │
+│  Uptime             31s      Forwa…      8s  31%    clipfrac          0.105  │
+│  Remaini…        1m 12s      Learn      10s  40%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.848  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.996    episode_return                7.147  │
+│  episode_length               34.740    fuel_used                     0.139  │
+│  n                          3804.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0        🐡        CPU:     GPU: 0.0%  DRAM: 26.4%  VRAM: 0.0%  │
+│                                393.9%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      6s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      6s  23%    policy_loss      -0.017  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.003  │
+│  Steps             3.0M      Copy        0s   1%    entropy           0.333  │
+│  SPS              95.9K      Misc        0s   0%    old_approx_kl     0.014  │
+│  Epoch               23    Train        19s  74%    approx_kl         0.013  │
+│  Uptime             33s      Forwa…      8s  31%    clipfrac          0.096  │
+│  Remaini…        1m 12s      Learn      10s  40%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.856  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.997    episode_return                7.230  │
+│  episode_length               33.919    fuel_used                     0.139  │
+│  n                          3821.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0       🐡         CPU:     GPU: 0.0%  DRAM: 26.5%  VRAM: 0.0%  │
+│                                395.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      6s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      6s  23%    policy_loss      -0.024  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.003  │
+│  Steps             3.1M      Copy        0s   1%    entropy           0.336  │
+│  SPS              95.4K      Misc        0s   0%    old_approx_kl     0.015  │
+│  Epoch               24    Train        19s  74%    approx_kl         0.013  │
+│  Uptime             34s      Forwa…      8s  31%    clipfrac          0.102  │
+│  Remaini…        1m 11s      Learn      10s  40%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.862  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.997    episode_return                7.230  │
+│  episode_length               33.919    fuel_used                     0.139  │
+│  n                          3821.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0      🐡          CPU:     GPU: 0.0%  DRAM: 26.6%  VRAM: 0.0%  │
+│                                396.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      8s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      7s  23%    policy_loss      -0.021  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.002  │
+│  Steps             3.3M      Copy        0s   1%    entropy           0.313  │
+│  SPS              99.0K      Misc        0s   0%    old_approx_kl     0.016  │
+│  Epoch               25    Train        24s  74%    approx_kl         0.015  │
+│  Uptime             35s      Forwa…     10s  31%    clipfrac          0.100  │
+│  Remaini…         1m 7s      Learn      13s  40%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.886  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.997    episode_return                7.256  │
+│  episode_length               34.202    fuel_used                     0.139  │
+│  n                          3884.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0     🐡           CPU:     GPU: 0.0%  DRAM: 26.8%  VRAM: 0.0%  │
+│                                392.2%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      8s  26%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      7s  23%    policy_loss      -0.001  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             3.4M      Copy        0s   2%    entropy           0.314  │
+│  SPS              98.0K      Misc        0s   0%    old_approx_kl     0.014  │
+│  Epoch               26    Train        24s  73%    approx_kl         0.014  │
+│  Uptime             37s      Forwa…     10s  31%    clipfrac          0.100  │
+│  Remaini…         1m 7s      Learn      13s  38%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.910  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.997    episode_return                7.256  │
+│  episode_length               34.202    fuel_used                     0.139  │
+│  n                          3884.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0    🐡            CPU:     GPU: 0.0%  DRAM: 26.8%  VRAM: 0.0%  │
+│                                394.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      8s  26%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      7s  23%    policy_loss      -0.004  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             3.5M      Copy        0s   2%    entropy           0.329  │
+│  SPS              99.6K      Misc        0s   0%    old_approx_kl     0.018  │
+│  Epoch               27    Train        24s  73%    approx_kl         0.017  │
+│  Uptime             38s      Forwa…     10s  31%    clipfrac          0.117  │
+│  Remaini…         1m 4s      Learn      13s  38%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.926  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.279  │
+│  episode_length               32.567    fuel_used                     0.139  │
+│  n                          4050.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0   🐡             CPU:     GPU: 0.0%  DRAM: 26.9%  VRAM: 0.0%  │
+│                                394.7%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      8s  26%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      7s  23%    policy_loss      -0.015  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             3.7M      Copy        0s   2%    entropy           0.343  │
+│  SPS              89.3K      Misc        0s   0%    old_approx_kl     0.016  │
+│  Epoch               28    Train        24s  73%    approx_kl         0.016  │
+│  Uptime             40s      Forwa…     10s  31%    clipfrac          0.109  │
+│  Remaini…        1m 10s      Learn      13s  38%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.916  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.279  │
+│  episode_length               32.567    fuel_used                     0.139  │
+│  n                          4050.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0  🐡              CPU:     GPU: 0.0%  DRAM: 27.0%  VRAM: 0.0%  │
+│                                393.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate      8s  26%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      7s  23%    policy_loss      -0.000  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             3.8M      Copy        0s   2%    entropy           0.343  │
+│  SPS             104.0K      Misc        0s   0%    old_approx_kl     0.014  │
+│  Epoch               29    Train        24s  73%    approx_kl         0.014  │
+│  Uptime             41s      Forwa…     10s  31%    clipfrac          0.107  │
+│  Remaini…           59s      Learn      13s  38%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.930  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.236  │
+│  episode_length               32.885    fuel_used                     0.139  │
+│  n                          3976.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0 🐡               CPU:     GPU: 0.0%  DRAM: 27.0%  VRAM: 0.0%  │
+│                                394.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     10s  26%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      9s  23%    policy_loss      -0.021  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             3.9M      Copy        0s   2%    entropy           0.329  │
+│  SPS              94.2K      Misc        0s   0%    old_approx_kl     0.015  │
+│  Epoch               30    Train        29s  73%    approx_kl         0.014  │
+│  Uptime             42s      Forwa…     12s  31%    clipfrac          0.103  │
+│  Remaini…         1m 4s      Learn      16s  38%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.926  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.236  │
+│  episode_length               32.885    fuel_used                     0.139  │
+│  n                          3976.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0          🐡      CPU:     GPU: 0.0%  DRAM: 27.1%  VRAM: 0.0%  │
+│                                391.9%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     10s  24%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      9s  21%    policy_loss      -0.008  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             4.1M      Copy        0s   2%    entropy           0.322  │
+│  SPS              96.7K      Misc        0s   0%    old_approx_kl     0.013  │
+│  Epoch               31    Train        29s  75%    approx_kl         0.012  │
+│  Uptime             44s      Forwa…     12s  32%    clipfrac          0.093  │
+│  Remaini…         1m 1s      Learn      16s  39%    importance        0.999  │
+│                              Copy        0s   1%    explained_var…    0.926  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.225  │
+│  episode_length               32.116    fuel_used                     0.139  │
+│  n                          4085.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0         🐡       CPU:     GPU: 0.0%  DRAM: 27.2%  VRAM: 0.0%  │
+│                                392.9%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     10s  24%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      9s  21%    policy_loss      -0.014  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             4.2M      Copy        0s   2%    entropy           0.307  │
+│  SPS              94.7K      Misc        0s   0%    old_approx_kl     0.011  │
+│  Epoch               32    Train        29s  75%    approx_kl         0.011  │
+│  Uptime             45s      Forwa…     12s  32%    clipfrac          0.086  │
+│  Remaini…         1m 1s      Learn      16s  39%    importance        1.000  │
+│                              Copy        0s   1%    explained_var…    0.918  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.225  │
+│  episode_length               32.116    fuel_used                     0.139  │
+│  n                          4085.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0        🐡        CPU:     GPU: 0.0%  DRAM: 27.2%  VRAM: 0.0%  │
+│                                391.9%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     10s  24%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      9s  21%    policy_loss      -0.006  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             4.3M      Copy        0s   2%    entropy           0.299  │
+│  SPS              95.5K      Misc        0s   0%    old_approx_kl     0.012  │
+│  Epoch               33    Train        29s  75%    approx_kl         0.012  │
+│  Uptime             46s      Forwa…     12s  32%    clipfrac          0.081  │
+│  Remaini…           59s      Learn      16s  39%    importance        1.000  │
+│                              Copy        0s   1%    explained_var…    0.922  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.222  │
+│  episode_length               31.962    fuel_used                     0.139  │
+│  n                          4107.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0       🐡         CPU:     GPU: 0.0%  DRAM: 27.3%  VRAM: 0.0%  │
+│                                390.5%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     10s  24%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…      9s  21%    policy_loss      -0.021  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             4.5M      Copy        0s   2%    entropy           0.299  │
+│  SPS              94.5K      Misc        0s   0%    old_approx_kl     0.010  │
+│  Epoch               34    Train        29s  75%    approx_kl         0.010  │
+│  Uptime             48s      Forwa…     12s  32%    clipfrac          0.081  │
+│  Remaini…           58s      Learn      16s  39%    importance        0.999  │
+│                              Copy        0s   1%    explained_var…    0.926  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.222  │
+│  episode_length               31.962    fuel_used                     0.139  │
+│  n                          4107.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0      🐡          CPU:     GPU: 0.0%  DRAM: 27.3%  VRAM: 0.0%  │
+│                                392.0%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     11s  24%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     10s  21%    policy_loss      -0.017  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             4.6M      Copy        0s   2%    entropy           0.304  │
+│  SPS              94.9K      Misc        0s   0%    old_approx_kl     0.011  │
+│  Epoch               35    Train        35s  75%    approx_kl         0.011  │
+│  Uptime             49s      Forwa…     15s  32%    clipfrac          0.083  │
+│  Remaini…           57s      Learn      19s  39%    importance        1.000  │
+│                              Copy        0s   1%    explained_var…    0.929  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.203  │
+│  episode_length               31.511    fuel_used                     0.139  │
+│  n                          4175.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0     🐡           CPU:     GPU: 0.0%  DRAM: 27.3%  VRAM: 0.0%  │
+│                                390.7%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     11s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     10s  20%    policy_loss      -0.011  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             4.7M      Copy        0s   1%    entropy           0.313  │
+│  SPS              96.3K      Misc        0s   0%    old_approx_kl     0.012  │
+│  Epoch               36    Train        35s  76%    approx_kl         0.011  │
+│  Uptime             51s      Forwa…     15s  32%    clipfrac          0.086  │
+│  Remaini…           54s      Learn      19s  41%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.929  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.203  │
+│  episode_length               31.511    fuel_used                     0.139  │
+│  n                          4175.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0    🐡            CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                390.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     11s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     10s  20%    policy_loss      -0.016  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             4.8M      Copy        0s   1%    entropy           0.313  │
+│  SPS              97.4K      Misc        0s   0%    old_approx_kl     0.012  │
+│  Epoch               37    Train        35s  76%    approx_kl         0.011  │
+│  Uptime             52s      Forwa…     15s  32%    clipfrac          0.088  │
+│  Remaini…           52s      Learn      19s  41%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.927  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.192  │
+│  episode_length               31.179    fuel_used                     0.139  │
+│  n                          4222.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0   🐡             CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                392.6%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     11s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     10s  20%    policy_loss      -0.002  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             5.0M      Copy        0s   1%    entropy           0.300  │
+│  SPS             100.9K      Misc        0s   0%    old_approx_kl     0.010  │
+│  Epoch               38    Train        35s  76%    approx_kl         0.010  │
+│  Uptime             53s      Forwa…     15s  32%    clipfrac          0.083  │
+│  Remaini…           49s      Learn      19s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.942  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.192  │
+│  episode_length               31.179    fuel_used                     0.139  │
+│  n                          4222.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0  🐡              CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                389.5%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     11s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     10s  20%    policy_loss      -0.002  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             5.1M      Copy        0s   1%    entropy           0.294  │
+│  SPS             105.6K      Misc        0s   0%    old_approx_kl     0.011  │
+│  Epoch               39    Train        35s  76%    approx_kl         0.011  │
+│  Uptime             54s      Forwa…     15s  32%    clipfrac          0.085  │
+│  Remaini…           46s      Learn      19s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.950  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.182  │
+│  episode_length               30.903    fuel_used                     0.139  │
+│  n                          4234.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0 🐡               CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                392.8%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     13s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     12s  20%    policy_loss      -0.000  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             5.2M      Copy        1s   1%    entropy           0.284  │
+│  SPS              95.9K      Misc        0s   0%    old_approx_kl     0.011  │
+│  Epoch               40    Train        40s  76%    approx_kl         0.011  │
+│  Uptime             56s      Forwa…     17s  32%    clipfrac          0.078  │
+│  Remaini…           49s      Learn      21s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.951  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.182  │
+│  episode_length               30.903    fuel_used                     0.139  │
+│  n                          4234.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0          🐡      CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                393.6%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     13s  26%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     12s  23%    policy_loss       0.003  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             5.4M      Copy        1s   2%    entropy           0.279  │
+│  SPS              96.0K      Misc        0s   0%    old_approx_kl     0.011  │
+│  Epoch               41    Train        40s  73%    approx_kl         0.011  │
+│  Uptime             57s      Forwa…     17s  31%    clipfrac          0.081  │
+│  Remaini…           48s      Learn      21s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.955  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.180  │
+│  episode_length               30.561    fuel_used                     0.139  │
+│  n                          4299.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0         🐡       CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                390.3%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     13s  26%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     12s  23%    policy_loss      -0.001  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             5.5M      Copy        1s   2%    entropy           0.268  │
+│  SPS              99.8K      Misc        0s   0%    old_approx_kl     0.010  │
+│  Epoch               42    Train        40s  73%    approx_kl         0.009  │
+│  Uptime             59s      Forwa…     17s  31%    clipfrac          0.076  │
+│  Remaini…           45s      Learn      21s  40%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.956  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.180  │
+│  episode_length               30.561    fuel_used                     0.139  │
+│  n                          4299.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0        🐡        CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                394.2%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     13s  26%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     12s  23%    policy_loss      -0.006  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             5.6M      Copy        1s   2%    entropy           0.277  │
+│  SPS              99.9K      Misc        0s   0%    old_approx_kl     0.009  │
+│  Epoch               43    Train        40s  73%    approx_kl         0.008  │
+│  Uptime           1m 0s      Forwa…     17s  31%    clipfrac          0.070  │
+│  Remaini…           43s      Learn      21s  40%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.944  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.165  │
+│  episode_length               29.856    fuel_used                     0.139  │
+│  n                          4399.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0       🐡         CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                394.8%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     13s  26%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     12s  23%    policy_loss      -0.013  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             5.8M      Copy        1s   2%    entropy           0.270  │
+│  SPS              93.3K      Misc        0s   0%    old_approx_kl     0.009  │
+│  Epoch               44    Train        40s  73%    approx_kl         0.009  │
+│  Uptime           1m 1s      Forwa…     17s  31%    clipfrac          0.066  │
+│  Remaini…           45s      Learn      21s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.951  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.165  │
+│  episode_length               29.856    fuel_used                     0.139  │
+│  n                          4399.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0      🐡          CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                393.3%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     15s  26%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     13s  23%    policy_loss      -0.021  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             5.9M      Copy        1s   2%    entropy           0.276  │
+│  SPS              97.0K      Misc        0s   0%    old_approx_kl     0.008  │
+│  Epoch               45    Train        45s  73%    approx_kl         0.008  │
+│  Uptime           1m 3s      Forwa…     19s  31%    clipfrac          0.065  │
+│  Remaini…           42s      Learn      24s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.941  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.117  │
+│  episode_length               29.582    fuel_used                     0.140  │
+│  n                          4434.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0     🐡           CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                397.2%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     15s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     13s  21%    policy_loss      -0.016  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             6.0M      Copy        1s   1%    entropy           0.269  │
+│  SPS              93.5K      Misc        0s   0%    old_approx_kl     0.006  │
+│  Epoch               46    Train        45s  76%    approx_kl         0.006  │
+│  Uptime           1m 4s      Forwa…     19s  32%    clipfrac          0.060  │
+│  Remaini…           42s      Learn      24s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.943  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.117  │
+│  episode_length               29.582    fuel_used                     0.140  │
+│  n                          4434.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0    🐡            CPU:     GPU: 0.0%  DRAM: 27.4%  VRAM: 0.0%  │
+│                                395.5%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     15s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     13s  21%    policy_loss      -0.022  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             6.2M      Copy        1s   1%    entropy           0.258  │
+│  SPS              96.7K      Misc        0s   0%    old_approx_kl     0.007  │
+│  Epoch               47    Train        45s  76%    approx_kl         0.007  │
+│  Uptime           1m 5s      Forwa…     19s  32%    clipfrac          0.058  │
+│  Remaini…           39s      Learn      24s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.945  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.056  │
+│  episode_length               29.706    fuel_used                     0.140  │
+│  n                          4423.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0   🐡             CPU:     GPU: 0.0%  DRAM: 27.3%  VRAM: 0.0%  │
+│                                395.9%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     15s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     13s  21%    policy_loss      -0.036  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             6.3M      Copy        1s   1%    entropy           0.245  │
+│  SPS              93.0K      Misc        0s   0%    old_approx_kl     0.007  │
+│  Epoch               48    Train        45s  76%    approx_kl         0.006  │
+│  Uptime           1m 7s      Forwa…     19s  32%    clipfrac          0.053  │
+│  Remaini…           39s      Learn      24s  41%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.935  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.056  │
+│  episode_length               29.706    fuel_used                     0.140  │
+│  n                          4423.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0  🐡              CPU:     GPU: 0.0%  DRAM: 27.2%  VRAM: 0.0%  │
+│                                401.0%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     15s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     13s  21%    policy_loss      -0.025  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             6.4M      Copy        1s   1%    entropy           0.239  │
+│  SPS              90.9K      Misc        0s   0%    old_approx_kl     0.005  │
+│  Epoch               49    Train        45s  76%    approx_kl         0.005  │
+│  Uptime           1m 8s      Forwa…     19s  32%    clipfrac          0.045  │
+│  Remaini…           39s      Learn      24s  41%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.913  │
+│                              Misc        0s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.047  │
+│  episode_length               29.527    fuel_used                     0.140  │
+│  n                          4421.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0 🐡               CPU:     GPU: 0.0%  DRAM: 27.2%  VRAM: 0.0%  │
+│                                396.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     16s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     15s  21%    policy_loss      -0.004  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             6.6M      Copy        1s   1%    entropy           0.240  │
+│  SPS              92.7K      Misc        0s   0%    old_approx_kl     0.006  │
+│  Epoch               50    Train        50s  76%    approx_kl         0.005  │
+│  Uptime          1m 10s      Forwa…     21s  32%    clipfrac          0.047  │
+│  Remaini…           37s      Learn      27s  41%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.928  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.047  │
+│  episode_length               29.527    fuel_used                     0.140  │
+│  n                          4421.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0          🐡      CPU:     GPU: 0.0%  DRAM: 27.1%  VRAM: 0.0%  │
+│                                401.3%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     16s  24%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     15s  22%    policy_loss      -0.008  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             6.7M      Copy        1s   1%    entropy           0.243  │
+│  SPS             102.0K      Misc        0s   0%    old_approx_kl     0.005  │
+│  Epoch               51    Train        50s  75%    approx_kl         0.004  │
+│  Uptime          1m 11s      Forwa…     21s  31%    clipfrac          0.045  │
+│  Remaini…           32s      Learn      27s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.937  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.018  │
+│  episode_length               29.190    fuel_used                     0.140  │
+│  n                          4477.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0         🐡       CPU:     GPU: 0.0%  DRAM: 27.0%  VRAM: 0.0%  │
+│                                401.0%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     16s  24%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     15s  22%    policy_loss      -0.019  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             6.8M      Copy        1s   1%    entropy           0.241  │
+│  SPS              94.3K      Misc        0s   0%    old_approx_kl     0.004  │
+│  Epoch               52    Train        50s  75%    approx_kl         0.004  │
+│  Uptime          1m 12s      Forwa…     21s  31%    clipfrac          0.043  │
+│  Remaini…           33s      Learn      27s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.946  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                7.018  │
+│  episode_length               29.190    fuel_used                     0.140  │
+│  n                          4477.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0        🐡        CPU:     GPU: 0.0%  DRAM: 27.0%  VRAM: 0.0%  │
+│                                398.6%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     16s  24%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     15s  22%    policy_loss      -0.011  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             6.9M      Copy        1s   1%    entropy           0.232  │
+│  SPS              96.8K      Misc        0s   0%    old_approx_kl     0.004  │
+│  Epoch               53    Train        50s  75%    approx_kl         0.004  │
+│  Uptime          1m 14s      Forwa…     21s  31%    clipfrac          0.035  │
+│  Remaini…           31s      Learn      27s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.946  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.024  │
+│  episode_length               29.028    fuel_used                     0.140  │
+│  n                          4540.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0       🐡         CPU:     GPU: 0.0%  DRAM: 26.9%  VRAM: 0.0%  │
+│                                398.8%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     16s  24%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     15s  22%    policy_loss      -0.010  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             7.1M      Copy        1s   1%    entropy           0.234  │
+│  SPS             101.1K      Misc        0s   0%    old_approx_kl     0.004  │
+│  Epoch               54    Train        50s  75%    approx_kl         0.003  │
+│  Uptime          1m 15s      Forwa…     21s  31%    clipfrac          0.038  │
+│  Remaini…           28s      Learn      27s  41%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.952  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.024  │
+│  episode_length               29.028    fuel_used                     0.140  │
+│  n                          4540.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0      🐡          CPU:     GPU: 0.0%  DRAM: 26.8%  VRAM: 0.0%  │
+│                                399.0%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     18s  24%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     16s  22%    policy_loss      -0.022  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             7.2M      Copy        1s   1%    entropy           0.230  │
+│  SPS             107.8K      Misc        0s   0%    old_approx_kl     0.004  │
+│  Epoch               55    Train        55s  75%    approx_kl         0.004  │
+│  Uptime          1m 16s      Forwa…     23s  31%    clipfrac          0.036  │
+│  Remaini…           25s      Learn      29s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.944  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.015  │
+│  episode_length               28.667    fuel_used                     0.140  │
+│  n                          4568.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0     🐡           CPU:     GPU: 0.0%  DRAM: 26.7%  VRAM: 0.0%  │
+│                                397.8%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     18s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     16s  21%    policy_loss      -0.024  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             7.3M      Copy        1s   1%    entropy           0.224  │
+│  SPS              98.5K      Misc        0s   0%    old_approx_kl     0.004  │
+│  Epoch               56    Train        55s  76%    approx_kl         0.003  │
+│  Uptime          1m 18s      Forwa…     23s  34%    clipfrac          0.033  │
+│  Remaini…           26s      Learn      29s  39%    importance        0.999  │
+│                              Copy        0s   0%    explained_var…    0.942  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.015  │
+│  episode_length               28.667    fuel_used                     0.140  │
+│  n                          4568.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0    🐡            CPU:     GPU: 0.0%  DRAM: 26.6%  VRAM: 0.0%  │
+│                                401.7%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     18s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     16s  21%    policy_loss      -0.017  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             7.5M      Copy        1s   1%    entropy           0.225  │
+│  SPS             105.4K      Misc        0s   0%    old_approx_kl     0.002  │
+│  Epoch               57    Train        55s  76%    approx_kl         0.002  │
+│  Uptime          1m 19s      Forwa…     23s  34%    clipfrac          0.022  │
+│  Remaini…           23s      Learn      29s  39%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.948  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.000  │
+│  episode_length               28.744    fuel_used                     0.140  │
+│  n                          4567.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0   🐡             CPU:     GPU: 0.0%  DRAM: 26.5%  VRAM: 0.0%  │
+│                                401.8%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     18s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     16s  21%    policy_loss      -0.006  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             7.6M      Copy        1s   1%    entropy           0.221  │
+│  SPS              93.9K      Misc        0s   0%    old_approx_kl     0.002  │
+│  Epoch               58    Train        55s  76%    approx_kl         0.002  │
+│  Uptime          1m 20s      Forwa…     23s  34%    clipfrac          0.027  │
+│  Remaini…           25s      Learn      29s  39%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.954  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.000  │
+│  episode_length               28.744    fuel_used                     0.140  │
+│  n                          4567.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0  🐡              CPU:     GPU: 0.0%  DRAM: 26.5%  VRAM: 0.0%  │
+│                                401.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     18s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     16s  21%    policy_loss      -0.020  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             7.7M      Copy        1s   1%    entropy           0.224  │
+│  SPS              93.5K      Misc        0s   0%    old_approx_kl     0.002  │
+│  Epoch               59    Train        55s  76%    approx_kl         0.002  │
+│  Uptime          1m 22s      Forwa…     23s  34%    clipfrac          0.024  │
+│  Remaini…           24s      Learn      29s  39%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.946  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.003  │
+│  episode_length               28.392    fuel_used                     0.140  │
+│  n                          4613.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0 🐡               CPU:     GPU: 0.0%  DRAM: 26.3%  VRAM: 0.0%  │
+│                                401.9%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     20s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     18s  21%    policy_loss      -0.001  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             7.9M      Copy        1s   1%    entropy           0.218  │
+│  SPS              95.0K      Misc        0s   0%    old_approx_kl     0.002  │
+│  Epoch               60    Train      1m 0s  76%    approx_kl         0.002  │
+│  Uptime          1m 23s      Forwa…     25s  34%    clipfrac          0.020  │
+│  Remaini…           22s      Learn      32s  39%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.954  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.003  │
+│  episode_length               28.392    fuel_used                     0.140  │
+│  n                          4613.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0          🐡      CPU:     GPU: 0.0%  DRAM: 26.3%  VRAM: 0.0%  │
+│                                402.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     20s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     18s  22%    policy_loss      -0.004  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             8.0M      Copy        1s   2%    entropy           0.221  │
+│  SPS              95.8K      Misc        0s   0%    old_approx_kl     0.002  │
+│  Epoch               61    Train      1m 0s  74%    approx_kl         0.002  │
+│  Uptime          1m 24s      Forwa…     25s  31%    clipfrac          0.021  │
+│  Remaini…           20s      Learn      32s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.956  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.020  │
+│  episode_length               28.109    fuel_used                     0.140  │
+│  n                          4670.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0         🐡       CPU:     GPU: 0.0%  DRAM: 26.2%  VRAM: 0.0%  │
+│                                402.6%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     20s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     18s  22%    policy_loss      -0.005  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             8.1M      Copy        1s   2%    entropy           0.218  │
+│  SPS              94.9K      Misc        0s   0%    old_approx_kl     0.002  │
+│  Epoch               62    Train      1m 0s  74%    approx_kl         0.002  │
+│  Uptime          1m 26s      Forwa…     25s  31%    clipfrac          0.019  │
+│  Remaini…           19s      Learn      32s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.961  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.020  │
+│  episode_length               28.109    fuel_used                     0.140  │
+│  n                          4670.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0        🐡        CPU:     GPU: 0.0%  DRAM: 26.1%  VRAM: 0.0%  │
+│                                403.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     20s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     18s  22%    policy_loss      -0.004  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             8.3M      Copy        1s   2%    entropy           0.217  │
+│  SPS              98.7K      Misc        0s   0%    old_approx_kl     0.002  │
+│  Epoch               63    Train      1m 0s  74%    approx_kl         0.002  │
+│  Uptime          1m 27s      Forwa…     25s  31%    clipfrac          0.016  │
+│  Remaini…           17s      Learn      32s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.959  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.043  │
+│  episode_length               27.983    fuel_used                     0.140  │
+│  n                          4699.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0       🐡         CPU:     GPU: 0.0%  DRAM: 26.1%  VRAM: 0.0%  │
+│                                401.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     20s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     18s  22%    policy_loss      -0.008  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             8.4M      Copy        1s   2%    entropy           0.216  │
+│  SPS              95.6K      Misc        0s   0%    old_approx_kl     0.001  │
+│  Epoch               64    Train      1m 0s  74%    approx_kl         0.001  │
+│  Uptime          1m 28s      Forwa…     25s  31%    clipfrac          0.013  │
+│  Remaini…           16s      Learn      32s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.955  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.043  │
+│  episode_length               27.983    fuel_used                     0.140  │
+│  n                          4699.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0      🐡          CPU:     GPU: 0.0%  DRAM: 26.0%  VRAM: 0.0%  │
+│                                403.0%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     21s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     19s  22%    policy_loss      -0.025  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             8.5M      Copy        1s   2%    entropy           0.210  │
+│  SPS              96.2K      Misc        0s   0%    old_approx_kl     0.002  │
+│  Epoch               65    Train      1m 5s  74%    approx_kl         0.001  │
+│  Uptime          1m 30s      Forwa…     28s  31%    clipfrac          0.012  │
+│  Remaini…           15s      Learn      35s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.955  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.019  │
+│  episode_length               27.950    fuel_used                     0.140  │
+│  n                          4686.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0     🐡           CPU:     GPU: 0.0%  DRAM: 26.0%  VRAM: 0.0%  │
+│                                402.7%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     21s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     19s  23%    policy_loss      -0.013  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             8.7M      Copy        1s   1%    entropy           0.214  │
+│  SPS              95.4K      Misc        0s   0%    old_approx_kl     0.001  │
+│  Epoch               66    Train      1m 5s  74%    approx_kl         0.001  │
+│  Uptime          1m 31s      Forwa…     28s  31%    clipfrac          0.012  │
+│  Remaini…           14s      Learn      35s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.948  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                7.019  │
+│  episode_length               27.950    fuel_used                     0.140  │
+│  n                          4686.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0    🐡            CPU:     GPU: 0.0%  DRAM: 25.9%  VRAM: 0.0%  │
+│                                403.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     21s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     19s  23%    policy_loss      -0.021  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             8.8M      Copy        1s   1%    entropy           0.210  │
+│  SPS              96.0K      Misc        0s   0%    old_approx_kl     0.001  │
+│  Epoch               67    Train      1m 5s  74%    approx_kl         0.001  │
+│  Uptime          1m 33s      Forwa…     28s  31%    clipfrac          0.010  │
+│  Remaini…           12s      Learn      35s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.953  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.980  │
+│  episode_length               28.047    fuel_used                     0.140  │
+│  n                          4672.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0   🐡             CPU:     GPU: 0.0%  DRAM: 25.9%  VRAM: 0.0%  │
+│                                405.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     21s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     19s  23%    policy_loss      -0.027  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             8.9M      Copy        1s   1%    entropy           0.222  │
+│  SPS              97.8K      Misc        0s   0%    old_approx_kl     0.001  │
+│  Epoch               68    Train      1m 5s  74%    approx_kl         0.001  │
+│  Uptime          1m 34s      Forwa…     28s  31%    clipfrac          0.011  │
+│  Remaini…           11s      Learn      35s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.939  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.980  │
+│  episode_length               28.047    fuel_used                     0.140  │
+│  n                          4672.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0  🐡              CPU:     GPU: 0.0%  DRAM: 25.9%  VRAM: 0.0%  │
+│                                405.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     21s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     19s  23%    policy_loss      -0.031  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             9.0M      Copy        1s   1%    entropy           0.212  │
+│  SPS              96.1K      Misc        0s   0%    old_approx_kl     0.001  │
+│  Epoch               69    Train      1m 5s  74%    approx_kl         0.001  │
+│  Uptime          1m 35s      Forwa…     28s  31%    clipfrac          0.007  │
+│  Remaini…            9s      Learn      35s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.941  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.977  │
+│  episode_length               27.965    fuel_used                     0.140  │
+│  n                          4662.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0 🐡               CPU:     GPU: 0.0%  DRAM: 25.9%  VRAM: 0.0%  │
+│                                406.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     23s  25%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     21s  23%    policy_loss      -0.014  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             9.2M      Copy        1s   1%    entropy           0.217  │
+│  SPS              99.2K      Misc        0s   0%    old_approx_kl     0.001  │
+│  Epoch               70    Train     1m 10s  74%    approx_kl         0.001  │
+│  Uptime          1m 37s      Forwa…     30s  31%    clipfrac          0.007  │
+│  Remaini…            8s      Learn      38s  40%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.944  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.977  │
+│  episode_length               27.965    fuel_used                     0.140  │
+│  n                          4662.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0          🐡      CPU:     GPU: 0.0%  DRAM: 26.0%  VRAM: 0.0%  │
+│                                402.8%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     23s  27%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     21s  24%    policy_loss      -0.004  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             9.3M      Copy        1s   1%    entropy           0.221  │
+│  SPS              94.1K      Misc        0s   0%    old_approx_kl     0.000  │
+│  Epoch               71    Train     1m 10s  72%    approx_kl         0.000  │
+│  Uptime          1m 38s      Forwa…     30s  31%    clipfrac          0.004  │
+│  Remaini…            7s      Learn      38s  39%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.954  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.979  │
+│  episode_length               27.866    fuel_used                     0.140  │
+│  n                          4731.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0         🐡       CPU:     GPU: 0.0%  DRAM: 26.0%  VRAM: 0.0%  │
+│                                405.7%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     23s  27%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     21s  24%    policy_loss      -0.008  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             9.4M      Copy        1s   1%    entropy           0.219  │
+│  SPS              97.1K      Misc        0s   0%    old_approx_kl     0.001  │
+│  Epoch               72    Train     1m 10s  72%    approx_kl         0.000  │
+│  Uptime          1m 39s      Forwa…     30s  31%    clipfrac          0.003  │
+│  Remaini…            5s      Learn      38s  39%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.955  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.979  │
+│  episode_length               27.866    fuel_used                     0.140  │
+│  n                          4731.500                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0        🐡        CPU:     GPU: 0.0%  DRAM: 26.0%  VRAM: 0.0%  │
+│                                405.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     23s  27%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     21s  24%    policy_loss      -0.022  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             9.6M      Copy        1s   1%    entropy           0.223  │
+│  SPS              90.8K      Misc        0s   0%    old_approx_kl     0.000  │
+│  Epoch               73    Train     1m 10s  72%    approx_kl         0.000  │
+│  Uptime          1m 41s      Forwa…     30s  31%    clipfrac          0.000  │
+│  Remaini…            4s      Learn      38s  39%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.947  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.995  │
+│  episode_length               27.655    fuel_used                     0.140  │
+│  n                          4758.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0       🐡         CPU:     GPU: 0.0%  DRAM: 26.0%  VRAM: 0.0%  │
+│                                402.4%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     23s  27%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     21s  24%    policy_loss      -0.010  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps             9.7M      Copy        1s   1%    entropy           0.222  │
+│  SPS              94.7K      Misc        0s   0%    old_approx_kl     0.000  │
+│  Epoch               74    Train     1m 10s  72%    approx_kl         0.000  │
+│  Uptime          1m 42s      Forwa…     30s  31%    clipfrac          0.000  │
+│  Remaini…            3s      Learn      38s  39%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.955  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.995  │
+│  episode_length               27.655    fuel_used                     0.140  │
+│  n                          4758.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0      🐡          CPU:     GPU: 0.0%  DRAM: 26.0%  VRAM: 0.0%  │
+│                                405.6%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     25s  27%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     22s  24%    policy_loss      -0.011  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.001  │
+│  Steps             9.8M      Copy        1s   1%    entropy           0.221  │
+│  SPS             101.4K      Misc        0s   0%    old_approx_kl     0.000  │
+│  Epoch               75    Train     1m 15s  72%    approx_kl         0.000  │
+│  Uptime          1m 44s      Forwa…     32s  31%    clipfrac          0.000  │
+│  Remaini…            1s      Learn      40s  39%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.942  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.975  │
+│  episode_length               27.846    fuel_used                     0.140  │
+│  n                          4682.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0     🐡           CPU:     GPU: 0.0%  DRAM: 26.1%  VRAM: 0.0%  │
+│                                403.9%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     25s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     22s  21%    policy_loss      -0.048  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.002  │
+│  Steps            10.0M      Copy        1s   1%    entropy           0.226  │
+│  SPS              97.8K      Misc        0s   0%    old_approx_kl     0.000  │
+│  Epoch               76    Train     1m 15s  76%    approx_kl         0.000  │
+│  Uptime          1m 45s      Forwa…     32s  32%    clipfrac          0.000  │
+│  Remaini…            0s      Learn      40s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.914  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.975  │
+│  episode_length               27.846    fuel_used                     0.140  │
+│  n                          4682.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0    🐡            CPU:     GPU: 0.0%  DRAM: 26.1%  VRAM: 0.0%  │
+│                                403.1%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     25s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     22s  21%    policy_loss      -0.009  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps            10.1M      Copy        1s   1%    entropy           0.228  │
+│  SPS              94.4K      Misc        0s   0%    old_approx_kl     0.000  │
+│  Epoch               77    Train     1m 15s  76%    approx_kl         0.000  │
+│  Uptime          1m 46s      Forwa…     32s  32%    clipfrac          0.000  │
+│  Remaini…            0s      Learn      40s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.954  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          0.999    episode_return                6.967  │
+│  episode_length               28.048    fuel_used                     0.140  │
+│  n                          4658.000                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+[0;0H╭──────────────────────────────────────────────────────────────────────────────╮
+│  PufferLib 3.0   🐡             CPU:     GPU: 0.0%  DRAM: 26.3%  VRAM: 0.0%  │
+│                                427.0%                                        │
+│                                                                              │
+│  Summary          Value    Evaluate     25s  23%    Losses            Value  │
+│  Env       puffer_orbi…      Forwa…     22s  21%    policy_loss      -0.009  │
+│  Params          136.5K      Env         0s   0%    value_loss        0.000  │
+│  Steps            14.4M      Copy        1s   1%    entropy           0.228  │
+│  SPS             383.4K      Misc        0s   0%    old_approx_kl     0.000  │
+│  Epoch               77    Train     1m 15s  76%    approx_kl         0.000  │
+│  Uptime          1m 58s      Forwa…     32s  32%    clipfrac          0.000  │
+│  Remaini…            0s      Learn      40s  41%    importance        1.000  │
+│                              Copy        0s   0%    explained_var…    0.954  │
+│                              Misc        1s   1%                             │
+│                                                                              │
+│  User Stats                    Value    User Stats                    Value  │
+│  perf                          1.000    episode_return                6.977  │
+│  episode_length               27.786    fuel_used                     0.140  │
+│  n                          4718.844                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
