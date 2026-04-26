@@ -210,6 +210,8 @@ class PuffeRL:
         self.stats = defaultdict(list)
         self.last_stats = defaultdict(list)
         self.losses = {}
+        # R3d target-entropy controller: rolling entropy history (last N updates)
+        self.entropy_history = []
 
         # Dashboard
         self.model_size = sum(p.numel() for p in policy.parameters() if p.requires_grad)
@@ -341,9 +343,30 @@ class PuffeRL:
         b0 = config['prio_beta0']
         a = config['prio_alpha']
         clip_coef = config['clip_coef']
+        # R3c: DAPO asymmetric clipping — wider upper bound (0.28) than lower (0.2)
+        # lets positive-advantage updates breathe while keeping policy-divergence
+        # safety on the downside. Falls back to symmetric clip if unset.
+        clip_lo = config.get('clip_coef_low',  clip_coef)
+        clip_hi = config.get('clip_coef_high', clip_coef)
         vf_clip = config['vf_clip_coef']
         anneal_beta = b0 + (1 - b0)*a*self.epoch/self.total_epochs
         self.ratio[:] = 1
+
+        # R3d target-entropy controller: boost ent_coef when measured entropy
+        # drops below fractions of log(num_actions). Rolling mean over last 10
+        # updates' entropy to avoid reacting to minibatch noise.
+        ent_coef_eff = config['ent_coef']
+        if config.get('target_entropy_controller', False) and len(self.entropy_history) >= 1:
+            action_space = self.vecenv.single_action_space
+            num_actions = getattr(action_space, 'n', None) or int(np.prod(getattr(action_space, 'shape', [1])))
+            log_N = float(np.log(max(num_actions, 2)))
+            H_mean = float(np.mean(self.entropy_history[-10:]))
+            if H_mean < 0.50 * log_N:
+                ent_coef_eff = config.get('ent_coef_high', 0.03)
+            elif H_mean < 0.80 * log_N:
+                ent_coef_eff = config.get('ent_coef_mid', 0.015)
+            else:
+                ent_coef_eff = config.get('ent_coef', 0.01)
 
         for mb in range(self.total_minibatches):
             profile('train_misc', epoch)
@@ -408,9 +431,9 @@ class PuffeRL:
             adv = mb_advantages
             adv = mb_prio * (adv - adv.mean()) / (adv.std() + 1e-8)
 
-            # Losses
+            # Losses — R3c DAPO asymmetric clip
             pg_loss1 = -adv * ratio
-            pg_loss2 = -adv * torch.clamp(ratio, 1 - clip_coef, 1 + clip_coef)
+            pg_loss2 = -adv * torch.clamp(ratio, 1 - clip_lo, 1 + clip_hi)
             pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
             newvalue = newvalue.view(mb_returns.shape)
@@ -421,7 +444,21 @@ class PuffeRL:
 
             entropy_loss = entropy.mean()
 
-            loss = pg_loss + config['vf_coef']*v_loss - config['ent_coef']*entropy_loss
+            # L2-init regularizer (Phase 4 R3): pulls params toward their
+            # (warm-start) initialization, preserving plasticity under PPO.
+            l2_init_coef = config.get('l2_init_coef', 0.0)
+            l2_init = torch.zeros((), device=device)
+            if l2_init_coef > 0.0:
+                init_map = getattr(self.policy, 'policy', self.policy)
+                init_map = getattr(init_map, 'init_params', None)
+                if init_map is not None:
+                    for k, p in self.policy.named_parameters():
+                        base = k.split('policy.', 1)[-1] if 'policy.' in k else k
+                        if base in init_map:
+                            l2_init = l2_init + ((p - init_map[base])**2).sum()
+
+            loss = pg_loss + config['vf_coef']*v_loss - ent_coef_eff*entropy_loss \
+                 + l2_init_coef * l2_init
             self.amp_context.__enter__() # TODO: AMP needs some debugging
 
             # This breaks vloss clipping?
@@ -445,10 +482,29 @@ class PuffeRL:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
 
+        # R3d TEC: append this update's mean entropy to rolling history
+        if config.get('target_entropy_controller', False):
+            self.entropy_history.append(float(losses['entropy']))
+            if len(self.entropy_history) > 50:
+                self.entropy_history = self.entropy_history[-50:]
+
         # Reprioritize experience
         profile('train_misc', epoch)
         if config['anneal_lr']:
             self.scheduler.step()
+        # R3c: Adaptive-KL LR scheduler. Overrides cosine when anneal_lr=False
+        # and kl_target>0. Halves lr if KL drifts >2× target, doubles if <0.5×.
+        kl_target = config.get('kl_target', 0.0)
+        if not config['anneal_lr'] and kl_target > 0.0:
+            lr_min = config.get('lr_min', 1e-6)
+            lr_max = config.get('lr_max', 1e-2)
+            kl_val = losses['approx_kl']
+            if kl_val > 2.0 * kl_target:
+                for g in self.optimizer.param_groups:
+                    g['lr'] = max(g['lr'] / 2.0, lr_min)
+            elif kl_val < 0.5 * kl_target:
+                for g in self.optimizer.param_groups:
+                    g['lr'] = min(g['lr'] * 2.0, lr_max)
 
         y_pred = self.values.flatten()
         y_true = advantages.flatten() + self.values.flatten()
@@ -1212,7 +1268,20 @@ def load_policy(args, vecenv, env_name=''):
     if load_path is not None:
         state_dict = torch.load(load_path, map_location=device)
         state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
-        policy.load_state_dict(state_dict)
+        # strict=False: allows warm-start through architecture changes that add
+        # identity-initialized modules (e.g. LayerNorm γ=1/β=0), preserving
+        # step-0 behavior while letting new params learn.
+        missing, unexpected = policy.load_state_dict(state_dict, strict=False)
+        if missing or unexpected:
+            print(f"[warm-start] missing={list(missing)[:8]} unexpected={list(unexpected)[:8]}")
+        # Refresh init_params snapshot so L2-init anchors to the warm-started weights
+        # (not the random init). Without this, L2-init would pull the policy back
+        # toward the pre-load random state — erasing the warm-start.
+        def _refresh_init_params(module):
+            if hasattr(module, 'init_params') and hasattr(module, 'named_parameters'):
+                module.init_params = {k: v.detach().clone()
+                                      for k, v in module.named_parameters()}
+        policy.apply(_refresh_init_params)
         #state_path = os.path.join(*load_path.split('/')[:-1], 'state.pt')
         #optim_state = torch.load(state_path)['optimizer_state_dict']
         #pufferl.optimizer.load_state_dict(optim_state)

@@ -120,7 +120,7 @@ static void test_retrograde_lowers(void) {
     env.num_bodies = 1;
 
     double a_before = env.sat.orbit.a;
-    env.actions[0] = 3;  /* retrograde small (−10 m/s) */
+    env.actions[0] = 5;  /* retrograde small (−10 m/s) — action 5 post NUM_ACTIONS=9 */
     c_step(&env);
     double a_after = env.sat.orbit.a;
 
@@ -336,6 +336,111 @@ static void test_dv_budget(void) {
     printf("  fuel remaining = %.4f kg\n\n", env.sat.fuel_mass);
 }
 
+/* ── Test 9: LVLH stationary — sat co-located with target stays zero in LVLH ── */
+static void test_lvlh_stationary(void) {
+    printf("=== Test 9: LVLH frame stationary (sat == target, 100 steps) ===\n");
+
+    Orbital env = {0};
+    alloc_env(&env);
+    c_reset(&env);
+    env.num_bodies = 1;  /* Earth only */
+
+    /* Set sat and target to identical 500 km circular orbits */
+    double a = R_EARTH + 500e3;
+    env.sat.orbit.a     = a;
+    env.sat.orbit.e     = 0.0;
+    env.sat.orbit.M     = 0.5;
+    env.sat.orbit.theta = 0.5;
+    env.sat.orbit.omega = 0.0;
+    env.sat.dry_mass    = 850.0;
+    env.sat.fuel_mass   = env.sat.dry_mass * FUEL_FRAC / (1.0 - FUEL_FRAC);
+    env.target.a     = a;
+    env.target.e     = 0.0;
+    env.target.M     = 0.5;
+    env.target.theta = 0.5;
+    env.target.omega = 0.0;
+
+    double max_dvx_l = 0.0, max_dvy_l = 0.0;
+    double max_dx_l = 0.0, max_dy_l = 0.0;
+
+    for (int i = 0; i < 100; i++) {
+        env.actions[0] = 0;  /* coast */
+        c_step(&env);
+        if (env.terminals[0]) {
+            /* Success reward triggered by at_target — auto-reset happened.
+             * Re-align since c_reset randomized. */
+            env.sat.orbit.a = env.target.a = a;
+            env.sat.orbit.e = env.target.e = 0.0;
+            env.sat.orbit.M = env.target.M = 0.5;
+            env.sat.orbit.theta = env.target.theta = 0.5;
+            env.sat.orbit.omega = env.target.omega = 0.0;
+            continue;
+        }
+        /* obs[33..37] = dx_l, dy_l, dvx_l (normalized), dvy_l, n */
+        double dx_l  = (double)env.observations[33] * R_EARTH;
+        double dy_l  = (double)env.observations[34] * R_EARTH;
+        double v_circ_t = sqrt(MU / env.target.a);
+        double dvx_l = (double)env.observations[35] * v_circ_t;
+        double dvy_l = (double)env.observations[36] * v_circ_t;
+        if (fabs(dx_l)  > fabs(max_dx_l))  max_dx_l  = dx_l;
+        if (fabs(dy_l)  > fabs(max_dy_l))  max_dy_l  = dy_l;
+        if (fabs(dvx_l) > fabs(max_dvx_l)) max_dvx_l = dvx_l;
+        if (fabs(dvy_l) > fabs(max_dvy_l)) max_dvy_l = dvy_l;
+    }
+
+    printf("  max |dx_l|=%.4e m   max |dy_l|=%.4e m\n", max_dx_l, max_dy_l);
+    printf("  max |dvx_l|=%.4e m/s  max |dvy_l|=%.4e m/s\n", max_dvx_l, max_dvy_l);
+
+    int pass = (fabs(max_dvx_l) < 1e-3 && fabs(max_dvy_l) < 1e-3 &&
+                fabs(max_dx_l) < 1.0 && fabs(max_dy_l) < 1.0);
+    printf("  %s (|dvx_l|, |dvy_l| < 1e-3 m/s — catches n×r sign-flip bugs)\n\n",
+           pass ? "PASS" : "FAIL");
+}
+
+/* ── R2 diagnostic: G_shape vs terminal reward, 50 random episodes ──────── */
+static void test_r2_goodhart(void) {
+    printf("=== R2 Goodhart Diagnostic: G_shape vs |R_terminal| over 50 random-action eps ===\n");
+
+    Orbital env = {0};
+    alloc_env(&env);
+    env.num_debris_min = 0;
+    env.num_debris_max = 0;
+    env.init_phase_gap_max = 3.14159;
+    env.e_max_target = 0.0;
+    c_reset(&env);
+
+    int n_eps = 0, n_success = 0;
+    double sum_g_shape = 0.0, sum_abs_r_term = 0.0;
+    double max_g_shape = 0.0, max_step_reward = 0.0;
+
+    while (n_eps < 50) {
+        env.actions[0] = rand() % NUM_ACTIONS;
+        c_step(&env);
+        if (fabs(env.rewards[0]) > max_step_reward) max_step_reward = fabs(env.rewards[0]);
+        if (env.terminals[0]) {
+            double r_term = env.rewards[0];
+            sum_abs_r_term += fabs(r_term);
+            sum_g_shape    += env.last_g_shape;
+            if (env.last_g_shape > max_g_shape) max_g_shape = env.last_g_shape;
+            if (r_term > 0.0) n_success++;
+            n_eps++;
+            /* env auto-resets after terminal */
+        }
+    }
+
+    double mean_g   = sum_g_shape / n_eps;
+    double mean_abs = sum_abs_r_term / n_eps;
+    double ratio    = mean_g / (mean_abs + 1e-12);
+    printf("  Episodes: %d  Successes: %d\n", n_eps, n_success);
+    printf("  mean |G_shape|   = %.4f\n", mean_g);
+    printf("  mean |R_term|    = %.4f\n", mean_abs);
+    printf("  ratio G/R        = %.4f   (Principle F hard-fail if > 0.1)\n", ratio);
+    printf("  max |G_shape|    = %.4f   max |step reward| = %.4f\n",
+           max_g_shape, max_step_reward);
+    printf("  %s\n\n", (ratio <= 0.1) ? "PASS (Goodhart bound holds)" :
+                                       "WARN (Goodhart bound violated — reduce W_* constants)");
+}
+
 /* ── Test 8: ASCII render ─────────────────────────────────────────────────── */
 static void test_render(void) {
     printf("=== Test 8: ASCII render (3 steps) ===\n\n");
@@ -366,6 +471,8 @@ int main(void) {
     test_escape();
     test_fuel_consumption();
     test_dv_budget();
+    test_lvlh_stationary();
+    test_r2_goodhart();
     test_render();
 
     printf("Done.\n");

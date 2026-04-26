@@ -557,3 +557,37 @@ The e=0.3 wall is **not** action-granularity. Discrete(7) is the productive base
 ---
 
 *Last updated: 2026-04-20*
+
+---
+
+## Phase 3 — Rendezvous (2026-04-23)
+
+Rendezvous curriculum completed. Action space expanded to Discrete(9) (added finer pro/retro burns, restored radial); success criterion replaced with position + relative-velocity matching against a propagated target body; per-step distance shaping added.
+
+### Stage progression (circular targets, no debris, greedy eval)
+
+| Stage | Phase gap | Success | Mean ep length | Best ckpt |
+|-------|-----------|---------|----------------|-----------|
+| 1 | 30°  (0.524 rad) | 99% | — | `puffer_orbital_q0jsaz88/model_puffer_orbital_000115.pt` |
+| 2 | 90°  (1.571 rad) | 92% (50 eps) | 239 | `puffer_orbital_q1pj876v/model_puffer_orbital_000115.pt` |
+| 3 | 180° (3.142 rad) | **64% (50 eps, seed 42)** | 392 | `puffer_orbital_6f56229o/model_puffer_orbital_000115.pt` |
+
+Stage 3 intermediate checkpoints: 92% @ 90° (no regression), 75% @ 135°.
+
+### Stage 3 training
+- 15M steps warm-started from Stage 2 best, CPU, 2m 37s, SPS ~420k.
+- wandb run `6f56229o` in project `mozartpmb_training/orbital-rl`.
+- Final perf 0.510, episode_return −1.859, fuel_used 0.147.
+
+### Plan target
+Plan goal ≥60% @ 180° — **met (64%)**. Intermediate targets (≥90% @ small gap, ≥75% @ medium) also met.
+
+### Artifacts
+- Trajectories: `logs/orbital/eval_stage2_90deg/` (50 npz), `logs/orbital/eval_stage3_180deg/` (50 npz).
+- Plots: `plots/stage2_90deg/` (50 per-ep + overlay), `plots/stage3_180deg/` (50 per-ep + overlay).
+
+### Known cleanup items
+- Stage 3 training only saved the final checkpoint (epoch 115); Stage 2 saved every 10 epochs. Worth investigating puffer's checkpoint cadence before the next run.
+- Training-time traj logging at `traj_log_every=10` captured only 2 episodes on env 0 over 15M steps — logging rate is per-env, not global. For dense in-training captures, either drop `traj_log_every` to 1 or add an "always log env 0" mode.
+
+*Last updated: 2026-04-23*

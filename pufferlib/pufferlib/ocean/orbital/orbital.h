@@ -27,7 +27,7 @@
 #define ISP         300.0           /* Specific impulse (seconds)             */
 #define G0          9.80665         /* Standard gravity (m/s²)                */
 #define VE          (ISP * G0)      /* Exhaust velocity ≈ 2942 m/s           */
-#define OBS_DIM     33              /* Observation vector length              */
+#define OBS_DIM     38              /* Observation vector length (33 + 5 LVLH)*/
 #define N_OBS_BODY  4               /* # bodies reported in observation       */
 #define SUCCESS_TOL_A   10000.0     /* Semi-major axis match tolerance (m)    */
 #define SUCCESS_TOL_E   0.01        /* Eccentricity match tolerance           */
@@ -37,12 +37,24 @@
 #define RENDEZVOUS_RADIUS   30000.0 /* 30 km — rendezvous position tolerance  */
 #define REL_VEL_TOL         50.0    /* 50 m/s — relative velocity tolerance   */
 
+/* ── Phase 4 R2: gated multi-stage potential shaping ────────────────────── */
+#define BETA_SHAPE   1.0    /* Gated Φ weight; re-enabled for R3a to restore per-step signal */
+#define W_ORBIT      0.01   /* Weight for Φ_orbit = |Δa|/TOL_A + ||Δē||       */
+#define W_PHASE      0.01   /* Weight for Φ_phase = 1 - cos(Δθ)              */
+#define W_VEL        0.01   /* Weight for Φ_vel   = ||v_rel_lvlh||/REL_VEL_TOL*/
+#define EPS_ORBIT    2.0    /* Gate threshold: Φ_orbit below this opens σ₂  */
+#define EPS_PHASE    0.3    /* Gate threshold: Φ_phase below this opens σ₃  */
+#define TAU_ORBIT    (0.1 * EPS_ORBIT)
+#define TAU_PHASE    (0.1 * EPS_PHASE)
+
 /* ── Action Δv lookup table ──────────────────────────────────────────────
  * 7 actions (v2): coast + prograde/retrograde at 10/25 m/s + radial ±10 m/s.
  * Each row: { dv_prograde, dv_radial, dv_normal }. dv_normal kept at 0 for
  * forward compatibility with a future 3D upgrade.
  */
-#define NUM_ACTIONS 9
+#define NUM_ACTIONS 10
+#define WARP_ACTION 9
+#define WARP_TAU    5    /* 5 × 60s = 5 min of sim time per warp step */
 static const double ACTION_DV[NUM_ACTIONS][3] = {
     {   0.0,   0.0,  0.0 },  /* 0: coast                 */
     {   5.0,   0.0,  0.0 },  /* 1: prograde fine    (new) */
@@ -53,6 +65,7 @@ static const double ACTION_DV[NUM_ACTIONS][3] = {
     { -25.0,   0.0,  0.0 },  /* 6: retrograde medium     */
     {   0.0,  10.0,  0.0 },  /* 7: radial out            */
     {   0.0, -10.0,  0.0 },  /* 8: radial in             */
+    {   0.0,   0.0,  0.0 },  /* 9: warp 5min (τ=5 sub-steps, no burn) */
 };
 
 /* ── PufferLib Log struct ────────────────────────────────────────────────
@@ -63,6 +76,7 @@ typedef struct {
     float episode_return;   /* sum of rewards per episode              */
     float episode_length;   /* steps per episode                       */
     float fuel_used;        /* fuel fraction consumed per episode      */
+    float g_shape_abs;      /* Σ|shaping deltas| per episode (Goodhart)*/
     float n;                /* REQUIRED: episode count (last field)    */
 } Log;
 
@@ -153,6 +167,12 @@ typedef struct {
     /* Dense shaping cache: prev-step sat↔target distance and phase offset. */
     double           dist_prev;             /* previous-step sat↔target distance (m) */
     double           dphase_prev;           /* previous-step wrapped (θ_sat − θ_target) ∈ [-π, π] */
+
+    /* Phase 4 R2: potential shaping cache */
+    double           phi_prev;              /* Φ(s) from previous decision           */
+    int              last_tau;              /* sub-steps (1 except under warp)        */
+    double           g_shape_accum;         /* |accumulated shaping| per episode      */
+    double           last_g_shape;          /* snapshot at terminal, survives c_reset */
 
     /* Trajectory logging */
     TrajectoryRecord traj_log[MAX_STEPS];
@@ -451,6 +471,94 @@ static inline void fill_observations(Orbital* env) {
         obs[base+2] = (float)(closing / v_circ);
         obs[base+3] = (float)(b->keepout_radius / scale_dist);
     }
+
+    /* [33-37] LVLH-frame relative state — primary observation for rendezvous.
+     * Rotating frame co-moving with target: x-axis = radial (outward from
+     * Earth through target), y-axis = along-track (in direction of target
+     * motion). Makes the rendezvous problem state-invariant to target's
+     * inertial angular position, which is the key observation-aliasing fix
+     * from Phase 4 spec §3.1. */
+    {
+        double tx, ty, tvx, tvy;
+        orbit_to_cartesian(&env->target, &tx, &ty, &tvx, &tvy);
+        /* Target inertial angle: ω + θ (perifocal→inertial) */
+        double theta_t = env->target.theta + env->target.omega;
+        double ct = cos(theta_t), st = sin(theta_t);
+
+        double dxi  = sx  - tx;
+        double dyi  = sy  - ty;
+        double dvxi = svx - tvx;
+        double dvyi = svy - tvy;
+
+        /* Rotate inertial offset into target's LVLH frame */
+        double dx_l  =  ct * dxi  + st * dyi;
+        double dy_l  = -st * dxi  + ct * dyi;
+        double dvx_l =  ct * dvxi + st * dvyi;
+        double dvy_l = -st * dvxi + ct * dvyi;
+
+        /* Subtract frame-rotation term n × r (so velocity is relative to
+         * rotating LVLH frame, not inertial frame rotated). */
+        double n_tgt = sqrt(MU / (env->target.a * env->target.a * env->target.a));
+        dvx_l += n_tgt * dy_l;
+        dvy_l -= n_tgt * dx_l;
+
+        double v_circ_t = sqrt(MU / env->target.a);
+        obs[33] = (float)(dx_l  / R_EARTH);
+        obs[34] = (float)(dy_l  / R_EARTH);
+        obs[35] = (float)(dvx_l / v_circ_t);
+        obs[36] = (float)(dvy_l / v_circ_t);
+        obs[37] = (float)(n_tgt / 1e-3);   /* ~LEO mean motion scale */
+    }
+}
+
+/* ── Phase 4 R2: potential Φ(s) and gated shaping ───────────────────────── */
+
+/* Compute gated multi-stage potential Φ(s) per spec §3.2. Returns Φ ≤ 0.
+ *   Φ_orbit = |Δa|/SUCCESS_TOL_A + ||Δē||   — orbit-shape closure
+ *   Φ_phase = 1 − cos(Δθ)                    — phase alignment (smooth across ±π)
+ *   Φ_vel   = ||v_rel_lvlh|| / REL_VEL_TOL   — rel-velocity null-out
+ * Gates σ₂, σ₃ open as earlier-stage potentials drop below calibrated ε.
+ * Φ(s) = −(w₁·Φ_orbit·σ₁ + w₂·Φ_phase·σ₂ + w₃·Φ_vel·σ₃). */
+static inline double compute_phi(const Orbital* env) {
+    /* Φ_orbit: orbit shape match */
+    double da = fabs(env->sat.orbit.a - env->target.a);
+    double e_sx = env->sat.orbit.e * cos(env->sat.orbit.omega);
+    double e_sy = env->sat.orbit.e * sin(env->sat.orbit.omega);
+    double e_tx = env->target.e    * cos(env->target.omega);
+    double e_ty = env->target.e    * sin(env->target.omega);
+    double de = sqrt((e_sx - e_tx)*(e_sx - e_tx) + (e_sy - e_ty)*(e_sy - e_ty));
+    double phi_orbit = da / SUCCESS_TOL_A + de;
+
+    /* Φ_phase: true-anomaly alignment along target orbit (1 - cos wraps smoothly) */
+    double dtheta = env->sat.orbit.theta - env->target.theta;
+    double phi_phase = 1.0 - cos(dtheta);
+
+    /* Φ_vel: LVLH-frame relative velocity magnitude */
+    double sx, sy, svx, svy;
+    orbit_to_cartesian(&env->sat.orbit, &sx, &sy, &svx, &svy);
+    double tx, ty, tvx, tvy;
+    orbit_to_cartesian(&env->target, &tx, &ty, &tvx, &tvy);
+    double theta_t = env->target.theta + env->target.omega;
+    double ct = cos(theta_t), st = sin(theta_t);
+    double dvxi = svx - tvx, dvyi = svy - tvy;
+    double dvx_l =  ct * dvxi + st * dvyi;
+    double dvy_l = -st * dvxi + ct * dvyi;
+    double dxi = sx - tx, dyi = sy - ty;
+    double dx_l =  ct * dxi + st * dyi;
+    double dy_l = -st * dxi + ct * dyi;
+    double n_tgt = sqrt(MU / (env->target.a * env->target.a * env->target.a));
+    dvx_l += n_tgt * dy_l;
+    dvy_l -= n_tgt * dx_l;
+    double phi_vel = sqrt(dvx_l*dvx_l + dvy_l*dvy_l) / REL_VEL_TOL;
+
+    /* Gates: σ₁=1 always, σ₂ opens when Φ_orbit below ε_orbit,
+     *        σ₃ = σ₂ · σ(ε_phase - Φ_phase)/τ_phase */
+    double sigma2 = 1.0 / (1.0 + exp(-(EPS_ORBIT - phi_orbit) / TAU_ORBIT));
+    double sigma3 = sigma2 / (1.0 + exp(-(EPS_PHASE - phi_phase) / TAU_PHASE));
+
+    return -(W_ORBIT * phi_orbit * 1.0
+           + W_PHASE * phi_phase * sigma2
+           + W_VEL   * phi_vel   * sigma3);
 }
 
 /* ── Termination check ───────────────────────────────────────────────────── */
@@ -460,10 +568,22 @@ static inline void fill_observations(Orbital* env) {
 static inline int check_termination(Orbital* env) {
     const Satellite* sat = &env->sat;
 
+    /* Phase 4 R2: NHR boundary — clamp Φ to 0 at every terminal via
+     *   reward += β · (0 - Φ_prev)
+     * Use macro to apply uniformly at each terminal branch. */
+    #define R2_NHR_CLAMP()                                               \
+        do {                                                             \
+            double _delta = BETA_SHAPE * (0.0 - env->phi_prev);          \
+            env->rewards[0]   += (float)_delta;                          \
+            env->g_shape_accum += fabs(_delta);                          \
+            env->phi_prev       = 0.0;                                   \
+        } while (0)
+
     /* 0. Hyperbolic orbit (a ≤ 0) — escape, skip cartesian conversion */
     if (sat->orbit.a <= 0.0) {
         env->rewards[0]   = -10.0f;
         env->terminals[0] = 1;
+        R2_NHR_CLAMP();
         return 1;
     }
 
@@ -480,6 +600,7 @@ static inline int check_termination(Orbital* env) {
         if (d < env->bodies[i].hard_radius) {
             env->rewards[0]   = -10.0f;
             env->terminals[0] = 1;
+            R2_NHR_CLAMP();
             return 1;
         }
     }
@@ -490,6 +611,7 @@ static inline int check_termination(Orbital* env) {
     if (E_orb >= 0.0) {
         env->rewards[0]   = -10.0f;
         env->terminals[0] = 1;
+        R2_NHR_CLAMP();
         return 1;
     }
 
@@ -497,6 +619,7 @@ static inline int check_termination(Orbital* env) {
     if (env->step >= MAX_STEPS) {
         env->rewards[0]   = -10.0f;
         env->terminals[0] = 1;
+        R2_NHR_CLAMP();
         return 1;
     }
 
@@ -513,12 +636,14 @@ static inline int check_termination(Orbital* env) {
     if (sat->fuel_mass <= 0.0 && !at_target) {
         env->rewards[0]   = -10.0f;
         env->terminals[0] = 1;
+        R2_NHR_CLAMP();
         return 1;
     }
 
-    /* 5. Success — fuel-proportional: [+5, +10]. Always better than any failure (-10).
-     * fuel_remaining is normalized to the episode's initial fuel budget, so it spans
-     * [0, 1] (not [0, FUEL_FRAC]); this is critical for the incentive to have full range. */
+    /* 5. Success — keep Stage 2's single fuel bonus so the warm-started value
+     * head sees a familiar terminal distribution. Reward-reshaping (dual-bonus)
+     * is deferred; Phase 4 R5 isolates the shaping-alone effect. NHR clamp at
+     * terminal preserves potential-based shaping optimality. */
     if (at_target) {
         double initial_fuel = sat->dry_mass * FUEL_FRAC / (1.0 - FUEL_FRAC);
         double fuel_remaining = sat->fuel_mass / initial_fuel;
@@ -526,9 +651,11 @@ static inline int check_termination(Orbital* env) {
         if (fuel_remaining > 1.0) fuel_remaining = 1.0;
         env->rewards[0]   = 10.0f * (float)(0.5 + 0.5 * fuel_remaining);
         env->terminals[0] = 1;
+        R2_NHR_CLAMP();
         return 1;
     }
 
+    #undef R2_NHR_CLAMP
     return 0;
 }
 
@@ -602,6 +729,7 @@ static inline void add_log(Orbital* env, int success) {
     env->log.episode_return += env->rewards[0];
     env->log.episode_length += (float)env->step;
     env->log.fuel_used      += (float)(FUEL_FRAC - fuel_frac * FUEL_FRAC);
+    env->log.g_shape_abs    += (float)env->g_shape_accum;
     env->log.n++;
 }
 
@@ -713,6 +841,11 @@ static inline void c_reset(Orbital* env) {
         env->dphase_prev = dp;
     }
 
+    /* Phase 4 R2: seed Φ shaping cache at t=0. last_tau=1 (non-warp). */
+    env->phi_prev      = compute_phi(env);
+    env->last_tau      = 1;
+    env->g_shape_accum = 0.0;
+
     fill_observations(env);
 }
 
@@ -730,9 +863,14 @@ static inline void c_step(Orbital* env) {
 
     int action = env->actions[0];
 
-    /* Apply burn if not coasting and has fuel */
+    /* R4 time-warp: action 9 = advance WARP_TAU sub-steps of DT with no
+     * burn. Collision/termination checks run every sub-step so the warp
+     * never skips past a conjunction. Non-warp actions use τ=1. */
+    int tau = (action == WARP_ACTION) ? WARP_TAU : 1;
+
+    /* Apply burn if not coasting/warping and has fuel */
     float dv_applied = 0.0f;
-    if (action != 0 && env->sat.fuel_mass > 0.0) {
+    if (action != 0 && action != WARP_ACTION && env->sat.fuel_mass > 0.0) {
         double dv = apply_impulse(env,
                                    ACTION_DV[action][0],
                                    ACTION_DV[action][1],
@@ -740,79 +878,86 @@ static inline void c_step(Orbital* env) {
         dv_applied = (float)dv;
     }
 
-    /* Early escape check — a ≤ 0 means hyperbolic; skip propagation */
+    /* Early escape check — a ≤ 0 means hyperbolic; skip propagation.
+     * Apply NHR clamp manually since check_termination's hyperbolic branch
+     * can't safely reach cartesian conversion on un-propagated state. */
     if (env->sat.orbit.a <= 0.0) {
-        env->rewards[0]   = -10.0f;
-        env->terminals[0] = 1;
+        env->rewards[0]    = -10.0f;
+        double _clamp       = BETA_SHAPE * (0.0 - env->phi_prev);
+        env->rewards[0]    += (float)_clamp;
+        env->g_shape_accum += fabs(_clamp);
+        env->phi_prev       = 0.0;
+        env->terminals[0]   = 1;
         write_traj_record(env, env->rewards[0], dv_applied);
         fill_observations(env);
         env->last_episode_steps = env->step;
+        env->last_g_shape       = env->g_shape_accum;
         add_log(env, 0);
         c_reset(env);
         return;
     }
 
-    /* Propagate all orbiting bodies (not Earth) */
-    for (int i = 1; i < env->num_bodies; i++) {
-        propagate_orbit(&env->bodies[i].orbit, DT);
+    /* Sub-step loop. τ=1 for non-warp actions (unchanged byte-for-byte
+     * semantics vs pre-R4). τ=WARP_TAU (=5) for action=WARP_ACTION, with
+     * fill_obs + check_termination executed after every sub-step so that
+     * collisions/escapes inside the warp window terminate normally. */
+    int actual_tau = 0;
+    int warped_terminated = 0;
+    for (int k = 0; k < tau; k++) {
+        /* Propagate all orbiting bodies (not Earth) */
+        for (int i = 1; i < env->num_bodies; i++) {
+            propagate_orbit(&env->bodies[i].orbit, DT);
+        }
+        /* Propagate the target body — Phase 3 rendezvous requires a moving target. */
+        propagate_orbit(&env->target, DT);
+        /* Propagate satellite */
+        propagate_orbit(&env->sat.orbit, DT);
+
+        env->step++;
+        actual_tau++;
+
+        /* Update observations (state of s_{t+1}) */
+        fill_observations(env);
+
+        if (check_termination(env)) {
+            warped_terminated = 1;
+            break;
+        }
     }
 
-    /* Propagate the target body — Phase 3 rendezvous requires a moving target. */
-    propagate_orbit(&env->target, DT);
+    env->last_tau = actual_tau;
 
-    /* Propagate satellite */
-    propagate_orbit(&env->sat.orbit, DT);
-
-    env->step++;
-
-    /* Dense shaping: PHASE closure (primary) + distance closure (secondary).
-     *
-     * At wide phase gaps (e.g. 180°), the optimal rendezvous strategy raises
-     * or lowers the satellite to a phasing orbit — which *increases* sat↔target
-     * distance while the period mismatch closes the phase gap. Pure distance
-     * shaping actively punishes this orbital-mechanics-correct behavior and
-     * traps the policy in doomed direct-approach spirals (observed 46% ceiling
-     * @ 180° in Stage 3 / Stage 3c).
-     *
-     * Phase closure |Δθ|_prev − |Δθ|_curr rewards phase alignment regardless
-     * of altitude, letting the agent freely explore phasing orbits. The small
-     * distance term provides a secondary signal for final approach once phase
-     * is aligned. Both terms are potential-difference form so stuck = 0. */
-    {
-        double sx, sy, svx, svy;
-        orbit_to_cartesian(&env->sat.orbit, &sx, &sy, &svx, &svy);
-        double tx, ty, tvx, tvy;
-        orbit_to_cartesian(&env->target,    &tx, &ty, &tvx, &tvy);
-        double dx = sx - tx, dy = sy - ty;
-        double dist_curr = sqrt(dx*dx + dy*dy);
-
-        double dp = env->sat.orbit.theta - env->target.theta;
-        dp = dp - 2.0*M_PI * floor((dp + M_PI) / (2.0*M_PI));
-
-        const double c_phase = 0.0;
-        const double c_dist  = 0.05;
-        env->rewards[0] += (float)(
-            c_phase * (fabs(env->dphase_prev) - fabs(dp)) / M_PI +
-            c_dist  * (env->dist_prev - dist_curr)        / RENDEZVOUS_RADIUS
-        );
-
-        env->dist_prev   = dist_curr;
-        env->dphase_prev = dp;
-    }
-
-    /* Write trajectory record before termination check */
-    write_traj_record(env, env->rewards[0], dv_applied);
-
-    /* Update observations */
-    fill_observations(env);
-
-    /* Check termination */
-    if (check_termination(env)) {
+    /* Check termination BEFORE applying per-step shaping.
+     * At terminal: check_termination sets rewards[0] = r_env and applies
+     * R2_NHR_CLAMP which adds β·(0 − env->phi_prev). phi_prev still holds
+     * Φ(s_t) from the previous step — the correct NHR terminal form:
+     *   r' = r_env + 0 − Φ(s_t)
+     * Previously, the per-step shaping below ran first, updating phi_prev
+     * to Φ(s_{t+1}); then check_termination overwrote rewards[0], erasing
+     * the shaping delta and making the NHR clamp use the wrong value. */
+    if (warped_terminated) {
+        write_traj_record(env, env->rewards[0], dv_applied);
         int success = (env->rewards[0] > 0.0f);
         env->last_episode_steps = env->step;
+        env->last_g_shape       = env->g_shape_accum;
         add_log(env, success);
         c_reset(env);
+        return;
     }
+
+    /* Non-terminal: gated multi-stage potential shaping (§3.2).
+     *   r_shape = β · (γ^τ · Φ(s_{t+1}) − Φ(s_t))   — NHR form.
+     * γ must match orbital.ini's gamma (0.995). τ=1 except under time-warp. */
+    {
+        double phi_curr    = compute_phi(env);
+        double gamma_tau   = pow(0.995, (double)env->last_tau);
+        double delta       = BETA_SHAPE * (gamma_tau * phi_curr - env->phi_prev);
+        env->rewards[0]   += (float)delta;
+        env->g_shape_accum += fabs(delta);
+        env->phi_prev      = phi_curr;
+    }
+
+    write_traj_record(env, env->rewards[0], dv_applied);
 }
 
 static inline void c_render(Orbital* env) {

@@ -3,8 +3,8 @@
 Single satellite performs a fuel-optimal rendezvous with a propagated
 target body, avoiding debris.
 
-Observation space: Box(float32, 33) — normalised to roughly [-1, 1]
-Action space:      Discrete(9)      — coast + prograde/retrograde at 5/10/25 m/s + radial ±10 m/s
+Observation space: Box(float32, 38) — normalised to roughly [-1, 1] (33 legacy + 5 LVLH)
+Action space:      Discrete(10)     — coast + prograde/retrograde at 5/10/25 m/s + radial ±10 m/s + warp 5min
 """
 
 import os
@@ -51,9 +51,9 @@ class Orbital(pufferlib.PufferEnv):
         seed=0,
     ):
         self.single_observation_space = gymnasium.spaces.Box(
-            low=-2.0, high=2.0, shape=(33,), dtype=np.float32
+            low=-2.0, high=2.0, shape=(38,), dtype=np.float32
         )
-        self.single_action_space = gymnasium.spaces.Discrete(9)
+        self.single_action_space = gymnasium.spaces.Discrete(10)
         self.render_mode  = render_mode
         self.num_agents   = num_envs
         self.log_interval = log_interval

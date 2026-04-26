@@ -19,7 +19,7 @@ from pufferlib.models import Default, LSTMWrapper
 
 
 def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=42,
-             e_max_target=0.1):
+             e_max_target=0.0, init_phase_gap_max=0.524):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -35,6 +35,7 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         num_debris_min=num_debris_min,
         num_debris_max=num_debris_max,
         e_max_target=e_max_target,
+        init_phase_gap_max=init_phase_gap_max,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -113,12 +114,14 @@ def main():
     parser.add_argument('--debris', action='store_true', help='Enable debris (4-8)')
     parser.add_argument('--out-dir', default=None, help='Output directory for trajectories')
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
-    parser.add_argument('--e-max-target', type=float, default=0.1,
-                        help='Max target eccentricity (default 0.1 per config)')
+    parser.add_argument('--e-max-target', type=float, default=0.0,
+                        help='Max target eccentricity (default 0.0 = circular target, matches orbital.ini)')
+    parser.add_argument('--init-phase-gap-max', type=float, default=0.524,
+                        help='Max initial phase gap in radians (default 0.524 = 30°)')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
-             args.e_max_target)
+             args.e_max_target, args.init_phase_gap_max)
 
 
 if __name__ == '__main__':

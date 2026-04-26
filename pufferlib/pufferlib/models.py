@@ -39,11 +39,13 @@ class Default(nn.Module):
             self.encoder = nn.Linear(input_size, self.hidden_size)
         else:
             num_obs = np.prod(env.single_observation_space.shape)
+            # R3b note: LayerNorm here disrupts warm-start activation statistics.
+            # L2-init (pufferl.py loss block) is the plasticity intervention.
             self.encoder = torch.nn.Sequential(
                 pufferlib.pytorch.layer_init(nn.Linear(num_obs, hidden_size)),
                 nn.GELU(),
             )
-            
+
         if self.is_multidiscrete:
             self.action_nvec = tuple(env.single_action_space.nvec)
             num_atns = sum(self.action_nvec)
@@ -61,6 +63,9 @@ class Default(nn.Module):
 
         self.value = pufferlib.pytorch.layer_init(
             nn.Linear(hidden_size, 1), std=1)
+
+        self.init_params = {k: v.detach().clone()
+                            for k, v in self.named_parameters()}
 
     def forward_eval(self, observations, state=None):
         hidden = self.encode_observations(observations, state=state)
@@ -127,6 +132,9 @@ class LSTMWrapper(nn.Module):
         self.cell.bias_ih = self.lstm.bias_ih_l0
         self.cell.bias_hh = self.lstm.bias_hh_l0
 
+        # R3b: LSTMWrapper LayerNorms disabled — they disrupt warm-start
+        # activation distribution and collapse the committed policy.
+        # Encoder-level LayerNorm in Default is sufficient for plasticity.
         #self.pre_layernorm = nn.LayerNorm(hidden_size)
         #self.post_layernorm = nn.LayerNorm(hidden_size)
 
@@ -186,7 +194,7 @@ class LSTMWrapper(nn.Module):
         #hidden = self.pre_layernorm(hidden)
         hidden, (lstm_h, lstm_c) = self.lstm.forward(hidden, lstm_state)
         hidden = hidden.float()
- 
+
         #hidden = self.post_layernorm(hidden)
         hidden = hidden.transpose(0, 1)
 
