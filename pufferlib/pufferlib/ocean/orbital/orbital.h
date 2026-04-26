@@ -919,6 +919,12 @@ static inline void c_step(Orbital* env) {
         /* Update observations (state of s_{t+1}) */
         fill_observations(env);
 
+        /* Per-sub-step trajectory snapshot so warp doesn't leave zero-filled
+         * gaps in the log. dv attributed to the first sub-step only (warp
+         * itself doesn't burn, so dv_applied is 0 for action=WARP_ACTION).
+         * Reward is overwritten below by the terminal/shaping write. */
+        write_traj_record(env, 0.0f, (k == 0) ? dv_applied : 0.0f);
+
         if (check_termination(env)) {
             warped_terminated = 1;
             break;
