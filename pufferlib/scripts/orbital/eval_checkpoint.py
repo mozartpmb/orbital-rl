@@ -19,7 +19,7 @@ from pufferlib.models import Default, LSTMWrapper
 
 
 def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=42,
-             e_max_target=0.0, init_phase_gap_max=0.524):
+             e_max_target=0.0, init_phase_gap_max=0.524, e_max_sat=0.0, same_orbit_init=0):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -36,6 +36,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         num_debris_max=num_debris_max,
         e_max_target=e_max_target,
         init_phase_gap_max=init_phase_gap_max,
+        e_max_sat=e_max_sat,
+        same_orbit_init=same_orbit_init,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -118,10 +120,14 @@ def main():
                         help='Max target eccentricity (default 0.0 = circular target, matches orbital.ini)')
     parser.add_argument('--init-phase-gap-max', type=float, default=0.524,
                         help='Max initial phase gap in radians (default 0.524 = 30°)')
+    parser.add_argument('--e-max-sat', type=float, default=0.0,
+                        help='Max satellite eccentricity at init (Phase 5b; default 0.0 = circular chaser)')
+    parser.add_argument('--same-orbit-init', type=int, default=0,
+                        help='Phase 5b Stage 1: 1 = sat.{a,e,ω} = target.{a,e,ω}, only θ differs')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
-             args.e_max_target, args.init_phase_gap_max)
+             args.e_max_target, args.init_phase_gap_max, args.e_max_sat, args.same_orbit_init)
 
 
 if __name__ == '__main__':

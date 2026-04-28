@@ -161,6 +161,12 @@ typedef struct {
     /* Target eccentricity curriculum (set from Python; 0.0 → circular only) */
     double           e_max_target;          /* upper bound for target.e ∈ [0, e_max]  */
 
+    /* Phase 5b: Satellite eccentricity curriculum (analogous to e_max_target).
+     * 0.0 → chaser starts circular (Phase 4 behavior). >0 → chaser samples
+     * (e, ω) from same dist as target, optionally constrained to match target. */
+    double           e_max_sat;             /* upper bound for sat.e ∈ [0, e_max_sat] */
+    int              same_orbit_init;       /* 1 → sat.{a,e,ω} = target.{a,e,ω}, only θ differs (Stage 1) */
+
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
 
@@ -746,24 +752,18 @@ static inline void c_reset(Orbital* env) {
     double alt_init = 300e3 + (rand() / (double)RAND_MAX) * 500e3;
     double a_init   = R_EARTH + alt_init;
 
-    /* Target orbit: different altitude, same band */
-    double alt_target;
-    do {
-        alt_target = 300e3 + (rand() / (double)RAND_MAX) * 500e3;
-    } while (fabs(alt_target - alt_init) < 50e3);  /* ensure meaningful transfer */
-    double a_target = R_EARTH + alt_target;
-
-    /* Satellite: circular initial orbit */
-    env->sat.orbit.a     = a_init;
-    env->sat.orbit.e     = 0.0;
-    env->sat.orbit.M     = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
-    env->sat.orbit.theta = env->sat.orbit.M;  /* circular: θ = M */
-    env->sat.orbit.omega = 0.0;
-    env->sat.dry_mass    = 850.0;   /* kg */
-    env->sat.fuel_mass   = env->sat.dry_mass * FUEL_FRAC / (1.0 - FUEL_FRAC);
-
-    /* fuel_mass = dry_mass * (fuel_fraction / (1 - fuel_fraction))
-     * so that fuel_mass / (dry_mass + fuel_mass) = FUEL_FRAC */
+    /* Target orbit altitude — different band unless same_orbit_init. */
+    double a_target;
+    if (env->same_orbit_init) {
+        /* Stage 1: sat and target share orbit shape; force same a. */
+        a_target = a_init;
+    } else {
+        double alt_target;
+        do {
+            alt_target = 300e3 + (rand() / (double)RAND_MAX) * 500e3;
+        } while (fabs(alt_target - alt_init) < 50e3);  /* ensure meaningful transfer */
+        a_target = R_EARTH + alt_target;
+    }
 
     /* Target orbit — eccentricity sampled from curriculum bound, orientation
      * uniform on [0, 2π). When e_max_target == 0, target is circular. */
@@ -771,11 +771,39 @@ static inline void c_reset(Orbital* env) {
     if (env->e_max_target > 0.0) {
         e_tgt = (rand() / (double)RAND_MAX) * env->e_max_target;
     }
-    env->target.a     = a_target;
-    env->target.e     = e_tgt;
-    env->target.omega = (e_tgt > 0.0)
+    double omega_tgt = (e_tgt > 0.0)
                          ? (rand() / (double)RAND_MAX) * 2.0 * M_PI
                          : 0.0;
+    env->target.a     = a_target;
+    env->target.e     = e_tgt;
+    env->target.omega = omega_tgt;
+
+    /* Phase 5b: Satellite initial orbit. Three modes:
+     *   1. same_orbit_init: sat.{a,e,ω} = target.{a,e,ω} — only θ differs.
+     *   2. e_max_sat > 0:    sat.e ~ U(0, e_max_sat), sat.ω ~ U(0, 2π).
+     *   3. else:              sat.e = 0, sat.ω = 0 (Phase 4 behavior). */
+    env->sat.orbit.a     = a_init;
+    if (env->same_orbit_init) {
+        env->sat.orbit.e     = e_tgt;
+        env->sat.orbit.omega = omega_tgt;
+    } else if (env->e_max_sat > 0.0) {
+        env->sat.orbit.e     = (rand() / (double)RAND_MAX) * env->e_max_sat;
+        env->sat.orbit.omega = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
+    } else {
+        env->sat.orbit.e     = 0.0;
+        env->sat.orbit.omega = 0.0;
+    }
+    env->sat.orbit.M     = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
+    {
+        /* θ from M via Kepler solve (works for any e ≥ 0; for e=0 it returns θ = M). */
+        double E_init = solve_kepler(env->sat.orbit.M, env->sat.orbit.e);
+        env->sat.orbit.theta = eccentric_to_true(E_init, env->sat.orbit.e);
+    }
+    env->sat.dry_mass    = 850.0;   /* kg */
+    env->sat.fuel_mass   = env->sat.dry_mass * FUEL_FRAC / (1.0 - FUEL_FRAC);
+
+    /* fuel_mass = dry_mass * (fuel_fraction / (1 - fuel_fraction))
+     * so that fuel_mass / (dry_mass + fuel_mass) = FUEL_FRAC */
 
     /* Target mean anomaly sampled so that initial orbit-angle offset between
      * sat and target is uniform in [−init_phase_gap_max, +init_phase_gap_max].

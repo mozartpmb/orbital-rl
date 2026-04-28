@@ -44,6 +44,10 @@ class Orbital(pufferlib.PufferEnv):
         e_max_target=0.0,
         # Phase-3 rendezvous phase-gap curriculum (rad). 0.0 = target co-phased with sat.
         init_phase_gap_max=0.0,
+        # Phase 5b: Satellite eccentricity (0.0 = circular chaser, Phase 4 default)
+        e_max_sat=0.0,
+        # Phase 5b Stage 1: force sat.{a,e,ω} = target.{a,e,ω}, only θ differs
+        same_orbit_init=0,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -72,6 +76,8 @@ class Orbital(pufferlib.PufferEnv):
             num_debris_max=num_debris_max,
             e_max_target=e_max_target,
             init_phase_gap_max=init_phase_gap_max,
+            e_max_sat=e_max_sat,
+            same_orbit_init=same_orbit_init,
         )
 
         # Pre-allocated trajectory buffer (reused every call)

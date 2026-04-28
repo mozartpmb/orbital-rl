@@ -107,6 +107,8 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->num_debris_max     = (int)unpack(kwargs, "num_debris_max");
     env->e_max_target       = (double)unpack(kwargs, "e_max_target");
     env->init_phase_gap_max = (double)unpack(kwargs, "init_phase_gap_max");
+    env->e_max_sat          = (double)unpack(kwargs, "e_max_sat");
+    env->same_orbit_init    = (int)unpack(kwargs, "same_orbit_init");
     return 0;
 }
 
