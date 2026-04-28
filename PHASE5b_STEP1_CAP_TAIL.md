@@ -64,4 +64,77 @@ This is a sophisticated emergent strategy — a free positive finding from Step 
 
 ---
 
-*Cap-tail mechanism: 80% capability gap (not brittleness), bottleneck is (high-phase, near-circular) — a Phase 4 territory issue. Free finding: agent emergently uses eccentricity for natural phasing.*
+## Follow-up findings (2026-04-28, +30 min)
+
+Three more probes refine the cap-tail story.
+
+### A. Step 1 ckpt at Phase 4 conditions
+
+Stage 1.0 ckpt (`puffer_orbital_177741559081/model_puffer_orbital_000150.pt`) evaluated at Phase 4's task — `e_max_target=0`, `e_max_sat=0`, `same_orbit_init=0`, full π phase gap, 50 eps × 3 rollout seeds:
+
+| Rollout seed | Step 1 @ Phase 4 conditions | Phase 4 baseline |
+|---|---|---|
+| 42 | 36.0% | 81.3% (R4 ckpt) |
+| 1337 | 14.0% | 86.0% |
+| 20260423 | 24.0% | 80.0% |
+| **mean** | **24.7%** | **79.6%** |
+
+**Generality cost: -55pp.** Step 1 is a Stage 1 specialist (sat and target on the SAME orbit, only θ differs). Phase 4's task — sat circular at one altitude, target circular at a different altitude — requires an a-transfer (Hohmann-like maneuver) that Step 1 never trains on. The Step 1 policy is OOD for this and reverts to ineffective coasting.
+
+This isn't a regression in "shipping" terms — Phase 4 ckpt is preserved as the canonical solver for the Phase 4 task. But it does mean Stage 1's policy doesn't subsume Phase 4 capability. Phase 5b's later stages (Stage 3 = transfer rendezvous; Stage 4 = fully general) will need to re-acquire that skill.
+
+### B. Episode length distribution for cap failures
+
+| Group | min | median | mean | max |
+|---|---|---|---|---|
+| Successes (n=169) | 4 | **197** | 270 | 1883 |
+| Failures (n=31) | 2000 | 2000 | 2000 | 2000 |
+
+**100% of failures hit MAX_STEPS=2000 exactly. None terminate early.** Successful episodes finish fast — median 197 steps (~2 orbital periods). Raising MAX_STEPS would in principle let the agent keep trying, but only matters if the agent is actually trying.
+
+### C. Action distribution conditional on success vs cap-failure
+
+| Action | Success episodes | Cap-failure episodes |
+|---|---|---|
+| 0 coast | 3.6% | **30.9%** (8.5× more) |
+| 1 prograde+ | 6.0% | 0.4% |
+| 4 retro++ | 5.6% | 0.3% |
+| 8 radial- | 0.7% | 0.06% |
+| 9 warp | 84.1% | 68.3% |
+| **Total burn** | **12.3%** | **0.7%** (17× less) |
+
+| Group | Δv used (median) | Δv used (mean) |
+|---|---|---|
+| Successes | 165 m/s | 175 m/s |
+| **Failures** | **0 m/s** | 80 m/s |
+
+**The agent literally doesn't burn on its failure cases.** Median fuel usage on failures is zero — the policy's argmax is "coast or warp" for the entire 2000-step episode. This isn't a policy that's *trying* and missing — it's a policy that has *stopped trying.*
+
+### Refined cap-tail mechanism
+
+Combining (B) and (C): the failure mode isn't "agent runs out of episode time mid-maneuver" — it's "agent decides not to maneuver, then runs out the clock." That's qualitatively different from a capability gap. Both interpretations land in the same decision-matrix bucket (the recipe doesn't generalize to those states), but the mechanism — **policy passivity on under-sampled states** — has different mitigation implications than "the maneuver is too hard / too long."
+
+The (high-phase, near-circular) corner is exactly the under-sampled region: with target.e ~ Uniform(0, 0.05), only ~10% of episodes have e<0.005 (truly near-circular), and most of those don't simultaneously land at high phase gap.
+
+### Sharpened Stage 1.x scaling implication
+
+If we expand e_max from 0.05 → 0.10 → 0.20, the under-sampling of near-circular cases gets *worse*, not better:
+
+| e_max | Fraction of eps with e < 0.005 |
+|---|---|
+| 0.05 | 10% |
+| 0.10 | 5% |
+| 0.20 | 2.5% |
+| 0.50 | 1% |
+
+Naïve Stage 1.x scaling will make the (high-phase, low-e) corner failure rate larger, not smaller. Three ways to fix:
+
+1. **Stratified e sampling.** Guarantee a fixed fraction (~30%) of episodes have e ∈ [0, 0.005] regardless of e_max. Cheap env-side change.
+2. **Curriculum reweighting (DORAEMON-style).** Track per-bin success rate, oversample failing bins. More involved (requires a stats hook + a sampling-distribution kwarg).
+3. **Hybrid task mixture.** Mix in a fraction of Phase-4-style episodes (different-a, circular) so the policy continues to practice transfer-orbit maneuvers. Cheap if `same_orbit_init` becomes a per-episode random flag rather than a global setting.
+
+Option 1 + Option 3 in combination would directly address the cap-tail mechanism and likely close most of the (high-phase, low-e) failure rate. Worth implementing before the Stage 1.x e_max expansion.
+
+---
+
+*Cap-fail mechanism is "agent doesn't try" (median Δv = 0), not "agent tries and misses." Stems from under-sampled (high-phase, low-e) corner. Stage 1.x e expansion will make this worse without sampling-distribution reform.*
