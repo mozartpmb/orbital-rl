@@ -8,7 +8,9 @@
 
 ## TL;DR
 
-The Phase 5b env change (random satellite eccentricity + `same_orbit_init=1` Stage 1 constraint) **bootstraps cleanly without REL_VEL_TOL annealing**. Held-out multi-rollout eval at the spec's Stage 1.0 conditions (e_max_sat = e_max_target = 0.05, init_phase_gap_max = π) lands **81.7% mean across 3 rollout seeds** — well above the spec's ≥50% success threshold and even above the ≥70% "decisive" bar.
+The Phase 5b env change (random satellite eccentricity + `same_orbit_init=1` Stage 1 constraint) **bootstraps cleanly without REL_VEL_TOL annealing**. Held-out multi-rollout eval at the spec's Stage 1.0 conditions (e_max_sat = e_max_target = 0.05, init_phase_gap_max = π) lands **81.7% mean across 3 rollout seeds at 20M steps**, climbing to **99.7% mean at 40M steps** with the same recipe — well above the spec's ≥50% success threshold.
+
+**Update 2026-04-28 +1hr:** the 15.5% safety_cap tail at 20M training was *under-converged training*, not a structural recipe issue. See `PHASE5b_STEP1_CAP_TAIL.md` for the full investigation arc (P1/P2/P3 probe mechanisms → train-longer experiment overturning all three).
 
 Three structural improvements came along with the env change:
 
@@ -110,9 +112,9 @@ The four-stage curriculum proposed in `phase5b-step1.md` §2 (same-orbit → ω-
 
 With Step 1 landed, Phase 5b proper draft becomes concrete. Recommended scope:
 
-### 1. Multi-seed validation of Stage 1.0 (~3 hr compute)
+### 1. Multi-seed validation of Stage 1.0 (~6 hr compute)
 
-Per the addendum's variance-aware protocol: 5 training seeds × 20M steps × Stage 1.0 conditions. Goal: 80% mean is the headline number; we want to know inter-seed std. If std < 5pp, Stage 1.0 is robust; if > 10pp, recipe is fragile.
+Per the addendum's variance-aware protocol: 5 training seeds × **40M steps** × Stage 1.0 conditions (updated from 20M after train-longer experiment). Goal: 99.7% mean is the new headline; we want to know inter-seed std. If std < 2pp, Stage 1.0 is robust; if > 5pp, recipe is fragile.
 
 ### 2. Stage 1.x — eccentricity expansion (~10 hr compute)
 
@@ -144,7 +146,11 @@ Grid over (target.a, target.e, target.ω, phase_gap), eval ≥600 eps per grid p
 
 On the Stage 4 ckpt: strip-LVLH, strip-shaping, fix-circular-sat. Confirms which recipe components carry across the difficulty surface.
 
-**Total Phase 5b proper estimate: ~35 hr compute over ~1 week elapsed.** A realistic deliverable cycle.
+**Total Phase 5b proper estimate: ~50 hr compute over ~1-2 weeks elapsed** (updated from 35 hr after train-longer experiment showed 40M-per-stage is the right horizon). A realistic deliverable cycle.
+
+### Engineering deferred — what the train-longer result removes from scope
+
+The cap-tail probes (Probes #1, #2, #3 in `PHASE5b_STEP1_CAP_TAIL.md`) initially suggested mitigations like adaptive entropy, curriculum reweighting, two-pass training, and policy distillation. The train-longer experiment (extending to 40M steps) showed those aren't needed: under-convergence was the binding mechanism, not argmax brittleness. **Phase 5b proper drops these from the engineering plan.** Stratified e sampling remains a useful tool for Stage 1.x e_max scaling but isn't required for Stage 1.0.
 
 ---
 

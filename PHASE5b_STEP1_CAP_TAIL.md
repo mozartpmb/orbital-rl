@@ -222,3 +222,82 @@ The earlier "stratified e sampling" suggestion is still useful for Stage 1.x sca
 ---
 
 *Final cap-tail mechanism: argmax brittleness from efficiency convergence (P3), not under-exploration (P1) or mode collapse (P2). Mitigation focus shifts from "increase exposure" to "preserve argmax breadth."*
+
+---
+
+## Train-longer experiment (2026-04-28, +30 min) — overturns P3
+
+The P3 verdict above predicted that more training wouldn't help — the policy had supposedly already converged to an over-sharp argmax that no amount of additional PPO updates would fix. **This prediction is wrong.**
+
+### Setup
+
+Continued Stage 1.0 from the epoch 150 checkpoint (`puffer_orbital_177741559081/model_puffer_orbital_000150.pt`) for an additional 20M steps under identical conditions: same env (`init_phase_gap_max=π, e_max_target=0.05, e_max_sat=0.05, same_orbit_init=1`), same seed (42), same hyperparameters, `--train.checkpoint-interval 10`. New run id: `puffer_orbital_177742224544`.
+
+### Corner success rate vs additional training
+
+Eval condition: corner = `(init_phase=π, e_max_target=0.01, e_max_sat=0.01, same_orbit_init=1)`, 100 eps argmax, seed 42.
+
+| Cumulative training steps | Corner success rate |
+|---|---|
+| 20M (original final ckpt) | 62% |
+| +6.5M (~26M cumulative) | **80%** |
+| +13M (~33M cumulative) | **96%** |
+| +20M (~40M cumulative) | **100%** |
+
+The corner failures didn't bottom out at 62% — they monotonically dropped to zero with more training.
+
+### Full Stage 1.0 multi-rollout at the extended final ckpt
+
+200 eps argmax × 3 rollout seeds, identical to the original §5.1 protocol:
+
+| Rollout seed | Original (epoch 150) | Extended (cumulative ~40M) |
+|---|---|---|
+| 42 | 84.5% | **100.0%** (200/200) |
+| 1337 | 83.5% | **99.0%** (198/200) |
+| 20260423 | 77.0% | **100.0%** (200/200) |
+| **mean** | **81.7%** | **99.7%** |
+
++18pp on the headline number. The "15.5% safety_cap tail" we spent three rounds of probes investigating just disappears with more training.
+
+### What overturns
+
+The P3 verdict claimed:
+1. The policy explored corner states (epoch 70 burn 4.1%, Δv 312)
+2. PPO refined toward sharp argmax that fails on edge cases
+3. Mitigation requires "preserve argmax breadth" interventions (adaptive entropy, curriculum reweighting, two-pass training, distillation)
+
+What actually happened: the sharpening at epoch 150 was real, but it wasn't terminal. PPO continued refining the long-tail past epoch 150, expanding the argmax's coverage of corner states. The "sharp argmax that fails on edge cases" was a snapshot of mid-convergence, not steady-state.
+
+The probe-3 finding (argmax 62%, sampled 1%) still holds at epoch 150 — sampling deviates from the precise sequence. But the *mechanism* I attributed it to (PPO over-converging) was wrong. The right mechanism: **at epoch 150 the long-tail of corner states was simply not yet trained on enough**. By epoch 303 (cumulative), they were.
+
+### Mirage absence
+
+Training-time peak at extend epoch 150: 99.7-99.8%. Held-out eval: 99.7% mean. **Train/eval gap = 0.1pp.**
+
+The PHASE5a A2 mirage was a difficulty-cliff artifact — variance manifested when learning was infeasible at the recipe's edge. Once the policy is genuinely converged on a feasible task, training-time `perf` and held-out eval agree closely. Conversely, train/eval gaps remain a useful warning signal that something is still being learned (or failing to be learned) in the policy.
+
+### Updated cap-tail verdict
+
+**Mechanism: under-converged training, not P1 / P2 / P3.** The earlier mechanism probes were observing a snapshot of an in-progress convergence and over-interpreted it as a structural property.
+
+The right mitigation is the simplest one available: **train longer**. The Phase 4 schedule (10M Stage 1, 15M Stage 2, 15M Stage 3) was calibrated for the easier Phase 4 task. Phase 5b's tasks are harder per-stage, and need more steps to fully converge.
+
+### Implications for Phase 5b proper
+
+The mitigation list shrinks dramatically:
+
+1. **Stratified e sampling** — still useful for Stage 1.x scaling at e_max ≥ 0.10 (under-sampling at high e_max remains a real concern), but no longer needed to fix the cap tail at e_max=0.05.
+2. **Curriculum reweighting (DORAEMON-style)** — defer. Train-longer alone resolves the corner failure rate; reweighting is now a "marginal improvement" question, not a "make it work" question.
+3. **Adaptive entropy / two-pass training / policy distillation** — drop entirely from Stage 1 mitigation list. P3 was the wrong frame.
+
+**New Stage 1.x compute estimate: 40M steps per sub-stage** (vs the originally-budgeted 15M warm-start per stage). This is more compute but less engineering, which is the trade-off worth taking. ~1.5× compute for a much simpler recipe.
+
+### What this teaches about the project's debugging discipline
+
+The cap-tail probes (Φ_orbit excursion, action distribution across training, sampled vs argmax) were each individually correct measurements. The P3 conclusion overshot because we extrapolated from a single training duration without testing the train-longer null hypothesis first.
+
+Lesson for future analyses: **before declaring a structural failure mode, run the train-longer baseline.** It's the cheapest control experiment in this project (~3 min wall) and resolves a wide class of "is this a recipe bug or just under-trained?" questions in one shot. The cost of skipping it was three layers of mechanism speculation that the data immediately overturned.
+
+---
+
+*Final-final cap-tail verdict: under-converged training. ~40M steps suffice to drive Stage 1.0 success to 99.7%. The P1/P2/P3 framework was a snapshot mistake, not a structural finding.*
