@@ -138,3 +138,87 @@ Option 1 + Option 3 in combination would directly address the cap-tail mechanism
 ---
 
 *Cap-fail mechanism is "agent doesn't try" (median Δv = 0), not "agent tries and misses." Stems from under-sampled (high-phase, low-e) corner. Stage 1.x e expansion will make this worse without sampling-distribution reform.*
+
+---
+
+## Mechanism probes — under-sampled OOD vs learned-to-not-try (2026-04-28, +30 min)
+
+The previous follow-up established that failures show median Δv = 0. Three more probes test whether this is **P1: under-sampled OOD** (policy never explored these states) or **P2: learned-to-not-try** (policy explored, then mode-collapsed to passivity).
+
+### Probe 1 — Φ_orbit excursion: success vs failure
+
+For each of seed-42's 200 eps, compute per-step Φ_orbit (=`|Δa|/SUCCESS_TOL_A + ||Δē||`) and the excursion (max − init):
+
+| Group | Excursion <0.1 (chaser stays put) | Excursion ≥1.0 (genuine transfer) |
+|---|---|---|
+| Successes (n=169) | 0/169 (0%) | 166/169 (98%) |
+| Failures (n=31) | **20/31 (65%)** | 7/31 (22%) |
+
+Median success excursion: **3.83**. Median failure excursion: **0.0**. Successes uniformly use orbit-transfer maneuvers; the majority of failures don't transfer at all. Confirms median-Δv-zero finding via an independent metric.
+
+### Probe 2 — Action distribution across training (corner states only)
+
+Eval each saved ckpt (epochs 10, 30, …, 150) at the narrow corner condition `(init_phase=π, e_max=0.01, same_orbit_init=1)`, 50 eps:
+
+| Epoch | Corner success | Coast % | Burn % | Warp % | Median Δv |
+|---|---|---|---|---|---|
+| 10 | 4% | 16% | 0.1% | 84% | 0 |
+| 30 | 14% | 37% | 1.4% | 62% | 2 |
+| 50 | 22% | 11% | 2.9% | 87% | 257 |
+| **70** | **48%** | 5.7% | **4.1%** | 90% | **312** |
+| 90 | 50% | 13% | 3.0% | 84% | 150 |
+| 110 | 48% | 22% | 2.0% | 76% | 130 |
+| 130 | 68% | 29% | 3.4% | 68% | 220 |
+| **150** | **68%** | **32%** | 3.7% | 65% | 207 |
+
+Patterns:
+- Burn % peaks at epoch 70 (4.1%), then declines and stabilizes at ~3.5%.
+- Coast % is non-monotonic: minimum at epoch 70 (5.7%), then climbs to 32% at end.
+- Median Δv peaks at epoch 70 (312 m/s), then declines to 207.
+- **Yet success rate continues climbing (48% at epoch 70 → 68% at epoch 150).**
+
+The policy did explore corner states — epoch 70 shows clear active-maneuvering signature. As training progresses past epoch 70, burn frequency and fuel usage *decrease* while success rate *increases*. The policy converged toward fewer-but-more-precise burns, not toward giving up.
+
+**Verdict: not pure P1 (the corner WAS explored) and not pure P2 (the policy got better at the corner, not worse).**
+
+### Probe 3 — Sampled-action eval at the corner
+
+Same ckpt (epoch 150), same corner condition, 100 eps each:
+
+| Action selection | Success rate |
+|---|---|
+| **Argmax** | **62%** |
+| **Sampled** | **1%** |
+
+Sampled is **dramatically worse** than argmax. This is the opposite of the "argmax wrong, sampling would solve it" pattern. The policy has learned a sharply-peaked argmax distribution that produces precise burn timing; stochastic deviations destroy the maneuver.
+
+### Refined mechanism: P3 — argmax brittleness via efficiency convergence
+
+Combining the three probes, the cap-tail mechanism is neither under-exploration nor mode collapse — it's **convergence to a sharply-peaked argmax that doesn't cover every corner state.**
+
+The trajectory through training:
+1. **Epochs 10–70 (exploration):** policy actively maneuvers, burn rate climbs, Δv usage climbs, success rate climbs. Standard PPO exploration.
+2. **Epochs 70–150 (efficiency refinement):** PPO drives the policy toward fewer, more precise burns. Coast share grows, burn share shrinks slightly, Δv usage drops. Success rate continues climbing because efficient maneuvers are more effective than over-burning.
+3. **Tail behavior:** the efficient policy's argmax sequence is correct on ~68% of corner states. For the remaining ~32%, the precise burn timing is slightly off and argmax falls back to coast. The policy *can* burn — it just doesn't, because for these specific initial states, the value function doesn't see a clear improvement option. Stochastic exploration during training would reach success on these states; argmax doesn't.
+
+This is consistent with an entropy-coefficient that's too low to maintain breadth at the corner. With `ent_coef=0.01`, the policy converges sharply on the dominant maneuver template and trims off the long-tail variants needed for edge cases.
+
+### Sharpened mitigation strategy for Stage 1.x
+
+The three earlier mitigations (stratified e sampling, curriculum reweighting, hybrid task mixture) all assumed the corner was under-explored or under-represented. The probes reverse this — the corner *was* explored. New mitigation list, ordered by expected leverage:
+
+1. **Higher entropy floor specifically at corner states** — adaptive entropy or per-state entropy regularization. Discourages sharp argmax convergence on the long-tail. Requires a per-state entropy hook.
+2. **Curriculum reweighting (DORAEMON-style) on failing bins** — directly oversample the corner during late training. Forces PPO to keep refining there instead of spending compute on already-solved states. Cheaper than per-state entropy.
+3. **Two-pass training** — train to convergence (Phase 4-style schedule), then a second pass with raised `ent_coef` (e.g., 0.03) and corner-biased sampling. Should re-broaden the argmax distribution.
+4. **Policy distillation from epoch 70 ckpt** — the active-maneuvering policy at epoch 70 had broader argmax behavior. Distill back to a final policy that retains some of that breadth. Most invasive; defer unless 1-3 don't work.
+
+The earlier "stratified e sampling" suggestion is still useful for Stage 1.x scaling (the under-sampling problem at higher e_max is real), but it doesn't address the cap-tail mechanism alone. Pair it with one of the entropy/reweighting mitigations.
+
+### What this isn't
+
+- Not multi-seed. Single-seed (42) probes; the 68% / 62% / 1% numbers are noisy at n=100. Multi-seed re-runs would tighten error bars but the qualitative pattern (argmax >> sampled at the corner) is robust.
+- Not a Stage 2-4 prediction. P3-flavored argmax brittleness might appear at Stages 2/3/4 too, but the mechanism details depend on the specific state distribution at each stage.
+
+---
+
+*Final cap-tail mechanism: argmax brittleness from efficiency convergence (P3), not under-exploration (P1) or mode collapse (P2). Mitigation focus shifts from "increase exposure" to "preserve argmax breadth."*
