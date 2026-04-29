@@ -301,3 +301,58 @@ Lesson for future analyses: **before declaring a structural failure mode, run th
 ---
 
 *Final-final cap-tail verdict: under-converged training. ~40M steps suffice to drive Stage 1.0 success to 99.7%. The P1/P2/P3 framework was a snapshot mistake, not a structural finding.*
+
+---
+
+## Post-extend characterization (2026-04-29)
+
+Two follow-up evals on the extended (40M cumulative) Stage 1.0 ckpt: a fresh (phase × e) grid breakdown, and a Phase 4 conditions test. Settle whether the gains are even across the difficulty surface and whether they transfer outside the training distribution.
+
+### Question 1 — Has the (phase × e) grid filled in evenly?
+
+200-ep eval at Stage 1.0 conditions (`init_phase=π, e_max=0.05, same_orbit_init=1`), seed 42, broken down by initial phase gap and target eccentricity:
+
+| abs phase gap ＼ target.e | 0 – 0.025 | 0.025 – 0.05 |
+|---|---|---|
+| 0 – 60° | **100.0%** (33/33) | **100.0%** (41/41) |
+| 60 – 120° | **100.0%** (39/39) | **100.0%** (30/30) |
+| **120 – 180°** | **100.0%** (31/31) | **100.0%** (26/26) |
+
+Compare to the same grid at 20M training:
+
+| abs phase gap ＼ target.e | 0 – 0.025 | 0.025 – 0.05 |
+|---|---|---|
+| 0 – 60° | 97.0% | 97.6% |
+| 60 – 120° | 79.5% | 83.3% |
+| **120 – 180°** | **48.4%** | 100.0% |
+
+The (high-phase, low-e) corner — 48% at 20M — is at 100% at 40M. Every other cell is now 100% as well. **The grid filled in uniformly with extra training; no structural corner remains.**
+
+The earlier "natural-phasing-on-eccentric-orbits saves the high-e corner" finding still holds — at 20M, the high-phase × high-e cell already converged because the agent could exploit eccentricity for free phasing. The low-e corner needed full transfer-orbit competence, which takes longer to refine. By 40M both are solved.
+
+Min miss factor for the 200 successes: median 1.07, mean 2.33, max 20.8. A handful of episodes succeed close to the tolerance threshold (miss ≈ 1) — there's a marginal tail in the *tightness* of success even though all 200 succeed. Worth noting if Phase 5b later considers tightening tolerances.
+
+### Question 2 — Did extended training change Phase 4 conditions performance?
+
+Eval the extended ckpt at Phase 4's task — `e_max_target=0`, `e_max_sat=0`, `same_orbit_init=0`, full π phase gap, 50 eps × 3 rollout seeds:
+
+| Rollout seed | Original Step 1 ckpt (20M) | Extended ckpt (40M) | Phase 4 baseline |
+|---|---|---|---|
+| 42 | 36.0% | **74.0%** | 81.3% |
+| 1337 | 14.0% | **66.0%** | 86.0% |
+| 20260423 | 24.0% | **58.0%** | 80.0% |
+| **mean** | **24.7%** | **66.0%** | **79.6%** |
+
+**Extended training closed +41pp of the generalization gap** (24.7% → 66%) without ever training on Phase 4 conditions. The remaining −14pp shortfall (66% vs Phase 4's 79.6%) is consistent with the structural difference: Phase 4's task requires a-transfer maneuvers (sat.a ≠ target.a), and Stage 1's `same_orbit_init=1` constraint means sat.a always equals target.a during training.
+
+The partial OOD generalization mechanism: random sat.e ∈ [0, 0.05] means roughly 20% of training episodes have sat.e < 0.01 (very near circular). Those subsidize the "near-circular chaser" capability. Combined with broader maneuvering experience from longer training, the extended policy handles Phase 4-style tasks decently — even though a-transfer specifically remains OOD.
+
+### Updated lesson
+
+Both findings push the same direction: **longer training delivers both depth (in-distribution corner closure) and breadth (OOD generalization) simultaneously.** This is contrary to the standard prior that compute-heavy training overfits to the training distribution at the cost of generalization. In this regime — well-shaped task, good recipe — extra steps fill in difficulty corners *and* transfer to nearby tasks.
+
+Implication for Phase 5b proper: stage transitions might be less surgical than originally planned. If Stage 1 (40M, same-orbit) already gets 66% on Phase 4-style transfer rendezvous, Stage 3 (transfer rendezvous) may converge fast as a continuation rather than from-scratch.
+
+---
+
+*Grid is uniformly 100% at 40M; +41pp OOD generalization to Phase 4 conditions as a free side effect. Longer training is the load-bearing intervention; per-stage budget for Phase 5b proper is 40M.*
