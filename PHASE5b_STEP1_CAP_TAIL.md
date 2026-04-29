@@ -356,3 +356,69 @@ Implication for Phase 5b proper: stage transitions might be less surgical than o
 ---
 
 *Grid is uniformly 100% at 40M; +41pp OOD generalization to Phase 4 conditions as a free side effect. Longer training is the load-bearing intervention; per-stage budget for Phase 5b proper is 40M.*
+
+---
+
+## α vs β test: Stage 4 OOD + 60M training (2026-04-29)
+
+The post-extend OOD result (66% at Phase 4 conditions, +41pp from longer training) raised two competing hypotheses for what drives the OOD generalization:
+
+- **α (near-circular subsample):** ~20% of training eps have sat.e < 0.01 (very near circular). Those subsidize the "near-circular chaser" capability, which Phase 4 conditions reuse directly. Predicts: only sat-circular-style OOD conditions transfer; fully-random conditions (Stage 4) fail.
+- **β (broad skill composition):** the policy learned phasing/transfer/burn-timing skills that compose for unseen task variations. Predicts: multiple OOD axes (Stage 2 ω-mismatch, Stage 3 a-mismatch, Stage 4 everything-random) all show partial transfer.
+
+Two probes test this: (1) eval the 40M ckpt at Stage 4 conditions (everything random, e_max=0.05) — high score there favors β; (2) train another 20M (60M cumulative) and re-eval at all OOD conditions — if OOD continues climbing, β is real *and* unbounded; if it plateaus or regresses, the skill ceiling has structure.
+
+### 40M ckpt — broader OOD characterization
+
+| Condition | What's OOD | Mean (3 rollout seeds × 50 eps) |
+|---|---|---|
+| Stage 1.0 (in-dist) | — | **99.7%** |
+| Phase 4 (sat circ, target circ, diff a) | a-transfer | 66.0% |
+| Phase 4 + eccentric target | a-transfer + target.e | 62.7% |
+| **Stage 4 (sat & target all random)** | a-transfer + ω-mismatch + sat.e | **58.7%** |
+
+Stage 4 at 58.7% is **far above α's prediction of ~0%**. Pure α would require Stage 4 to fail completely (since the chaser isn't circular and there's no near-circular subsample to leverage). The fact that fully-random conditions still get 58.7% is direct evidence that broad skill composition (β) is happening.
+
+The slight drop from Phase 4 (66.0%) → Phase 4+eccentric (62.7%) → Stage 4 (58.7%) is consistent: each additional OOD axis costs ~3-4pp.
+
+### 60M ckpt — does broader generalization continue with more training?
+
+Same OOD eval suite on the 60M ckpt (extended from 40M with another 20M):
+
+| Condition | 40M mean | 60M mean | Δ |
+|---|---|---|---|
+| Stage 1.0 (in-dist) | 99.7% | 99.3% (50/49/50) | -0.4 (flat) |
+| **Phase 4 (a-transfer, e=0)** | **66.0%** | **50.7%** (60/42/50) | **-15.3pp** |
+| Stage 4 (everything random, e=0.05) | 58.7% | 58.7% (46/66/64) | 0.0 (flat) |
+
+The Phase 4 drop is roughly 1.5-2σ given per-seed std ~9pp on 50-ep evals — borderline statistical significance, not pure noise. Even if part is variance, the *direction* is opposite to "more training → more breadth."
+
+In-distribution Stage 1.0 plateaued (already converged at 40M). Stage 4 stayed at exactly the same mean despite different per-seed numbers (54/56/66 → 46/66/64) — the noise canceled to zero net change.
+
+### Refined α vs β verdict: neither cleanly
+
+The data supports **β with bounded ceiling**:
+
+1. β is real: Stage 4 transfer at 58.7% is incompatible with α's prediction. The policy did learn composable skills, not just a near-circular template.
+2. β doesn't strengthen monotonically: extra training past 40M gave 0pp on Stage 4 and -15pp on Phase 4. The breadth ceiling is roughly hit by 40M for this single-stage recipe.
+3. There's a sweet spot for OOD: 40M is the peak; 60M trades some breadth for slightly more in-distribution specialty (though in-dist itself is already at ceiling).
+
+### Implications for Phase 5b proper
+
+The four-stage curriculum is still appropriate, but with two refinements:
+
+1. **Per-stage budget around 30-50M, not "as long as possible."** Past in-distribution convergence, additional training mildly *erodes* OOD generalization. The 40M sweet spot for Stage 1 likely has analogues at later stages — train to convergence + a bit, then transition.
+
+2. **Track OOD during training, not just in-distribution.** The Phase 4 OOD eval at intermediate ckpts would have revealed the 40M sweet spot directly. For Phase 5b proper, eval-during-training should include both in-distribution AND a sampled OOD test set. The peak-OOD ckpt is the right Stage transition point, not the peak-in-distribution ckpt.
+
+3. **Stage 2/3/4 will still need their own training,** but starting from a 40M Stage 1 warm-start gives meaningful free progress (Stage 4 already at 58.7% before any direct training). The four stages may converge faster as continuations than as cold starts.
+
+4. **The "Stage 1 ckpt as universal warm-start" hypothesis is partially validated.** At 40M, Stage 1 is solid for Stages 2-4 boot. Past 60M, that universality erodes mildly. There's an optimal handoff window.
+
+### Methodological note
+
+The α vs β framing was a binary categorization that the data refused to fit cleanly. β is the better description, but it's β with structure — bounded breadth ceiling, sweet spot at convergence, mild specialization past it. **Most "clean" mechanism categorizations in this project have refined into structured intermediate verdicts on contact with data.** The discipline of running the train-longer baseline before declaring structural failure modes (from the previous addendum) generalizes here too: testing at multiple training durations reveals peak/plateau structure that single-snapshot evals miss.
+
+---
+
+*β with bounded ceiling: skills compose broadly (Stage 4 at 58.7%) but breadth peaks at ~40M and erodes mildly past convergence. Phase 5b proper: per-stage budget 30-50M, eval-during-training should include OOD checks, four-stage curriculum is still right but stages converge faster from Stage 1 warm-start.*
