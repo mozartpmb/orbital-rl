@@ -109,6 +109,8 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->init_phase_gap_max = (double)unpack(kwargs, "init_phase_gap_max");
     env->e_max_sat          = (double)unpack(kwargs, "e_max_sat");
     env->same_orbit_init    = (int)unpack(kwargs, "same_orbit_init");
+    env->e_mix_easy_frac    = (double)unpack(kwargs, "e_mix_easy_frac");
+    env->e_mix_easy_max     = (double)unpack(kwargs, "e_mix_easy_max");
     return 0;
 }
 

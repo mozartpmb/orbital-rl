@@ -167,6 +167,12 @@ typedef struct {
     double           e_max_sat;             /* upper bound for sat.e ∈ [0, e_max_sat] */
     int              same_orbit_init;       /* 1 → sat.{a,e,ω} = target.{a,e,ω}, only θ differs (Stage 1) */
 
+    /* Phase 5c B3: mixed-distribution training. With probability e_mix_easy_frac,
+     * sample target.e (and sat.e if random) from [0, e_mix_easy_max] instead of
+     * the full curriculum bound. Default 0.0 → off, full bound only. */
+    double           e_mix_easy_frac;       /* probability of easy draw, default 0.0 */
+    double           e_mix_easy_max;        /* easy upper bound, default 0.05 */
+
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
 
@@ -766,10 +772,20 @@ static inline void c_reset(Orbital* env) {
     }
 
     /* Target orbit — eccentricity sampled from curriculum bound, orientation
-     * uniform on [0, 2π). When e_max_target == 0, target is circular. */
+     * uniform on [0, 2π). When e_max_target == 0, target is circular.
+     * B3 mixed-distribution: with probability e_mix_easy_frac, draw from
+     * [0, e_mix_easy_max] instead of [0, e_max_target]. */
     double e_tgt = 0.0;
+    int draw_easy = 0;
     if (env->e_max_target > 0.0) {
-        e_tgt = (rand() / (double)RAND_MAX) * env->e_max_target;
+        if (env->e_mix_easy_frac > 0.0 &&
+            (rand() / (double)RAND_MAX) < env->e_mix_easy_frac &&
+            env->e_max_target > env->e_mix_easy_max) {
+            e_tgt = (rand() / (double)RAND_MAX) * env->e_mix_easy_max;
+            draw_easy = 1;
+        } else {
+            e_tgt = (rand() / (double)RAND_MAX) * env->e_max_target;
+        }
     }
     double omega_tgt = (e_tgt > 0.0)
                          ? (rand() / (double)RAND_MAX) * 2.0 * M_PI
@@ -787,7 +803,12 @@ static inline void c_reset(Orbital* env) {
         env->sat.orbit.e     = e_tgt;
         env->sat.orbit.omega = omega_tgt;
     } else if (env->e_max_sat > 0.0) {
-        env->sat.orbit.e     = (rand() / (double)RAND_MAX) * env->e_max_sat;
+        /* Mirror B3 mixed-distribution for sat: same easy-draw decision. */
+        if (draw_easy && env->e_max_sat > env->e_mix_easy_max) {
+            env->sat.orbit.e = (rand() / (double)RAND_MAX) * env->e_mix_easy_max;
+        } else {
+            env->sat.orbit.e = (rand() / (double)RAND_MAX) * env->e_max_sat;
+        }
         env->sat.orbit.omega = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
     } else {
         env->sat.orbit.e     = 0.0;

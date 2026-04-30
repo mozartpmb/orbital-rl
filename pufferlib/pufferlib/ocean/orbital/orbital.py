@@ -48,6 +48,11 @@ class Orbital(pufferlib.PufferEnv):
         e_max_sat=0.0,
         # Phase 5b Stage 1: force sat.{a,e,ω} = target.{a,e,ω}, only θ differs
         same_orbit_init=0,
+        # Phase 5c B3: mixed-distribution training. With probability e_mix_easy_frac,
+        # sample target.e (and sat.e if random) from [0, e_mix_easy_max] instead of
+        # the full curriculum bound. Default 0.0 = off.
+        e_mix_easy_frac=0.0,
+        e_mix_easy_max=0.05,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -78,6 +83,8 @@ class Orbital(pufferlib.PufferEnv):
             init_phase_gap_max=init_phase_gap_max,
             e_max_sat=e_max_sat,
             same_orbit_init=same_orbit_init,
+            e_mix_easy_frac=e_mix_easy_frac,
+            e_mix_easy_max=e_mix_easy_max,
         )
 
         # Pre-allocated trajectory buffer (reused every call)
