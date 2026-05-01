@@ -1,0 +1,1220 @@
+{
+  "phase5e_seed42": {
+    "e_0.05": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "safety_cap": 5,
+        "success": 195
+      },
+      "action_distribution": {
+        "prograde_5": 1020,
+        "warp_5min": 171702,
+        "retrograde_5": 1179,
+        "retrograde_10": 996,
+        "prograde_10": 1332,
+        "radial_out": 540,
+        "radial_in": 570
+      },
+      "action_total": 177339,
+      "lengths_summary": {
+        "success": {
+          "n": 195,
+          "mean": 858.148717948718,
+          "p50": 866.0,
+          "p90": 1661.1999999999998
+        },
+        "failure": {
+          "n": 5,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 195,
+        "actual_dv_mean": 232.15384615384616,
+        "actual_dv_p50": 230.0,
+        "ratio_to_hohmann_mean": 3.145633603356738,
+        "ratio_to_hohmann_p50": 2.4941890629623917,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.10": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 188,
+        "safety_cap": 12
+      },
+      "action_distribution": {
+        "warp_5min": 157683,
+        "prograde_10": 1509,
+        "retrograde_10": 1307,
+        "retrograde_5": 993,
+        "radial_out": 472,
+        "radial_in": 659,
+        "prograde_5": 1002,
+        "coast": 3649
+      },
+      "action_total": 167274,
+      "lengths_summary": {
+        "success": {
+          "n": 188,
+          "mean": 762.0957446808511,
+          "p50": 675.5,
+          "p90": 1589.4000000000003
+        },
+        "failure": {
+          "n": 12,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 188,
+        "actual_dv_mean": 254.7340425531915,
+        "actual_dv_p50": 252.5,
+        "ratio_to_hohmann_mean": 3.809242332038323,
+        "ratio_to_hohmann_p50": 3.1548565225979006,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.20": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 184,
+        "safety_cap": 15,
+        "collision": 1
+      },
+      "action_distribution": {
+        "warp_5min": 165923,
+        "prograde_5": 1048,
+        "retrograde_10": 1358,
+        "radial_in": 666,
+        "retrograde_5": 1201,
+        "prograde_10": 1243,
+        "radial_out": 490,
+        "coast": 4253
+      },
+      "action_total": 176182,
+      "lengths_summary": {
+        "success": {
+          "n": 184,
+          "mean": 794.179347826087,
+          "p50": 714.0,
+          "p90": 1592.9000000000003
+        },
+        "failure": {
+          "n": 16,
+          "mean": 1878.3125,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 184,
+        "actual_dv_mean": 253.28804347826087,
+        "actual_dv_p50": 245.0,
+        "ratio_to_hohmann_mean": 3.730045245174119,
+        "ratio_to_hohmann_p50": 2.7925003672395476,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.30": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 186,
+        "safety_cap": 14
+      },
+      "action_distribution": {
+        "warp_5min": 157312,
+        "prograde_5": 983,
+        "retrograde_5": 1166,
+        "coast": 3649,
+        "radial_in": 628,
+        "prograde_10": 1500,
+        "radial_out": 506,
+        "retrograde_10": 1329
+      },
+      "action_total": 167073,
+      "lengths_summary": {
+        "success": {
+          "n": 186,
+          "mean": 747.7043010752689,
+          "p50": 594.0,
+          "p90": 1582.5
+        },
+        "failure": {
+          "n": 14,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 186,
+        "actual_dv_mean": 260.7795698924731,
+        "actual_dv_p50": 250.0,
+        "ratio_to_hohmann_mean": 3.8456379598137134,
+        "ratio_to_hohmann_p50": 3.061461255383019,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.50": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 169,
+        "collision": 19,
+        "safety_cap": 12
+      },
+      "action_distribution": {
+        "warp_5min": 154094,
+        "prograde_10": 1230,
+        "prograde_5": 940,
+        "radial_in": 568,
+        "radial_out": 450,
+        "retrograde_5": 993,
+        "retrograde_10": 1202,
+        "coast": 2688
+      },
+      "action_total": 162165,
+      "lengths_summary": {
+        "success": {
+          "n": 169,
+          "mean": 794.887573964497,
+          "p50": 721.0,
+          "p90": 1634.2
+        },
+        "failure": {
+          "n": 31,
+          "mean": 897.7096774193549,
+          "p50": 193.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 169,
+        "actual_dv_mean": 242.18934911242604,
+        "actual_dv_p50": 240.0,
+        "ratio_to_hohmann_mean": 3.537456082613402,
+        "ratio_to_hohmann_p50": 2.721773103724456,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.70": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 129,
+        "collision": 56,
+        "safety_cap": 15
+      },
+      "action_distribution": {
+        "warp_5min": 129099,
+        "prograde_10": 926,
+        "prograde_5": 870,
+        "radial_out": 326,
+        "retrograde_5": 884,
+        "radial_in": 417,
+        "retrograde_10": 1096,
+        "coast": 5779,
+        "retrograde_25": 1
+      },
+      "action_total": 139398,
+      "lengths_summary": {
+        "success": {
+          "n": 129,
+          "mean": 814.5193798449612,
+          "p50": 745.0,
+          "p90": 1623.0
+        },
+        "failure": {
+          "n": 71,
+          "mean": 483.4507042253521,
+          "p50": 44.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 129,
+        "actual_dv_mean": 249.53488372093022,
+        "actual_dv_p50": 250.0,
+        "ratio_to_hohmann_mean": 3.5236808806487154,
+        "ratio_to_hohmann_p50": 2.437266344665782,
+        "fuel_budget_ms": 478.1
+      }
+    }
+  },
+  "phase5e_seedA": {
+    "e_0.05": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 195,
+        "safety_cap": 5
+      },
+      "action_distribution": {
+        "warp_5min": 177046,
+        "prograde_10": 417,
+        "retrograde_10": 1366,
+        "retrograde_5": 681,
+        "radial_out": 427,
+        "radial_in": 396,
+        "prograde_5": 569,
+        "prograde_25": 484
+      },
+      "action_total": 181386,
+      "lengths_summary": {
+        "success": {
+          "n": 195,
+          "mean": 878.9025641025642,
+          "p50": 932.0,
+          "p90": 1606.1999999999998
+        },
+        "failure": {
+          "n": 5,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 195,
+        "actual_dv_mean": 224.84615384615384,
+        "actual_dv_p50": 225.0,
+        "ratio_to_hohmann_mean": 3.0294309276036295,
+        "ratio_to_hohmann_p50": 2.380145760302613,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.10": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 186,
+        "safety_cap": 14
+      },
+      "action_distribution": {
+        "warp_5min": 186917,
+        "prograde_25": 519,
+        "radial_out": 457,
+        "prograde_5": 584,
+        "retrograde_5": 606,
+        "retrograde_10": 1627,
+        "prograde_10": 433,
+        "radial_in": 402,
+        "coast": 11
+      },
+      "action_total": 191556,
+      "lengths_summary": {
+        "success": {
+          "n": 186,
+          "mean": 879.3333333333334,
+          "p50": 888.0,
+          "p90": 1654.0
+        },
+        "failure": {
+          "n": 14,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 186,
+        "actual_dv_mean": 249.03225806451613,
+        "actual_dv_p50": 240.0,
+        "ratio_to_hohmann_mean": 3.647275140401046,
+        "ratio_to_hohmann_p50": 2.882223625466731,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.20": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 182,
+        "safety_cap": 18
+      },
+      "action_distribution": {
+        "warp_5min": 188167,
+        "prograde_10": 501,
+        "retrograde_10": 1623,
+        "retrograde_5": 691,
+        "radial_in": 393,
+        "prograde_5": 591,
+        "prograde_25": 397,
+        "radial_out": 422,
+        "coast": 209
+      },
+      "action_total": 192994,
+      "lengths_summary": {
+        "success": {
+          "n": 182,
+          "mean": 862.6043956043956,
+          "p50": 780.5,
+          "p90": 1619.8
+        },
+        "failure": {
+          "n": 18,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 182,
+        "actual_dv_mean": 245.76923076923077,
+        "actual_dv_p50": 242.5,
+        "ratio_to_hohmann_mean": 3.5900339024933188,
+        "ratio_to_hohmann_p50": 2.6458140036067257,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.30": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 181,
+        "safety_cap": 19
+      },
+      "action_distribution": {
+        "warp_5min": 173935,
+        "prograde_10": 444,
+        "retrograde_10": 1606,
+        "retrograde_5": 626,
+        "radial_in": 380,
+        "prograde_5": 679,
+        "radial_out": 415,
+        "prograde_25": 483,
+        "coast": 195
+      },
+      "action_total": 178763,
+      "lengths_summary": {
+        "success": {
+          "n": 181,
+          "mean": 777.6961325966851,
+          "p50": 694.0,
+          "p90": 1574.0
+        },
+        "failure": {
+          "n": 19,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 181,
+        "actual_dv_mean": 245.91160220994476,
+        "actual_dv_p50": 235.0,
+        "ratio_to_hohmann_mean": 3.5653537311430177,
+        "ratio_to_hohmann_p50": 2.6528065533241643,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.50": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 169,
+        "safety_cap": 17,
+        "collision": 14
+      },
+      "action_distribution": {
+        "warp_5min": 162125,
+        "prograde_25": 400,
+        "prograde_10": 388,
+        "prograde_5": 594,
+        "radial_out": 381,
+        "retrograde_5": 582,
+        "retrograde_10": 1420,
+        "radial_in": 375,
+        "coast": 701
+      },
+      "action_total": 166966,
+      "lengths_summary": {
+        "success": {
+          "n": 169,
+          "mean": 784.7159763313609,
+          "p50": 740.0,
+          "p90": 1578.6000000000001
+        },
+        "failure": {
+          "n": 31,
+          "mean": 1108.032258064516,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 169,
+        "actual_dv_mean": 239.85207100591717,
+        "actual_dv_p50": 245.0,
+        "ratio_to_hohmann_mean": 3.5011288582968465,
+        "ratio_to_hohmann_p50": 2.6722030551965164,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.70": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 129,
+        "safety_cap": 18,
+        "collision": 53
+      },
+      "action_distribution": {
+        "warp_5min": 142570,
+        "prograde_25": 298,
+        "prograde_5": 462,
+        "radial_out": 259,
+        "retrograde_5": 491,
+        "prograde_10": 348,
+        "retrograde_10": 1179,
+        "radial_in": 294,
+        "coast": 1607
+      },
+      "action_total": 147508,
+      "lengths_summary": {
+        "success": {
+          "n": 129,
+          "mean": 850.1550387596899,
+          "p50": 818.0,
+          "p90": 1626.0
+        },
+        "failure": {
+          "n": 71,
+          "mean": 532.9295774647887,
+          "p50": 41.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 129,
+        "actual_dv_mean": 246.0077519379845,
+        "actual_dv_p50": 245.0,
+        "ratio_to_hohmann_mean": 3.4981818619357643,
+        "ratio_to_hohmann_p50": 2.4981980032824262,
+        "fuel_budget_ms": 478.1
+      }
+    }
+  },
+  "phase5e_seedB": {
+    "e_0.05": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "safety_cap": 20,
+        "success": 180
+      },
+      "action_distribution": {
+        "warp_5min": 184622,
+        "prograde_10": 439,
+        "retrograde_10": 838,
+        "retrograde_5": 1463,
+        "prograde_5": 936,
+        "prograde_25": 371,
+        "radial_out": 350,
+        "radial_in": 358,
+        "coast": 10
+      },
+      "action_total": 189387,
+      "lengths_summary": {
+        "success": {
+          "n": 180,
+          "mean": 829.9277777777778,
+          "p50": 874.0,
+          "p90": 1646.1
+        },
+        "failure": {
+          "n": 20,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 180,
+        "actual_dv_mean": 215.94444444444446,
+        "actual_dv_p50": 212.5,
+        "ratio_to_hohmann_mean": 2.7623824612959056,
+        "ratio_to_hohmann_p50": 1.9221038339059244,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.10": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 181,
+        "safety_cap": 19
+      },
+      "action_distribution": {
+        "warp_5min": 170996,
+        "prograde_25": 391,
+        "radial_out": 313,
+        "retrograde_5": 1443,
+        "prograde_5": 969,
+        "radial_in": 404,
+        "prograde_10": 569,
+        "retrograde_10": 1198,
+        "retrograde_25": 1,
+        "coast": 857
+      },
+      "action_total": 177141,
+      "lengths_summary": {
+        "success": {
+          "n": 181,
+          "mean": 768.7348066298342,
+          "p50": 667.0,
+          "p90": 1624.0
+        },
+        "failure": {
+          "n": 19,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 181,
+        "actual_dv_mean": 250.60773480662982,
+        "actual_dv_p50": 255.0,
+        "ratio_to_hohmann_mean": 3.6276112741219326,
+        "ratio_to_hohmann_p50": 2.738752158194111,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.20": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "safety_cap": 27,
+        "success": 173
+      },
+      "action_distribution": {
+        "warp_5min": 184086,
+        "retrograde_10": 1245,
+        "retrograde_5": 1448,
+        "prograde_25": 302,
+        "radial_out": 383,
+        "prograde_5": 842,
+        "prograde_10": 513,
+        "radial_in": 404,
+        "coast": 1453
+      },
+      "action_total": 190676,
+      "lengths_summary": {
+        "success": {
+          "n": 173,
+          "mean": 790.0346820809249,
+          "p50": 738.0,
+          "p90": 1555.8
+        },
+        "failure": {
+          "n": 27,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 173,
+        "actual_dv_mean": 246.76300578034682,
+        "actual_dv_p50": 240.0,
+        "ratio_to_hohmann_mean": 3.5076241095139515,
+        "ratio_to_hohmann_p50": 2.3980199016212738,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.30": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "safety_cap": 23,
+        "success": 177
+      },
+      "action_distribution": {
+        "warp_5min": 177577,
+        "prograde_5": 981,
+        "prograde_10": 592,
+        "retrograde_5": 1444,
+        "retrograde_10": 1216,
+        "prograde_25": 365,
+        "radial_out": 353,
+        "coast": 313,
+        "radial_in": 429
+      },
+      "action_total": 183270,
+      "lengths_summary": {
+        "success": {
+          "n": 177,
+          "mean": 775.5367231638418,
+          "p50": 676.0,
+          "p90": 1590.4
+        },
+        "failure": {
+          "n": 23,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 177,
+        "actual_dv_mean": 252.40112994350284,
+        "actual_dv_p50": 250.0,
+        "ratio_to_hohmann_mean": 3.492467022839818,
+        "ratio_to_hohmann_p50": 2.560262209008988,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.50": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 160,
+        "collision": 16,
+        "safety_cap": 24
+      },
+      "action_distribution": {
+        "warp_5min": 168826,
+        "prograde_25": 322,
+        "prograde_10": 512,
+        "prograde_5": 830,
+        "radial_in": 339,
+        "retrograde_5": 1253,
+        "radial_out": 343,
+        "coast": 1976,
+        "retrograde_10": 1097
+      },
+      "action_total": 175498,
+      "lengths_summary": {
+        "success": {
+          "n": 160,
+          "mean": 786.25,
+          "p50": 723.5,
+          "p90": 1651.6999999999998
+        },
+        "failure": {
+          "n": 40,
+          "mean": 1242.45,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 160,
+        "actual_dv_mean": 244.0,
+        "actual_dv_p50": 242.5,
+        "ratio_to_hohmann_mean": 3.353008038884365,
+        "ratio_to_hohmann_p50": 2.7068587932787,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.70": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 121,
+        "collision": 55,
+        "safety_cap": 24
+      },
+      "action_distribution": {
+        "warp_5min": 143086,
+        "prograde_25": 273,
+        "prograde_10": 358,
+        "prograde_5": 641,
+        "radial_in": 216,
+        "radial_out": 276,
+        "retrograde_5": 1077,
+        "coast": 5455,
+        "retrograde_10": 903
+      },
+      "action_total": 152285,
+      "lengths_summary": {
+        "success": {
+          "n": 121,
+          "mean": 829.9338842975206,
+          "p50": 796.0,
+          "p90": 1631.0
+        },
+        "failure": {
+          "n": 79,
+          "mean": 656.493670886076,
+          "p50": 58.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 121,
+        "actual_dv_mean": 245.0,
+        "actual_dv_p50": 230.0,
+        "ratio_to_hohmann_mean": 3.289045024694495,
+        "ratio_to_hohmann_p50": 2.414527379711776,
+        "fuel_budget_ms": 478.1
+      }
+    }
+  },
+  "phase5e_seedC": {
+    "e_0.05": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 191,
+        "safety_cap": 9
+      },
+      "action_distribution": {
+        "warp_5min": 170581,
+        "retrograde_10": 1186,
+        "retrograde_5": 930,
+        "prograde_5": 994,
+        "prograde_10": 334,
+        "radial_out": 490,
+        "prograde_25": 389,
+        "radial_in": 172,
+        "coast": 1
+      },
+      "action_total": 175077,
+      "lengths_summary": {
+        "success": {
+          "n": 191,
+          "mean": 822.3926701570681,
+          "p50": 832.0,
+          "p90": 1540.0
+        },
+        "failure": {
+          "n": 9,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 191,
+        "actual_dv_mean": 211.07329842931938,
+        "actual_dv_p50": 205.0,
+        "ratio_to_hohmann_mean": 2.77845053516763,
+        "ratio_to_hohmann_p50": 2.1126787312821893,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.10": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 189,
+        "safety_cap": 11
+      },
+      "action_distribution": {
+        "warp_5min": 158041,
+        "prograde_25": 475,
+        "radial_out": 573,
+        "retrograde_10": 1481,
+        "prograde_5": 1009,
+        "prograde_10": 389,
+        "retrograde_5": 937,
+        "radial_in": 215,
+        "coast": 343
+      },
+      "action_total": 163463,
+      "lengths_summary": {
+        "success": {
+          "n": 189,
+          "mean": 748.4814814814815,
+          "p50": 664.0,
+          "p90": 1538.0
+        },
+        "failure": {
+          "n": 11,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 189,
+        "actual_dv_mean": 247.40740740740742,
+        "actual_dv_p50": 240.0,
+        "ratio_to_hohmann_mean": 3.6557548446712946,
+        "ratio_to_hohmann_p50": 2.8879975305843053,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.20": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 183,
+        "safety_cap": 17
+      },
+      "action_distribution": {
+        "warp_5min": 165867,
+        "prograde_5": 1072,
+        "retrograde_10": 1557,
+        "retrograde_5": 981,
+        "radial_in": 242,
+        "radial_out": 557,
+        "prograde_10": 347,
+        "prograde_25": 378,
+        "coast": 984
+      },
+      "action_total": 171985,
+      "lengths_summary": {
+        "success": {
+          "n": 183,
+          "mean": 754.016393442623,
+          "p50": 697.0,
+          "p90": 1489.8000000000002
+        },
+        "failure": {
+          "n": 17,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 183,
+        "actual_dv_mean": 240.08196721311475,
+        "actual_dv_p50": 230.0,
+        "ratio_to_hohmann_mean": 3.458657477716225,
+        "ratio_to_hohmann_p50": 2.4650864878486933,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.30": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 185,
+        "safety_cap": 15
+      },
+      "action_distribution": {
+        "warp_5min": 159818,
+        "prograde_5": 1036,
+        "retrograde_10": 1500,
+        "radial_in": 210,
+        "retrograde_5": 868,
+        "prograde_10": 361,
+        "prograde_25": 447,
+        "radial_out": 555,
+        "coast": 505
+      },
+      "action_total": 165300,
+      "lengths_summary": {
+        "success": {
+          "n": 185,
+          "mean": 731.3513513513514,
+          "p50": 598.0,
+          "p90": 1552.4
+        },
+        "failure": {
+          "n": 15,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 185,
+        "actual_dv_mean": 243.3783783783784,
+        "actual_dv_p50": 235.0,
+        "ratio_to_hohmann_mean": 3.532679637530196,
+        "ratio_to_hohmann_p50": 2.86959557672618,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.50": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 169,
+        "safety_cap": 17,
+        "collision": 14
+      },
+      "action_distribution": {
+        "warp_5min": 156382,
+        "prograde_25": 383,
+        "prograde_10": 321,
+        "prograde_5": 969,
+        "retrograde_5": 765,
+        "radial_out": 498,
+        "retrograde_10": 1390,
+        "radial_in": 156,
+        "coast": 1117
+      },
+      "action_total": 161981,
+      "lengths_summary": {
+        "success": {
+          "n": 169,
+          "mean": 755.3076923076923,
+          "p50": 693.0,
+          "p90": 1584.0000000000002
+        },
+        "failure": {
+          "n": 31,
+          "mean": 1107.5483870967741,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 169,
+        "actual_dv_mean": 233.75739644970415,
+        "actual_dv_p50": 230.0,
+        "ratio_to_hohmann_mean": 3.3066914079858187,
+        "ratio_to_hohmann_p50": 2.589044293175807,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.70": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 131,
+        "safety_cap": 16,
+        "collision": 53
+      },
+      "action_distribution": {
+        "warp_5min": 134225,
+        "prograde_25": 286,
+        "prograde_10": 284,
+        "prograde_5": 764,
+        "radial_out": 323,
+        "retrograde_5": 691,
+        "retrograde_10": 1179,
+        "radial_in": 102,
+        "coast": 2418
+      },
+      "action_total": 140272,
+      "lengths_summary": {
+        "success": {
+          "n": 131,
+          "mean": 801.1068702290077,
+          "p50": 756.0,
+          "p90": 1705.0
+        },
+        "failure": {
+          "n": 69,
+          "mean": 511.9855072463768,
+          "p50": 39.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 131,
+        "actual_dv_mean": 236.94656488549617,
+        "actual_dv_p50": 230.0,
+        "ratio_to_hohmann_mean": 3.308352342073783,
+        "ratio_to_hohmann_p50": 2.3648641992983217,
+        "fuel_budget_ms": 478.1
+      }
+    }
+  },
+  "phase5e_seedD": {
+    "e_0.05": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "safety_cap": 24,
+        "success": 176
+      },
+      "action_distribution": {
+        "warp_5min": 182613,
+        "prograde_5": 1364,
+        "retrograde_5": 1241,
+        "radial_in": 476,
+        "prograde_10": 966,
+        "radial_out": 575,
+        "retrograde_10": 989,
+        "prograde_25": 33
+      },
+      "action_total": 188257,
+      "lengths_summary": {
+        "success": {
+          "n": 176,
+          "mean": 796.9147727272727,
+          "p50": 806.0,
+          "p90": 1623.0
+        },
+        "failure": {
+          "n": 24,
+          "mean": 2000.0,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 176,
+        "actual_dv_mean": 237.5,
+        "actual_dv_p50": 235.0,
+        "ratio_to_hohmann_mean": 3.1566091021971787,
+        "ratio_to_hohmann_p50": 2.325749247571448,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.10": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 181,
+        "safety_cap": 18,
+        "other": 1
+      },
+      "action_distribution": {
+        "warp_5min": 166908,
+        "prograde_10": 1097,
+        "radial_out": 629,
+        "retrograde_5": 1268,
+        "prograde_5": 1342,
+        "radial_in": 381,
+        "retrograde_10": 1324,
+        "prograde_25": 95,
+        "coast": 5
+      },
+      "action_total": 173049,
+      "lengths_summary": {
+        "success": {
+          "n": 181,
+          "mean": 754.6740331491712,
+          "p50": 580.0,
+          "p90": 1637.0
+        },
+        "failure": {
+          "n": 19,
+          "mean": 1918.578947368421,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 181,
+        "actual_dv_mean": 263.1767955801105,
+        "actual_dv_p50": 265.0,
+        "ratio_to_hohmann_mean": 3.876412634453873,
+        "ratio_to_hohmann_p50": 2.8708068675346645,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.20": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "safety_cap": 19,
+        "success": 180,
+        "other": 1
+      },
+      "action_distribution": {
+        "warp_5min": 172191,
+        "prograde_5": 1444,
+        "retrograde_10": 1391,
+        "retrograde_5": 1276,
+        "radial_in": 499,
+        "coast": 43,
+        "prograde_10": 923,
+        "radial_out": 636,
+        "prograde_25": 38
+      },
+      "action_total": 178441,
+      "lengths_summary": {
+        "success": {
+          "n": 180,
+          "mean": 778.4833333333333,
+          "p50": 689.0,
+          "p90": 1580.6999999999998
+        },
+        "failure": {
+          "n": 20,
+          "mean": 1915.7,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 180,
+        "actual_dv_mean": 260.8888888888889,
+        "actual_dv_p50": 255.0,
+        "ratio_to_hohmann_mean": 3.820989639675705,
+        "ratio_to_hohmann_p50": 2.7917371258810957,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.30": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "safety_cap": 21,
+        "success": 177,
+        "other": 2
+      },
+      "action_distribution": {
+        "warp_5min": 170819,
+        "prograde_5": 1359,
+        "retrograde_10": 1368,
+        "prograde_10": 1055,
+        "prograde_25": 64,
+        "retrograde_5": 1121,
+        "radial_in": 369,
+        "radial_out": 679,
+        "coast": 21
+      },
+      "action_total": 176855,
+      "lengths_summary": {
+        "success": {
+          "n": 177,
+          "mean": 748.0395480225989,
+          "p50": 589.0,
+          "p90": 1600.2
+        },
+        "failure": {
+          "n": 23,
+          "mean": 1932.695652173913,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 177,
+        "actual_dv_mean": 261.9491525423729,
+        "actual_dv_p50": 250.0,
+        "ratio_to_hohmann_mean": 3.6997364245505535,
+        "ratio_to_hohmann_p50": 2.8896026273293733,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.50": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 167,
+        "safety_cap": 18,
+        "collision": 15
+      },
+      "action_distribution": {
+        "warp_5min": 164959,
+        "prograde_10": 911,
+        "prograde_5": 1167,
+        "radial_out": 577,
+        "retrograde_5": 1045,
+        "radial_in": 443,
+        "retrograde_10": 1172,
+        "prograde_25": 62,
+        "coast": 367
+      },
+      "action_total": 170703,
+      "lengths_summary": {
+        "success": {
+          "n": 167,
+          "mean": 797.1616766467066,
+          "p50": 696.0,
+          "p90": 1760.2
+        },
+        "failure": {
+          "n": 33,
+          "mean": 1138.6969696969697,
+          "p50": 2000.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 167,
+        "actual_dv_mean": 253.98203592814372,
+        "actual_dv_p50": 250.0,
+        "ratio_to_hohmann_mean": 3.61531032598962,
+        "ratio_to_hohmann_p50": 2.9142748608972298,
+        "fuel_budget_ms": 478.1
+      }
+    },
+    "e_0.70": {
+      "n_episodes": 200,
+      "termination_modes": {
+        "success": 120,
+        "safety_cap": 26,
+        "collision": 52,
+        "other": 2
+      },
+      "action_distribution": {
+        "warp_5min": 142218,
+        "prograde_10": 653,
+        "prograde_5": 900,
+        "radial_out": 309,
+        "retrograde_10": 1018,
+        "retrograde_5": 798,
+        "radial_in": 303,
+        "coast": 894,
+        "prograde_25": 60
+      },
+      "action_total": 147153,
+      "lengths_summary": {
+        "success": {
+          "n": 120,
+          "mean": 762.475,
+          "p50": 684.5,
+          "p90": 1652.7
+        },
+        "failure": {
+          "n": 80,
+          "mean": 695.7,
+          "p50": 47.0
+        }
+      },
+      "fuel_efficiency": {
+        "n_success": 120,
+        "actual_dv_mean": 247.70833333333334,
+        "actual_dv_p50": 242.5,
+        "ratio_to_hohmann_mean": 3.5085806888983533,
+        "ratio_to_hohmann_p50": 2.54036854613084,
+        "fuel_budget_ms": 478.1
+      }
+    }
+  }
+}

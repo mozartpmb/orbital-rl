@@ -1,0 +1,154 @@
+{
+  "e_0.05": [
+    {
+      "category": "efficient",
+      "file": "web_data/runs/highlights/e_0.05_efficient_ep0000117.json",
+      "summary": {
+        "success": true,
+        "n_steps": 1265,
+        "total_dv": 90.0,
+        "hohmann_dv": 126.4,
+        "ratio_to_hohmann": 0.71,
+        "init_phase_gap_deg": 84.0,
+        "init_e_sat": 0.021,
+        "init_e_target": 0.005,
+        "warp_pct": 0.993,
+        "min_phi_orbit": 13.974
+      }
+    },
+    {
+      "category": "near_miss_failure",
+      "file": "web_data/runs/highlights/e_0.05_near_miss_failure_ep0000001.json",
+      "summary": {
+        "success": false,
+        "n_steps": 2000,
+        "total_dv": 50.0,
+        "hohmann_dv": 70.8,
+        "ratio_to_hohmann": 0.71,
+        "init_phase_gap_deg": 96.1,
+        "init_e_sat": 0.045,
+        "init_e_target": 0.005,
+        "warp_pct": 0.995,
+        "min_phi_orbit": 12.809
+      }
+    }
+  ],
+  "e_0.20": [
+    {
+      "category": "efficient",
+      "file": "web_data/runs/highlights/e_0.20_efficient_ep0000035.json",
+      "summary": {
+        "success": true,
+        "n_steps": 1446,
+        "total_dv": 105.0,
+        "hohmann_dv": 143.2,
+        "ratio_to_hohmann": 0.73,
+        "init_phase_gap_deg": 80.5,
+        "init_e_sat": 0.016,
+        "init_e_target": 0.013,
+        "warp_pct": 0.992,
+        "min_phi_orbit": 11.618
+      }
+    },
+    {
+      "category": "near_miss_failure",
+      "file": "web_data/runs/highlights/e_0.20_near_miss_failure_ep0000010.json",
+      "summary": {
+        "success": false,
+        "n_steps": 2000,
+        "total_dv": 460.0,
+        "hohmann_dv": 151.9,
+        "ratio_to_hohmann": 3.03,
+        "init_phase_gap_deg": 56.0,
+        "init_e_sat": 0.033,
+        "init_e_target": 0.082,
+        "warp_pct": 0.614,
+        "min_phi_orbit": 0.19
+      }
+    }
+  ],
+  "e_0.50": [
+    {
+      "category": "efficient",
+      "file": "web_data/runs/highlights/e_0.50_efficient_ep0000094.json",
+      "summary": {
+        "success": true,
+        "n_steps": 1386,
+        "total_dv": 100.0,
+        "hohmann_dv": 138.8,
+        "ratio_to_hohmann": 0.72,
+        "init_phase_gap_deg": 99.2,
+        "init_e_sat": 0.008,
+        "init_e_target": 0.017,
+        "warp_pct": 0.993,
+        "min_phi_orbit": 8.66
+      }
+    },
+    {
+      "category": "near_miss_failure",
+      "file": "web_data/runs/highlights/e_0.50_near_miss_failure_ep0000016.json",
+      "summary": {
+        "success": false,
+        "n_steps": 1322,
+        "total_dv": 165.0,
+        "hohmann_dv": 71.4,
+        "ratio_to_hohmann": 2.31,
+        "init_phase_gap_deg": 37.3,
+        "init_e_sat": 0.029,
+        "init_e_target": 0.137,
+        "warp_pct": 0.978,
+        "min_phi_orbit": 0.216
+      }
+    }
+  ],
+  "e_0.70": [
+    {
+      "category": "efficient",
+      "file": "web_data/runs/highlights/e_0.70_efficient_ep0000086.json",
+      "summary": {
+        "success": true,
+        "n_steps": 936,
+        "total_dv": 125.0,
+        "hohmann_dv": 156.8,
+        "ratio_to_hohmann": 0.8,
+        "init_phase_gap_deg": 114.1,
+        "init_e_sat": 0.027,
+        "init_e_target": 0.021,
+        "warp_pct": 0.985,
+        "min_phi_orbit": 6.861
+      }
+    },
+    {
+      "category": "patient",
+      "file": "web_data/runs/highlights/e_0.70_patient_ep0000020.json",
+      "summary": {
+        "success": true,
+        "n_steps": 1909,
+        "total_dv": 160.0,
+        "hohmann_dv": 97.5,
+        "ratio_to_hohmann": 1.64,
+        "init_phase_gap_deg": 52.8,
+        "init_e_sat": 0.013,
+        "init_e_target": 0.035,
+        "warp_pct": 0.991,
+        "min_phi_orbit": 0.854
+      }
+    },
+    {
+      "category": "near_miss_failure",
+      "file": "web_data/runs/highlights/e_0.70_near_miss_failure_ep0000149.json",
+      "summary": {
+        "success": false,
+        "n_steps": 2000,
+        "total_dv": 435.0,
+        "hohmann_dv": 28.1,
+        "ratio_to_hohmann": 15.48,
+        "init_phase_gap_deg": 109.9,
+        "init_e_sat": 0.069,
+        "init_e_target": 0.053,
+        "warp_pct": 0.205,
+        "min_phi_orbit": 0.153
+      }
+    }
+  ]
+}
