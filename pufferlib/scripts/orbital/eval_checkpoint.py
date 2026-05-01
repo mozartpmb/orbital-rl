@@ -19,7 +19,8 @@ from pufferlib.models import Default, LSTMWrapper
 
 
 def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=42,
-             e_max_target=0.0, init_phase_gap_max=0.524, e_max_sat=0.0, same_orbit_init=0):
+             e_max_target=0.0, init_phase_gap_max=0.524, e_max_sat=0.0, same_orbit_init=0,
+             enable_action_mask=0, valid_init_only=0):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -38,6 +39,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         init_phase_gap_max=init_phase_gap_max,
         e_max_sat=e_max_sat,
         same_orbit_init=same_orbit_init,
+        enable_action_mask=enable_action_mask,
+        valid_init_only=valid_init_only,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -124,10 +127,15 @@ def main():
                         help='Max satellite eccentricity at init (Phase 5b; default 0.0 = circular chaser)')
     parser.add_argument('--same-orbit-init', type=int, default=0,
                         help='Phase 5b Stage 1: 1 = sat.{a,e,ω} = target.{a,e,ω}, only θ differs')
+    parser.add_argument('--enable-action-mask', type=int, default=0,
+                        help='Phase 5d I2: 1 = 48-dim obs with action validity mask')
+    parser.add_argument('--valid-init-only', type=int, default=0,
+                        help='Phase 5d: 1 = reject inits whose sat/target perigee < EARTH_KEEPOUT')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
-             args.e_max_target, args.init_phase_gap_max, args.e_max_sat, args.same_orbit_init)
+             args.e_max_target, args.init_phase_gap_max, args.e_max_sat, args.same_orbit_init,
+             args.enable_action_mask, args.valid_init_only)
 
 
 if __name__ == '__main__':

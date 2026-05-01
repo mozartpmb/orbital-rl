@@ -111,6 +111,9 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->same_orbit_init    = (int)unpack(kwargs, "same_orbit_init");
     env->e_mix_easy_frac    = (double)unpack(kwargs, "e_mix_easy_frac");
     env->e_mix_easy_max     = (double)unpack(kwargs, "e_mix_easy_max");
+    env->collision_penalty_w = (double)unpack(kwargs, "collision_penalty_w");
+    env->enable_action_mask = (int)unpack(kwargs, "enable_action_mask");
+    env->valid_init_only = (int)unpack(kwargs, "valid_init_only");
     return 0;
 }
 

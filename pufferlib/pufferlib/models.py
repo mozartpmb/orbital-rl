@@ -33,12 +33,19 @@ class Default(nn.Module):
         except:
             self.is_dict_obs = isinstance(env.observation_space, pufferlib.spaces.Dict) 
 
+        # Phase 5d I2: action masking. If env exposes `action_mask_dim`, the last
+        # action_mask_dim entries of the obs vector are an action-validity mask
+        # (1.0 valid, 0.0 invalid). The encoder is sized to ignore those entries;
+        # the mask is stashed in the per-call state dict and consumed in
+        # decode_actions to set masked logits to -inf before sampling.
+        self.action_mask_dim = int(getattr(env, 'action_mask_dim', 0))
+
         if self.is_dict_obs:
             self.dtype = pufferlib.pytorch.nativize_dtype(env.emulated)
             input_size = int(sum(np.prod(v.shape) for v in env.env.observation_space.values()))
             self.encoder = nn.Linear(input_size, self.hidden_size)
         else:
-            num_obs = np.prod(env.single_observation_space.shape)
+            num_obs = int(np.prod(env.single_observation_space.shape)) - self.action_mask_dim
             # R3b note: LayerNorm here disrupts warm-start activation statistics.
             # L2-init (pufferl.py loss block) is the plasticity intervention.
             self.encoder = torch.nn.Sequential(
@@ -69,7 +76,7 @@ class Default(nn.Module):
 
     def forward_eval(self, observations, state=None):
         hidden = self.encode_observations(observations, state=state)
-        logits, values = self.decode_actions(hidden)
+        logits, values = self.decode_actions(hidden, state)
         return logits, values
 
     def forward(self, observations, state=None):
@@ -82,11 +89,17 @@ class Default(nn.Module):
         if self.is_dict_obs:
             observations = pufferlib.pytorch.nativize_tensor(observations, self.dtype)
             observations = torch.cat([v.view(batch_size, -1) for v in observations.values()], dim=1)
-        else: 
+        else:
             observations = observations.view(batch_size, -1)
-        return self.encoder(observations.float())
+        observations = observations.float()
+        if self.action_mask_dim > 0:
+            mask = observations[:, -self.action_mask_dim:]
+            observations = observations[:, :-self.action_mask_dim]
+            if state is not None:
+                state['action_mask'] = mask
+        return self.encoder(observations)
 
-    def decode_actions(self, hidden):
+    def decode_actions(self, hidden, state=None):
         '''Decodes a batch of hidden states into (multi)discrete actions.
         Assumes no time dimension (handled by LSTM wrappers).'''
         if self.is_multidiscrete:
@@ -98,6 +111,14 @@ class Default(nn.Module):
             logits = torch.distributions.Normal(mean, std)
         else:
             logits = self.decoder(hidden)
+            # Phase 5d I2: hard action masking. Set logits of invalid actions
+            # to a large negative value so softmax treats them as zero
+            # probability. Plain Discrete only (multidiscrete/continuous skip).
+            if state is not None and 'action_mask' in state:
+                mask = state['action_mask']
+                if mask.shape[0] != logits.shape[0]:
+                    mask = mask.reshape(logits.shape[0], -1)
+                logits = logits.masked_fill(mask < 0.5, -1e9)
 
         values = self.value(hidden)
         return logits, values
@@ -157,7 +178,7 @@ class LSTMWrapper(nn.Module):
         state['hidden'] = hidden
         state['lstm_h'] = hidden
         state['lstm_c'] = c
-        logits, values = self.policy.decode_actions(hidden)
+        logits, values = self.policy.decode_actions(hidden, state)
         return logits, values
 
     def forward(self, observations, state):
@@ -199,7 +220,7 @@ class LSTMWrapper(nn.Module):
         hidden = hidden.transpose(0, 1)
 
         flat_hidden = hidden.reshape(B*TT, self.hidden_size)
-        logits, values = self.policy.decode_actions(flat_hidden)
+        logits, values = self.policy.decode_actions(flat_hidden, state)
         values = values.reshape(B, TT)
         #state.batch_logits = logits.reshape(B, TT, -1)
         state['hidden'] = hidden

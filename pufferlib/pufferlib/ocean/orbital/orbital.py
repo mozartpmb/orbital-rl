@@ -53,14 +53,25 @@ class Orbital(pufferlib.PufferEnv):
         # the full curriculum bound. Default 0.0 = off.
         e_mix_easy_frac=0.0,
         e_mix_easy_max=0.05,
+        # Phase 5d I4: soft collision-prevention penalty. Subtracts this weight from
+        # step reward when a burn places sat on reentry trajectory (perigee < EARTH_KEEPOUT).
+        collision_penalty_w=0.0,
+        # Phase 5d I2: hard action masking. When 1, obs is 48-dim (last 10 = action mask).
+        # Coast & warp always valid; burns masked when post-burn perigee < EARTH_KEEPOUT.
+        enable_action_mask=0,
+        # Phase 5d: rejection-sample sat & target init until both perigees >= EARTH_KEEPOUT.
+        # Without this, ~64% of e_max=0.20 inits are physically doomed (sub-surface perigee).
+        valid_init_only=0,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
         buf=None,
         seed=0,
     ):
+        obs_dim = 48 if enable_action_mask else 38
+        self.action_mask_dim = 10 if enable_action_mask else 0
         self.single_observation_space = gymnasium.spaces.Box(
-            low=-2.0, high=2.0, shape=(38,), dtype=np.float32
+            low=-2.0, high=2.0, shape=(obs_dim,), dtype=np.float32
         )
         self.single_action_space = gymnasium.spaces.Discrete(10)
         self.render_mode  = render_mode
@@ -85,6 +96,9 @@ class Orbital(pufferlib.PufferEnv):
             same_orbit_init=same_orbit_init,
             e_mix_easy_frac=e_mix_easy_frac,
             e_mix_easy_max=e_mix_easy_max,
+            collision_penalty_w=collision_penalty_w,
+            enable_action_mask=enable_action_mask,
+            valid_init_only=valid_init_only,
         )
 
         # Pre-allocated trajectory buffer (reused every call)

@@ -39,3 +39,18 @@ pufferlib/box2d-macos-arm64/
 
 # Binary test executables
 pufferlib/pufferlib/ocean/orbital/orbital_test
+
+# Training run artifacts — large, re-derivable from code + seed
+pufferlib/experiments/
+
+# Eval trajectory dumps — large, redundant with web_data/ JSON exports
+logs/orbital/eval_*/
+logs/orbital/p5*/
+logs/orbital/run_final_*/
+logs/orbital/rendezvous_*/
+logs/orbital/p5a_D_apoapsis_eval/
+
+# Phase 5d failed-experiment checkpoints (kept locally as ceiling evidence)
+experiments/p5c_b4_d10_to_d14.pt
+experiments/puffer_orbital_177738218703*
+experiments/puffer_orbital_177738243019*

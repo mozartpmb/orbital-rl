@@ -173,6 +173,23 @@ typedef struct {
     double           e_mix_easy_frac;       /* probability of easy draw, default 0.0 */
     double           e_mix_easy_max;        /* easy upper bound, default 0.05 */
 
+    /* Phase 5d I4: soft collision-prevention penalty. After each burn, if
+     * post-burn perigee r_p = a(1-e) < EARTH_KEEPOUT, subtract this weight
+     * from the per-step reward. Default 0.0 → off. */
+    double           collision_penalty_w;
+
+    /* Phase 5d I2: hard action masking. When 1, obs is extended by 10 floats
+     * encoding which actions are valid (1.0) or invalid (0.0). Burns whose
+     * post-burn perigee would be below EARTH_KEEPOUT are masked. Coast (0)
+     * and warp (9) always valid. Default 0 → no mask, obs stays 38-dim. */
+    int              enable_action_mask;
+
+    /* Phase 5d D-late: when 1, c_reset rejection-samples sat and target init
+     * until both have perigee >= EARTH_KEEPOUT (physically survivable orbits).
+     * Default 0 preserves prior behavior (which sampled doomed inits when
+     * e_max × altitude band produced sub-surface perigees). */
+    int              valid_init_only;
+
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
 
@@ -359,6 +376,29 @@ static inline double apply_impulse(Orbital* env,
     return dv_mag;
 }
 
+/* ── Phase 5d I2: action-mask preview ────────────────────────────────────
+ * For a candidate burn (dv_pro, dv_rad), compute the post-burn perigee
+ * without mutating the satellite. Returns r_p = a(1-e), or -1.0 if the burn
+ * would put the satellite on a hyperbolic trajectory.
+ */
+static inline double preview_perigee(const Satellite* sat,
+                                      double dv_pro, double dv_rad) {
+    double x, y, vx, vy;
+    orbit_to_cartesian(&sat->orbit, &x, &y, &vx, &vy);
+    double v_mag = sqrt(vx*vx + vy*vy);
+    double r_mag = sqrt(x*x + y*y);
+    if (v_mag < 1e-9 || r_mag < 1e-9) return -1.0;
+    double pro_x = vx / v_mag, pro_y = vy / v_mag;
+    double rad_x =  x / r_mag, rad_y =  y / r_mag;
+    double dvx = dv_pro * pro_x + dv_rad * rad_x;
+    double dvy = dv_pro * pro_y + dv_rad * rad_y;
+    double new_vx = vx + dvx, new_vy = vy + dvy;
+    Orbit po;
+    cartesian_to_elements(x, y, new_vx, new_vy, &po);
+    if (po.a <= 0.0) return -1.0;  /* hyperbolic — invalid */
+    return po.a * (1.0 - po.e);
+}
+
 /* ── Observation packing ─────────────────────────────────────────────────── */
 
 /* Get Cartesian position of a body (static bodies are at origin). */
@@ -520,6 +560,23 @@ static inline void fill_observations(Orbital* env) {
         obs[35] = (float)(dvx_l / v_circ_t);
         obs[36] = (float)(dvy_l / v_circ_t);
         obs[37] = (float)(n_tgt / 1e-3);   /* ~LEO mean motion scale */
+    }
+
+    /* [38-47] Phase 5d I2: action-validity mask. Only written when
+     * enable_action_mask=1 — the gymnasium obs space is 48-dim in that
+     * mode and 38-dim otherwise, so writing past obs[37] in the disabled
+     * path would corrupt the next env's obs slice in the vector buffer.
+     * Coast (0) and warp (9) are always valid; burns 1..8 are masked if
+     * their post-burn perigee would be below EARTH_KEEPOUT. */
+    if (env->enable_action_mask) {
+        obs[38] = 1.0f;  /* action 0: coast */
+        for (int a = 1; a <= 8; a++) {
+            double r_p = preview_perigee(&env->sat,
+                                          ACTION_DV[a][0],
+                                          ACTION_DV[a][1]);
+            obs[38 + a] = (r_p > 0.0 && r_p >= EARTH_KEEPOUT) ? 1.0f : 0.0f;
+        }
+        obs[47] = 1.0f;  /* action 9: warp */
     }
 }
 
@@ -754,6 +811,14 @@ static inline void c_reset(Orbital* env) {
     env->total_dv_used = 0.0;
     env->episode_id++;
 
+    /* Phase 5d: rejection-sampling wrapper. Resample initial conditions until
+     * both sat and target orbits have perigee >= EARTH_KEEPOUT. Without this,
+     * a*(1-e) < R_EARTH inits collide unavoidably (~64% of e_max=0.20 samples).
+     * Bounded loop (256 attempts) so we never hang on degenerate kwargs. */
+    int valid_init_attempts = 0;
+    valid_init_resample:
+    valid_init_attempts++;
+
     /* Randomize initial orbit: 300–800 km altitude */
     double alt_init = 300e3 + (rand() / (double)RAND_MAX) * 500e3;
     double a_init   = R_EARTH + alt_init;
@@ -820,6 +885,17 @@ static inline void c_reset(Orbital* env) {
         double E_init = solve_kepler(env->sat.orbit.M, env->sat.orbit.e);
         env->sat.orbit.theta = eccentric_to_true(E_init, env->sat.orbit.e);
     }
+    /* Phase 5d: validate sat & target perigees. If either is sub-keepout,
+     * resample. After 256 attempts, give up and accept whatever was drawn
+     * (avoids infinite loop under pathological kwargs). */
+    if (env->valid_init_only && valid_init_attempts < 256) {
+        double sat_rp = env->sat.orbit.a * (1.0 - env->sat.orbit.e);
+        double tgt_rp = env->target.a * (1.0 - env->target.e);
+        if (sat_rp < EARTH_KEEPOUT || tgt_rp < EARTH_KEEPOUT) {
+            goto valid_init_resample;
+        }
+    }
+
     env->sat.dry_mass    = 850.0;   /* kg */
     env->sat.fuel_mass   = env->sat.dry_mass * FUEL_FRAC / (1.0 - FUEL_FRAC);
 
@@ -925,6 +1001,18 @@ static inline void c_step(Orbital* env) {
                                    ACTION_DV[action][1],
                                    ACTION_DV[action][2]);
         dv_applied = (float)dv;
+
+        /* Phase 5d I4: soft collision-prevention penalty. If the burn placed
+         * the satellite on a reentry trajectory (perigee < EARTH_KEEPOUT),
+         * subtract collision_penalty_w from the step reward. Gated on burn
+         * (dv > 0) so coast/warp don't repeatedly fire on already-low orbits. */
+        if (env->collision_penalty_w > 0.0 && dv > 0.0 &&
+            env->sat.orbit.a > 0.0) {
+            double r_p = env->sat.orbit.a * (1.0 - env->sat.orbit.e);
+            if (r_p < EARTH_KEEPOUT) {
+                env->rewards[0] -= (float)env->collision_penalty_w;
+            }
+        }
     }
 
     /* Early escape check — a ≤ 0 means hyperbolic; skip propagation.
