@@ -1,0 +1,409 @@
+{
+  "cells": [
+    {
+      "e": 0.0,
+      "phase": 30,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 84.6,
+      "std": 5.0039984012787215
+    },
+    {
+      "e": 0.0,
+      "phase": 30,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 100.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.0,
+      "phase": 90,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 87.4,
+      "std": 11.516944039110376
+    },
+    {
+      "e": 0.0,
+      "phase": 90,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 97.6,
+      "std": 4.317406628984581
+    },
+    {
+      "e": 0.0,
+      "phase": 150,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 91.4,
+      "std": 8.452218643646177
+    },
+    {
+      "e": 0.0,
+      "phase": 150,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 75.4,
+      "std": 37.924134795668046
+    },
+    {
+      "e": 0.0,
+      "phase": 180,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 93.4,
+      "std": 3.0724582991474434
+    },
+    {
+      "e": 0.0,
+      "phase": 180,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 76.2,
+      "std": 31.409552687040925
+    },
+    {
+      "e": 0.05,
+      "phase": 30,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 5.8,
+      "std": 1.469693845669907
+    },
+    {
+      "e": 0.05,
+      "phase": 30,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 58.4,
+      "std": 3.826225293941798
+    },
+    {
+      "e": 0.05,
+      "phase": 90,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 5.0,
+      "std": 1.4142135623730951
+    },
+    {
+      "e": 0.05,
+      "phase": 90,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 40.8,
+      "std": 12.54432142445338
+    },
+    {
+      "e": 0.05,
+      "phase": 150,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 5.6,
+      "std": 2.1540659228538015
+    },
+    {
+      "e": 0.05,
+      "phase": 150,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 30.0,
+      "std": 13.579396157414365
+    },
+    {
+      "e": 0.05,
+      "phase": 180,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 5.6,
+      "std": 1.624807680927192
+    },
+    {
+      "e": 0.05,
+      "phase": 180,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 36.6,
+      "std": 10.170545708072897
+    },
+    {
+      "e": 0.1,
+      "phase": 30,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 1.0,
+      "std": 0.8944271909999159
+    },
+    {
+      "e": 0.1,
+      "phase": 30,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 38.0,
+      "std": 6.54217089351845
+    },
+    {
+      "e": 0.1,
+      "phase": 90,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.6,
+      "std": 0.48989794855663565
+    },
+    {
+      "e": 0.1,
+      "phase": 90,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 24.6,
+      "std": 16.243152403397563
+    },
+    {
+      "e": 0.1,
+      "phase": 150,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.2,
+      "std": 0.4000000000000001
+    },
+    {
+      "e": 0.1,
+      "phase": 150,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 14.2,
+      "std": 8.611620056644394
+    },
+    {
+      "e": 0.1,
+      "phase": 180,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.4,
+      "std": 0.48989794855663565
+    },
+    {
+      "e": 0.1,
+      "phase": 180,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 24.6,
+      "std": 9.971960689854328
+    },
+    {
+      "e": 0.2,
+      "phase": 30,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.2,
+      "phase": 30,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 11.4,
+      "std": 8.01498596380555
+    },
+    {
+      "e": 0.2,
+      "phase": 90,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.2,
+      "phase": 90,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 6.8,
+      "std": 7.413501197140255
+    },
+    {
+      "e": 0.2,
+      "phase": 150,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.2,
+      "phase": 150,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 0.8,
+      "std": 0.7483314773547883
+    },
+    {
+      "e": 0.2,
+      "phase": 180,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.2,
+      "std": 0.4000000000000001
+    },
+    {
+      "e": 0.2,
+      "phase": 180,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 7.0,
+      "std": 5.291502622129181
+    },
+    {
+      "e": 0.5,
+      "phase": 30,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.5,
+      "phase": 30,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.5,
+      "phase": 90,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.5,
+      "phase": 90,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.5,
+      "phase": 150,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.5,
+      "phase": 150,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 0.2,
+      "std": 0.4000000000000001
+    },
+    {
+      "e": 0.5,
+      "phase": 180,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.5,
+      "phase": 180,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 0.6,
+      "std": 0.7999999999999999
+    },
+    {
+      "e": 0.7,
+      "phase": 30,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 13.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.7,
+      "phase": 30,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.7,
+      "phase": 90,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 13.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.7,
+      "phase": 90,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.7,
+      "phase": 150,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 13.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.7,
+      "phase": 150,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.7,
+      "phase": 180,
+      "relation": "fully_random",
+      "n_seeds": 5,
+      "mean": 13.0,
+      "std": 0.0
+    },
+    {
+      "e": 0.7,
+      "phase": 180,
+      "relation": "same_orbit_init",
+      "n_seeds": 5,
+      "mean": 0.0,
+      "std": 0.0
+    }
+  ],
+  "axes": {
+    "e_fixed": [
+      0.0,
+      0.05,
+      0.1,
+      0.2,
+      0.5,
+      0.7
+    ],
+    "phase_gap_deg": [
+      30,
+      90,
+      150,
+      180
+    ],
+    "relation": [
+      "fully_random",
+      "same_orbit_init"
+    ]
+  },
+  "n_seeds_per_cell": 5
+}

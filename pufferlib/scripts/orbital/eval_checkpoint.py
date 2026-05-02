@@ -20,7 +20,9 @@ from pufferlib.models import Default, LSTMWrapper
 
 def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=42,
              e_max_target=0.0, init_phase_gap_max=0.524, e_max_sat=0.0, same_orbit_init=0,
-             enable_action_mask=0, valid_init_only=0):
+             enable_action_mask=0, valid_init_only=0,
+             e_target_fixed=-1.0, e_sat_fixed=-1.0, phase_gap_fixed=-1.0,
+             omega_offset_fixed=-99.0, a_min_override=-1.0, a_max_override=-1.0):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -41,6 +43,12 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         same_orbit_init=same_orbit_init,
         enable_action_mask=enable_action_mask,
         valid_init_only=valid_init_only,
+        e_target_fixed=e_target_fixed,
+        e_sat_fixed=e_sat_fixed,
+        phase_gap_fixed=phase_gap_fixed,
+        omega_offset_fixed=omega_offset_fixed,
+        a_min_override=a_min_override,
+        a_max_override=a_max_override,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -131,11 +139,25 @@ def main():
                         help='Phase 5d I2: 1 = 48-dim obs with action validity mask')
     parser.add_argument('--valid-init-only', type=int, default=0,
                         help='Phase 5d: 1 = reject inits whose sat/target perigee < EARTH_KEEPOUT')
+    parser.add_argument('--e-target-fixed', type=float, default=-1.0,
+                        help='W1: exact target.e (>=0) overrides uniform-up-to-e_max_target')
+    parser.add_argument('--e-sat-fixed', type=float, default=-1.0,
+                        help='W1: exact sat.e (>=0) overrides uniform-up-to-e_max_sat')
+    parser.add_argument('--phase-gap-fixed', type=float, default=-1.0,
+                        help='W1: exact phase gap (rad, >=0) overrides uniform [-init_phase_gap_max,+]')
+    parser.add_argument('--omega-offset-fixed', type=float, default=-99.0,
+                        help='W1: target.omega - sat.omega offset (rad); >-10 enables')
+    parser.add_argument('--a-min-override', type=float, default=-1.0,
+                        help='Override semi-major axis floor (m). >= R_EARTH=6.371e6 to enable.')
+    parser.add_argument('--a-max-override', type=float, default=-1.0,
+                        help='Override semi-major axis ceiling (m). Must be > a_min_override.')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
              args.e_max_target, args.init_phase_gap_max, args.e_max_sat, args.same_orbit_init,
-             args.enable_action_mask, args.valid_init_only)
+             args.enable_action_mask, args.valid_init_only,
+             args.e_target_fixed, args.e_sat_fixed, args.phase_gap_fixed, args.omega_offset_fixed,
+             args.a_min_override, args.a_max_override)
 
 
 if __name__ == '__main__':

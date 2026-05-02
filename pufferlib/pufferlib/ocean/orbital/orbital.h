@@ -190,6 +190,21 @@ typedef struct {
      * e_max × altitude band produced sub-surface perigees). */
     int              valid_init_only;
 
+    /* Phase 5 wrap-up W1: fixed-value sampling for per-condition surface eval.
+     * Each defaults to negative (off → use uniform-up-to-bound). When >= 0,
+     * use the exact value. Lets surface eval measure e=0.50 capability
+     * specifically rather than aggregate over e ∈ [0, 0.50] uniform. */
+    double           e_target_fixed;        /* < 0 → uniform; ≥ 0 → exact target.e */
+    double           e_sat_fixed;           /* < 0 → uniform; ≥ 0 → exact sat.e */
+    double           phase_gap_fixed;       /* < 0 → uniform [-init_phase_gap_max, +]; ≥ 0 → +exact */
+    double           omega_offset_fixed;    /* < -10 → uniform; else target.ω = sat.ω + offset */
+    /* W1 follow-up: altitude band override (in meters, NOT altitude floor —
+     * raw a values). Defaults < 0 preserve hardcoded LEO 300-800km band.
+     * Necessary because fixed-high-e cells require higher a so that
+     * perigee = a(1-e) >= EARTH_KEEPOUT remains satisfiable. */
+    double           a_min_override;        /* if >= R_EARTH, sample a from [a_min_override, a_max_override] */
+    double           a_max_override;
+
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
 
@@ -819,9 +834,14 @@ static inline void c_reset(Orbital* env) {
     valid_init_resample:
     valid_init_attempts++;
 
-    /* Randomize initial orbit: 300–800 km altitude */
-    double alt_init = 300e3 + (rand() / (double)RAND_MAX) * 500e3;
-    double a_init   = R_EARTH + alt_init;
+    /* Randomize initial orbit: 300–800 km altitude (default), or override range. */
+    double a_init;
+    if (env->a_min_override >= R_EARTH && env->a_max_override > env->a_min_override) {
+        a_init = env->a_min_override + (rand() / (double)RAND_MAX) * (env->a_max_override - env->a_min_override);
+    } else {
+        double alt_init = 300e3 + (rand() / (double)RAND_MAX) * 500e3;
+        a_init = R_EARTH + alt_init;
+    }
 
     /* Target orbit altitude — different band unless same_orbit_init. */
     double a_target;
@@ -829,11 +849,12 @@ static inline void c_reset(Orbital* env) {
         /* Stage 1: sat and target share orbit shape; force same a. */
         a_target = a_init;
     } else {
-        double alt_target;
+        double a_min_t = (env->a_min_override >= R_EARTH) ? env->a_min_override : (R_EARTH + 300e3);
+        double a_max_t = (env->a_max_override > env->a_min_override && env->a_min_override >= R_EARTH)
+                          ? env->a_max_override : (R_EARTH + 800e3);
         do {
-            alt_target = 300e3 + (rand() / (double)RAND_MAX) * 500e3;
-        } while (fabs(alt_target - alt_init) < 50e3);  /* ensure meaningful transfer */
-        a_target = R_EARTH + alt_target;
+            a_target = a_min_t + (rand() / (double)RAND_MAX) * (a_max_t - a_min_t);
+        } while (fabs(a_target - a_init) < 50e3);  /* ensure meaningful transfer */
     }
 
     /* Target orbit — eccentricity sampled from curriculum bound, orientation
@@ -842,7 +863,10 @@ static inline void c_reset(Orbital* env) {
      * [0, e_mix_easy_max] instead of [0, e_max_target]. */
     double e_tgt = 0.0;
     int draw_easy = 0;
-    if (env->e_max_target > 0.0) {
+    if (env->e_target_fixed >= 0.0) {
+        /* W1: exact value override; bypass mix-easy logic */
+        e_tgt = env->e_target_fixed;
+    } else if (env->e_max_target > 0.0) {
         if (env->e_mix_easy_frac > 0.0 &&
             (rand() / (double)RAND_MAX) < env->e_mix_easy_frac &&
             env->e_max_target > env->e_mix_easy_max) {
@@ -864,7 +888,18 @@ static inline void c_reset(Orbital* env) {
      *   2. e_max_sat > 0:    sat.e ~ U(0, e_max_sat), sat.ω ~ U(0, 2π).
      *   3. else:              sat.e = 0, sat.ω = 0 (Phase 4 behavior). */
     env->sat.orbit.a     = a_init;
-    if (env->same_orbit_init) {
+    if (env->e_sat_fixed >= 0.0) {
+        /* W1: exact value override. Honor same_orbit_init for omega so the
+         * relation flag composes with fixed-e cells. */
+        env->sat.orbit.e = env->e_sat_fixed;
+        if (env->same_orbit_init) {
+            env->sat.orbit.omega = omega_tgt;
+        } else {
+            env->sat.orbit.omega = (env->sat.orbit.e > 0.0)
+                                     ? (rand() / (double)RAND_MAX) * 2.0 * M_PI
+                                     : 0.0;
+        }
+    } else if (env->same_orbit_init) {
         env->sat.orbit.e     = e_tgt;
         env->sat.orbit.omega = omega_tgt;
     } else if (env->e_max_sat > 0.0) {
@@ -878,6 +913,11 @@ static inline void c_reset(Orbital* env) {
     } else {
         env->sat.orbit.e     = 0.0;
         env->sat.orbit.omega = 0.0;
+    }
+    /* W1: omega_offset_fixed > -10 → set target.omega = sat.omega + offset */
+    if (env->omega_offset_fixed > -10.0) {
+        env->target.omega = env->sat.orbit.omega + env->omega_offset_fixed;
+        omega_tgt = env->target.omega;
     }
     env->sat.orbit.M     = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
     {
@@ -907,7 +947,10 @@ static inline void c_reset(Orbital* env) {
      * For circular orbits θ = M, so this directly controls the Cartesian
      * angular gap as seen from Earth's centre. */
     double phase_gap = 0.0;
-    if (env->init_phase_gap_max > 0.0) {
+    if (env->phase_gap_fixed >= 0.0) {
+        /* W1: exact phase gap (positive sign) for surface eval */
+        phase_gap = env->phase_gap_fixed;
+    } else if (env->init_phase_gap_max > 0.0) {
         phase_gap = (2.0 * (rand() / (double)RAND_MAX) - 1.0) * env->init_phase_gap_max;
     }
     double tgt_M = env->sat.orbit.M + phase_gap;

@@ -114,6 +114,12 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->collision_penalty_w = (double)unpack(kwargs, "collision_penalty_w");
     env->enable_action_mask = (int)unpack(kwargs, "enable_action_mask");
     env->valid_init_only = (int)unpack(kwargs, "valid_init_only");
+    env->e_target_fixed = (double)unpack(kwargs, "e_target_fixed");
+    env->e_sat_fixed = (double)unpack(kwargs, "e_sat_fixed");
+    env->phase_gap_fixed = (double)unpack(kwargs, "phase_gap_fixed");
+    env->omega_offset_fixed = (double)unpack(kwargs, "omega_offset_fixed");
+    env->a_min_override = (double)unpack(kwargs, "a_min_override");
+    env->a_max_override = (double)unpack(kwargs, "a_max_override");
     return 0;
 }
 

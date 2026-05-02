@@ -62,6 +62,14 @@ class Orbital(pufferlib.PufferEnv):
         # Phase 5d: rejection-sample sat & target init until both perigees >= EARTH_KEEPOUT.
         # Without this, ~64% of e_max=0.20 inits are physically doomed (sub-surface perigee).
         valid_init_only=0,
+        # Phase 5 wrap-up W1: fixed-value sampling for per-condition surface eval.
+        # Each defaults to a sentinel that preserves uniform sampling.
+        e_target_fixed=-1.0,
+        e_sat_fixed=-1.0,
+        phase_gap_fixed=-1.0,
+        omega_offset_fixed=-99.0,
+        a_min_override=-1.0,   # < R_EARTH → use 300km altitude floor
+        a_max_override=-1.0,   # if a_min_override is set, must be > a_min_override
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -99,6 +107,12 @@ class Orbital(pufferlib.PufferEnv):
             collision_penalty_w=collision_penalty_w,
             enable_action_mask=enable_action_mask,
             valid_init_only=valid_init_only,
+            e_target_fixed=e_target_fixed,
+            e_sat_fixed=e_sat_fixed,
+            phase_gap_fixed=phase_gap_fixed,
+            omega_offset_fixed=omega_offset_fixed,
+            a_min_override=a_min_override,
+            a_max_override=a_max_override,
         )
 
         # Pre-allocated trajectory buffer (reused every call)
