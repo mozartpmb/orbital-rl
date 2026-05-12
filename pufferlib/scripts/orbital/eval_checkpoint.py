@@ -22,7 +22,10 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              e_max_target=0.0, init_phase_gap_max=0.524, e_max_sat=0.0, same_orbit_init=0,
              enable_action_mask=0, valid_init_only=0,
              e_target_fixed=-1.0, e_sat_fixed=-1.0, phase_gap_fixed=-1.0,
-             omega_offset_fixed=-99.0, a_min_override=-1.0, a_max_override=-1.0):
+             omega_offset_fixed=-99.0, a_min_override=-1.0, a_max_override=-1.0,
+             log_validation_debug=0,
+             max_valid_init_attempts=4096, gave_up_action="terminate",
+             obs_alt_scale_m=1.6e6, phi_orbit_scale_k=0.001):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -49,6 +52,11 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         omega_offset_fixed=omega_offset_fixed,
         a_min_override=a_min_override,
         a_max_override=a_max_override,
+        log_validation_debug=log_validation_debug,
+        max_valid_init_attempts=max_valid_init_attempts,
+        gave_up_action=gave_up_action,
+        obs_alt_scale_m=obs_alt_scale_m,
+        phi_orbit_scale_k=phi_orbit_scale_k,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -151,13 +159,28 @@ def main():
                         help='Override semi-major axis floor (m). >= R_EARTH=6.371e6 to enable.')
     parser.add_argument('--a-max-override', type=float, default=-1.0,
                         help='Override semi-major axis ceiling (m). Must be > a_min_override.')
+    parser.add_argument('--log-validation-debug', type=int, default=0,
+                        help='Phase 5 verification I1: 1 = emit per-reset debug line to stderr')
+    parser.add_argument('--max-valid-init-attempts', type=int, default=4096,
+                        help='Phase 5 env-fix F1: cap on rejection-sampling attempts (was hardcoded 256)')
+    parser.add_argument('--gave-up-action', choices=['accept', 'terminate'], default='terminate',
+                        help='Phase 5 env-fix F3: behavior when cap exhausts with doomed init '
+                             '(default "terminate" — cleaner eval semantics; "accept" = legacy)')
+    parser.add_argument('--obs-alt-scale-m', type=float, default=1.6e6,
+                        help='Phase 5.5: altitude obs normalization scale (m). Default 1.6e6 = '
+                             'LEO ALT_MAX (backward compat). Use 4.2e7 for GEO-inclusive envelope.')
+    parser.add_argument('--phi-orbit-scale-k', type=float, default=0.001,
+                        help='Phase 5.5: Φ_orbit scale gain. Effective tolerance = '
+                             'max(SUCCESS_TOL_A, K * obs_alt_scale_m). Default 0.001 → LEO compat.')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
              args.e_max_target, args.init_phase_gap_max, args.e_max_sat, args.same_orbit_init,
              args.enable_action_mask, args.valid_init_only,
              args.e_target_fixed, args.e_sat_fixed, args.phase_gap_fixed, args.omega_offset_fixed,
-             args.a_min_override, args.a_max_override)
+             args.a_min_override, args.a_max_override, args.log_validation_debug,
+             args.max_valid_init_attempts, args.gave_up_action,
+             args.obs_alt_scale_m, args.phi_orbit_scale_k)
 
 
 if __name__ == '__main__':

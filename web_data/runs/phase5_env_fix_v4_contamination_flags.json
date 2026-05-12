@@ -1,0 +1,182 @@
+{
+  "generated_at": "2026-05-11T18:43:42.770258",
+  "spec": "phase5-env-fix-spec.md V4 \u2014 retro-analysis of pre-F1 trajectories",
+  "note": "These trajectories were exported with valid_init_only=1 but their realized inits violate perigee >= EARTH_KEEPOUT (6571 km). The pre-F1 rejection-sampling cap at 256 exhausted and accepted doomed orbits. Filter on this sidecar (or re-export after env-fix) before publishing.",
+  "criteria": {
+    "R_EARTH_m": 6371000.0,
+    "EARTH_KEEPOUT_m": 6571000.0,
+    "check": "min(sat_a*(1-sat_e), sqrt(sat_x0^2+sat_y0^2), target_a*(1-target_e), sqrt(target_x0^2+target_y0^2)) < EARTH_KEEPOUT"
+  },
+  "flagged_trajectories": [
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.50/ep_0000009.json",
+      "sat_perigee_init_m": 4096428.312358558,
+      "target_perigee_init_m": 6793560.575746432,
+      "sat_r0_m": 6550229.587085598,
+      "target_r0_m": 6858652.715725867,
+      "min_radius_m": 4096428.312358558,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.50/ep_0000014.json",
+      "sat_perigee_init_m": 6318136.559586883,
+      "target_perigee_init_m": 5454943.889045119,
+      "sat_r0_m": 7696030.171190096,
+      "target_r0_m": 6579281.696671948,
+      "min_radius_m": 5454943.889045119,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.50/ep_0000016.json",
+      "sat_perigee_init_m": 6620933.656658895,
+      "target_perigee_init_m": 5775408.317897499,
+      "sat_r0_m": 6947667.734483876,
+      "target_r0_m": 7588837.928142144,
+      "min_radius_m": 5775408.317897499,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.50/ep_0000024.json",
+      "sat_perigee_init_m": 6710542.334149769,
+      "target_perigee_init_m": 5950147.6436777115,
+      "sat_r0_m": 6777379.830011743,
+      "target_r0_m": 6043116.189742447,
+      "min_radius_m": 5950147.6436777115,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.50/ep_0000040.json",
+      "sat_perigee_init_m": 7007377.65967904,
+      "target_perigee_init_m": 4473951.3326482475,
+      "sat_r0_m": 7034074.126028901,
+      "target_r0_m": 5370948.682373221,
+      "min_radius_m": 4473951.3326482475,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000006.json",
+      "sat_perigee_init_m": 6080340.76366258,
+      "target_perigee_init_m": 5843433.688259006,
+      "sat_r0_m": 7458692.562537816,
+      "target_r0_m": 6317781.653754509,
+      "min_radius_m": 5843433.688259006,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000008.json",
+      "sat_perigee_init_m": 2530436.8772403896,
+      "target_perigee_init_m": 3207218.1527501345,
+      "sat_r0_m": 10310608.929092027,
+      "target_r0_m": 6615503.977284762,
+      "min_radius_m": 2530436.8772403896,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000011.json",
+      "sat_perigee_init_m": 2520903.359888077,
+      "target_perigee_init_m": 4733655.924563035,
+      "sat_r0_m": 9906517.042172441,
+      "target_r0_m": 6176029.1616068445,
+      "min_radius_m": 2520903.359888077,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000013.json",
+      "sat_perigee_init_m": 6541312.314241167,
+      "target_perigee_init_m": 5407827.084958002,
+      "sat_r0_m": 7000598.894828004,
+      "target_r0_m": 7949685.520997714,
+      "min_radius_m": 5407827.084958002,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000018.json",
+      "sat_perigee_init_m": 5892341.041486435,
+      "target_perigee_init_m": 6191344.306503676,
+      "sat_r0_m": 8054687.979984491,
+      "target_r0_m": 6401019.936352663,
+      "min_radius_m": 5892341.041486435,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000022.json",
+      "sat_perigee_init_m": 6710322.855967339,
+      "target_perigee_init_m": 3783842.044464648,
+      "sat_r0_m": 6835772.098070145,
+      "target_r0_m": 9335966.128581712,
+      "min_radius_m": 3783842.044464648,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000023.json",
+      "sat_perigee_init_m": 3715885.393019289,
+      "target_perigee_init_m": 3035185.8970471323,
+      "sat_r0_m": 9742049.02271392,
+      "target_r0_m": 10533663.877389777,
+      "min_radius_m": 3035185.8970471323,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000026.json",
+      "sat_perigee_init_m": 6462640.28875472,
+      "target_perigee_init_m": 3966992.7970002294,
+      "sat_r0_m": 7294779.6991784815,
+      "target_r0_m": 8193568.27298644,
+      "min_radius_m": 3966992.7970002294,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000031.json",
+      "sat_perigee_init_m": 6209038.910604417,
+      "target_perigee_init_m": 6075763.814229816,
+      "sat_r0_m": 6887654.464821108,
+      "target_r0_m": 7449799.915722255,
+      "min_radius_m": 6075763.814229816,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000040.json",
+      "sat_perigee_init_m": 3946373.0495195687,
+      "target_perigee_init_m": 5696088.761812687,
+      "sat_r0_m": 9926579.519464005,
+      "target_r0_m": 8573345.64787716,
+      "min_radius_m": 3946373.0495195687,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000046.json",
+      "sat_perigee_init_m": 6635577.979128604,
+      "target_perigee_init_m": 2867600.2535381317,
+      "sat_r0_m": 6641229.529574813,
+      "target_r0_m": 3415786.217261804,
+      "min_radius_m": 2867600.2535381317,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    },
+    {
+      "path": "web_data/runs/phase5e_seed42_e0.70/ep_0000048.json",
+      "sat_perigee_init_m": 4542538.755799592,
+      "target_perigee_init_m": 5146650.0488084555,
+      "sat_r0_m": 7471032.9081171155,
+      "target_r0_m": 5559228.438460312,
+      "min_radius_m": 4542538.755799592,
+      "below_surface": true,
+      "metadata_phase": "phase_5e_stage_4_0"
+    }
+  ]
+}

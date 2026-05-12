@@ -2,13 +2,16 @@
 #include <numpy/arrayobject.h>
 #include "orbital.h"
 
-/* Forward declaration so MY_METHODS can reference it before the function body. */
+/* Forward declarations so MY_METHODS can reference them before the function bodies. */
 static PyObject* vec_get_trajectory(PyObject* self, PyObject* args);
+static PyObject* vec_get_episode_init_info(PyObject* self, PyObject* args);
 
 /* Hook into env_binding.h method table — no trailing comma, the sentinel follows */
 #define MY_METHODS \
     {"vec_get_trajectory", (PyCFunction)vec_get_trajectory, METH_VARARGS, \
-     "Copy traj_log to numpy array: (vec_handle, env_idx, out_float32_array) -> steps"}
+     "Copy traj_log to numpy array: (vec_handle, env_idx, out_float32_array) -> steps"}, \
+    {"vec_get_episode_init_info", (PyCFunction)vec_get_episode_init_info, METH_VARARGS, \
+     "Get last-reset info: (vec_handle, env_idx) -> (attempts:int, gave_up:int)"}
 
 #define Env Orbital
 #include "../env_binding.h"
@@ -98,6 +101,31 @@ static PyObject* vec_get_trajectory(PyObject* self, PyObject* args) {
     return PyLong_FromLong(steps);
 }
 
+/* Phase 5 env-fix F2: per-episode reset-outcome accessor. Returns the
+ * rejection-sampler attempts count and gave-up flag for the most recent
+ * c_reset on the given env. Called by orbital.py::_save_trajectory at
+ * episode boundaries so trajectory exports can record realized init state
+ * (not just the kwarg intent). */
+static PyObject* vec_get_episode_init_info(PyObject* self, PyObject* args) {
+    if (PyTuple_Size(args) != 2) {
+        PyErr_SetString(PyExc_TypeError,
+            "vec_get_episode_init_info(vec_handle, env_idx) -> (attempts, gave_up)");
+        return NULL;
+    }
+
+    PyObject* handle_obj = PyTuple_GetItem(args, 0);
+    VecEnv* vec = (VecEnv*)PyLong_AsVoidPtr(handle_obj);
+    if (!vec) { PyErr_SetString(PyExc_ValueError, "Invalid vec handle"); return NULL; }
+
+    int env_idx = (int)PyLong_AsLong(PyTuple_GetItem(args, 1));
+    if (env_idx < 0 || env_idx >= vec->num_envs) {
+        PyErr_SetString(PyExc_ValueError, "env_idx out of range");
+        return NULL;
+    }
+    Orbital* env = vec->envs[env_idx];
+    return Py_BuildValue("(ii)", env->last_init_attempts, env->last_init_gave_up);
+}
+
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
@@ -120,6 +148,11 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->omega_offset_fixed = (double)unpack(kwargs, "omega_offset_fixed");
     env->a_min_override = (double)unpack(kwargs, "a_min_override");
     env->a_max_override = (double)unpack(kwargs, "a_max_override");
+    env->log_validation_debug = (int)unpack(kwargs, "log_validation_debug");
+    env->max_valid_init_attempts = (int)unpack(kwargs, "max_valid_init_attempts");
+    env->gave_up_action          = (int)unpack(kwargs, "gave_up_action");
+    env->obs_alt_scale_m         = (double)unpack(kwargs, "obs_alt_scale_m");
+    env->phi_orbit_scale_k       = (double)unpack(kwargs, "phi_orbit_scale_k");
     return 0;
 }
 
@@ -128,5 +161,12 @@ static int my_log(PyObject* dict, Log* log) {
     assign_to_dict(dict, "episode_return", log->episode_return);
     assign_to_dict(dict, "episode_length", log->episode_length);
     assign_to_dict(dict, "fuel_used",      log->fuel_used);
+    /* Phase 5 env-fix F4 + Phase 5.5: realized-init metrics (epoch means via vec_log) */
+    assign_to_dict(dict, "init_attempts_mean",       log->init_attempts_mean);
+    assign_to_dict(dict, "init_gave_up_rate",        log->init_gave_up_rate);
+    assign_to_dict(dict, "realized_e_target_mean",   log->realized_e_target_mean);
+    assign_to_dict(dict, "realized_e_sat_mean",      log->realized_e_sat_mean);
+    assign_to_dict(dict, "realized_a_target_mean_m", log->realized_a_target_mean_m);
+    assign_to_dict(dict, "realized_a_sat_mean_m",    log->realized_a_sat_mean_m);
     return 0;
 }

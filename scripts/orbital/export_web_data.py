@@ -92,6 +92,21 @@ def export_episode(npz_path, env_config, phase_label, ckpt_label, downsample=1):
     init_e_sat = float(d["sat_e"][0]); init_e_tgt = float(d["target_e"][0])
     init_om_sat = float(d["sat_omega"][0])
 
+    # Phase 5 env-fix F2: realized-init outcome metadata. Distinct from env_config:
+    # `env_config` records intent (the kwargs requested at eval time); `realized_init`
+    # records what c_reset actually produced. The two diverge when the rejection
+    # sampler exhausts its attempt cap and accepts a doomed init.
+    realized_sat_perigee_m = sat_a0 * (1.0 - init_e_sat)
+    realized_target_perigee_m = tgt_a0 * (1.0 - init_e_tgt)
+    if "last_init_attempts" in d.files:
+        last_init_attempts = int(d["last_init_attempts"][0])
+    else:
+        last_init_attempts = -1   # Pre-F2 .npz files; outcome not recorded
+    if "last_init_gave_up" in d.files:
+        last_init_gave_up = bool(int(d["last_init_gave_up"][0]))
+    else:
+        last_init_gave_up = None  # Pre-F2 .npz files; outcome not recorded
+
     # Per-step
     target_theta = derive_target_theta(d["target_x"][active], d["target_y"][active],
                                          d["target_omega"][active])
@@ -151,6 +166,12 @@ def export_episode(npz_path, env_config, phase_label, ckpt_label, downsample=1):
             "init_e_target": init_e_tgt,
             "init_e_sat": init_e_sat,
             "env_config": env_config,
+            "realized_init": {
+                "last_init_attempts": last_init_attempts,
+                "last_init_gave_up": last_init_gave_up,
+                "realized_sat_perigee_m": realized_sat_perigee_m,
+                "realized_target_perigee_m": realized_target_perigee_m,
+            },
         },
         "initial": {
             "sat_a_m": sat_a0,

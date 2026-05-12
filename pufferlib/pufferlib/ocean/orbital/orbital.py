@@ -70,12 +70,34 @@ class Orbital(pufferlib.PufferEnv):
         omega_offset_fixed=-99.0,
         a_min_override=-1.0,   # < R_EARTH → use 300km altitude floor
         a_max_override=-1.0,   # if a_min_override is set, must be > a_min_override
+        # Phase 5 verification I1: when 1, c_reset emits a per-reset debug line on stderr.
+        log_validation_debug=0,
+        # Phase 5 env-fix F1: configurable cap for rejection-sampling loop (was hardcoded 256).
+        # At 4096 with e_max=0.70 LEO (~12% per-attempt acceptance), exhaust prob ≈ 0.88^4096 ≈ 0.
+        max_valid_init_attempts=4096,
+        # Phase 5 env-fix F3: behavior when the cap exhausts and accepted init is still doomed.
+        # "accept" (default, legacy) — keep the doomed init, episode plays out and likely fails.
+        # "terminate" — emit a single terminal step with reward 0, no learning signal from doomed inits.
+        gave_up_action="accept",
+        # Phase 5.5 altitude expansion: observation altitude normalization scale (meters above R_EARTH).
+        # Default 1.6e6 = ALT_MAX preserves Phase 5b/5e checkpoint compatibility.
+        # Set to ~4.2e7 (GEO altitude) for training on full Earth-orbit envelope.
+        obs_alt_scale_m=1.6e6,
+        # Phase 5.5: Φ_orbit scale gain. Effective orbit-match tolerance is
+        # max(SUCCESS_TOL_A, phi_orbit_scale_k * obs_alt_scale_m). With K=0.001
+        # at LEO obs_alt_scale_m=1.6e6, max(10km, 1.6km)=10km → backward compat.
+        # At GEO obs_alt_scale_m=4.2e7, max(10km, 42km)=42km → keeps Φ in O(1-10).
+        phi_orbit_scale_k=0.001,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
         buf=None,
         seed=0,
     ):
+        # Encode gave_up_action enum (unpack() in C only accepts int/float).
+        _gave_up_action_int = {"accept": 0, "terminate": 1}.get(gave_up_action, None)
+        if _gave_up_action_int is None:
+            raise ValueError(f"gave_up_action must be 'accept' or 'terminate', got {gave_up_action!r}")
         obs_dim = 48 if enable_action_mask else 38
         self.action_mask_dim = 10 if enable_action_mask else 0
         self.single_observation_space = gymnasium.spaces.Box(
@@ -113,6 +135,11 @@ class Orbital(pufferlib.PufferEnv):
             omega_offset_fixed=omega_offset_fixed,
             a_min_override=a_min_override,
             a_max_override=a_max_override,
+            log_validation_debug=log_validation_debug,
+            max_valid_init_attempts=max_valid_init_attempts,
+            gave_up_action=_gave_up_action_int,
+            obs_alt_scale_m=obs_alt_scale_m,
+            phi_orbit_scale_k=phi_orbit_scale_k,
         )
 
         # Pre-allocated trajectory buffer (reused every call)
@@ -163,6 +190,15 @@ class Orbital(pufferlib.PufferEnv):
         arrays['episode_id']     = np.array([ep_id])
         arrays['episode_reward'] = np.array([reward])
         arrays['col_names']      = np.array(TRAJ_COLS)
+
+        # Phase 5 env-fix F2: realized-init outcome metadata (per-episode scalars).
+        # `last_init_attempts` = how many rejection-sampling iterations c_reset took.
+        # `last_init_gave_up`  = 1 if cap exhausted with sub-keepout perigee accepted.
+        # Realized perigees are computed downstream from sat_a[0]/sat_e[0] etc.
+        attempts, gave_up = binding.vec_get_episode_init_info(self.c_envs, env_idx)
+        arrays['last_init_attempts'] = np.array([int(attempts)])
+        arrays['last_init_gave_up']  = np.array([int(gave_up)])
+
         np.savez_compressed(path, **arrays)
 
     def enable_logging(self, env_idx=None):

@@ -77,6 +77,15 @@ typedef struct {
     float episode_length;   /* steps per episode                       */
     float fuel_used;        /* fuel fraction consumed per episode      */
     float g_shape_abs;      /* Σ|shaping deltas| per episode (Goodhart)*/
+    /* Phase 5 env-fix F4 + Phase 5.5 logging expansion: realized-init metrics.
+     * vec_log auto-divides every field by n (env_binding.h:590), so accumulating
+     * per-episode sums here yields per-epoch means automatically. */
+    float init_attempts_mean;   /* mean rejection-sampling attempts per c_reset */
+    float init_gave_up_rate;    /* fraction of resets that exhausted the cap */
+    float realized_e_target_mean;
+    float realized_e_sat_mean;
+    float realized_a_target_mean_m;
+    float realized_a_sat_mean_m;
     float n;                /* REQUIRED: episode count (last field)    */
 } Log;
 
@@ -190,6 +199,25 @@ typedef struct {
      * e_max × altitude band produced sub-surface perigees). */
     int              valid_init_only;
 
+    /* Phase 5 verification I1: when 1, c_reset prints a per-reset debug line
+     * to stderr showing the valid_init flag, attempts taken, accepted sat &
+     * target perigees, and whether the 256-attempt cap was hit. Default 0. */
+    int              log_validation_debug;
+
+    /* Phase 5 env-fix F1/F3: rejection-sampling cap configurable; outcome tracked. */
+    int              max_valid_init_attempts;   /* cap on resample attempts; default 4096 */
+    int              last_init_attempts;         /* attempts taken in last c_reset */
+    int              last_init_gave_up;          /* 1 if cap exhausted with invalid init */
+    int              gave_up_action;             /* 0 = accept doomed init (legacy); 1 = terminate next step */
+    int              gave_up_terminate_pending;  /* internal flag: c_reset → c_step handoff */
+
+    /* Phase 5 env-fix F4 + Phase 5.5: snapshot of realized init state for per-episode
+     * logging (add_log reads at episode end; sat.{a,e} drift during episode via burns). */
+    double           last_init_sat_a_m;
+    double           last_init_sat_e;
+    double           last_init_target_a_m;
+    double           last_init_target_e;
+
     /* Phase 5 wrap-up W1: fixed-value sampling for per-condition surface eval.
      * Each defaults to negative (off → use uniform-up-to-bound). When >= 0,
      * use the exact value. Lets surface eval measure e=0.50 capability
@@ -204,6 +232,12 @@ typedef struct {
      * perigee = a(1-e) >= EARTH_KEEPOUT remains satisfiable. */
     double           a_min_override;        /* if >= R_EARTH, sample a from [a_min_override, a_max_override] */
     double           a_max_override;
+
+    /* Phase 5.5 altitude expansion: configurable observation scaling so the env
+     * can be trained beyond LEO. Default 1.6e6 (= ALT_MAX) preserves Phase 5b/5e
+     * checkpoint compatibility. Set to ~4.2e7 for GEO-inclusive training. */
+    double           obs_alt_scale_m;        /* altitude normalization scale (meters above R_EARTH) */
+    double           phi_orbit_scale_k;      /* Φ_orbit scale gain; effective tol = max(SUCCESS_TOL_A, K * obs_alt_scale_m) */
 
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
@@ -430,8 +464,10 @@ static inline void body_position(const Body* b, double* bx, double* by) {
 static inline void fill_observations(Orbital* env) {
     float* obs = env->observations;
     const Satellite* sat = &env->sat;
-    const double scale_a    = ALT_MAX;            /* for altitudes → [0,1]  */
-    const double scale_dist = R_EARTH + ALT_MAX;  /* for distances → [0,~2] */
+    /* Phase 5.5: observation altitude scale is configurable via obs_alt_scale_m
+     * (default 1.6e6 = ALT_MAX, preserving LEO-trained ckpt compatibility). */
+    const double scale_a    = env->obs_alt_scale_m;             /* for altitudes → [0,1]  */
+    const double scale_dist = R_EARTH + env->obs_alt_scale_m;    /* for distances → [0,~2] */
 
     /* Satellite Cartesian state for velocity decomposition */
     double sx, sy, svx, svy;
@@ -604,14 +640,20 @@ static inline void fill_observations(Orbital* env) {
  * Gates σ₂, σ₃ open as earlier-stage potentials drop below calibrated ε.
  * Φ(s) = −(w₁·Φ_orbit·σ₁ + w₂·Φ_phase·σ₂ + w₃·Φ_vel·σ₃). */
 static inline double compute_phi(const Orbital* env) {
-    /* Φ_orbit: orbit shape match */
+    /* Φ_orbit: orbit shape match.
+     * Phase 5.5 altitude expansion: effective orbit-match tolerance scales with
+     * the env's altitude domain. tol_eff = max(SUCCESS_TOL_A, K * obs_alt_scale_m).
+     * Default K=0.001 at LEO (obs_alt_scale_m=1.6e6): max(10km, 1.6km) = 10km →
+     * backward compat with Phase 5b/5e checkpoints. At GEO (obs_alt_scale_m=4.2e7):
+     * max(10km, 42km) = 42km → Φ_orbit stays O(1-10) instead of O(1000+). */
     double da = fabs(env->sat.orbit.a - env->target.a);
     double e_sx = env->sat.orbit.e * cos(env->sat.orbit.omega);
     double e_sy = env->sat.orbit.e * sin(env->sat.orbit.omega);
     double e_tx = env->target.e    * cos(env->target.omega);
     double e_ty = env->target.e    * sin(env->target.omega);
     double de = sqrt((e_sx - e_tx)*(e_sx - e_tx) + (e_sy - e_ty)*(e_sy - e_ty));
-    double phi_orbit = da / SUCCESS_TOL_A + de;
+    double phi_tol_eff = fmax(SUCCESS_TOL_A, env->phi_orbit_scale_k * env->obs_alt_scale_m);
+    double phi_orbit = da / phi_tol_eff + de;
 
     /* Φ_phase: true-anomaly alignment along target orbit (1 - cos wraps smoothly) */
     double dtheta = env->sat.orbit.theta - env->target.theta;
@@ -814,6 +856,14 @@ static inline void add_log(Orbital* env, int success) {
     env->log.episode_length += (float)env->step;
     env->log.fuel_used      += (float)(FUEL_FRAC - fuel_frac * FUEL_FRAC);
     env->log.g_shape_abs    += (float)env->g_shape_accum;
+    /* Phase 5 env-fix F4 + Phase 5.5: realized-init metrics. vec_log divides
+     * sums by n automatically, so per-episode contributions yield epoch means. */
+    env->log.init_attempts_mean      += (float)env->last_init_attempts;
+    env->log.init_gave_up_rate       += env->last_init_gave_up ? 1.0f : 0.0f;
+    env->log.realized_e_target_mean  += (float)env->last_init_target_e;
+    env->log.realized_e_sat_mean     += (float)env->last_init_sat_e;
+    env->log.realized_a_target_mean_m += (float)env->last_init_target_a_m;
+    env->log.realized_a_sat_mean_m   += (float)env->last_init_sat_a_m;
     env->log.n++;
 }
 
@@ -926,13 +976,46 @@ static inline void c_reset(Orbital* env) {
         env->sat.orbit.theta = eccentric_to_true(E_init, env->sat.orbit.e);
     }
     /* Phase 5d: validate sat & target perigees. If either is sub-keepout,
-     * resample. After 256 attempts, give up and accept whatever was drawn
-     * (avoids infinite loop under pathological kwargs). */
-    if (env->valid_init_only && valid_init_attempts < 256) {
+     * resample. After max_valid_init_attempts (default 4096, Phase 5 env-fix
+     * F1; was hardcoded 256), give up and accept whatever was drawn (avoids
+     * infinite loop under pathological kwargs). */
+    if (env->valid_init_only && valid_init_attempts < env->max_valid_init_attempts) {
         double sat_rp = env->sat.orbit.a * (1.0 - env->sat.orbit.e);
         double tgt_rp = env->target.a * (1.0 - env->target.e);
         if (sat_rp < EARTH_KEEPOUT || tgt_rp < EARTH_KEEPOUT) {
             goto valid_init_resample;
+        }
+    }
+
+    /* Phase 5 env-fix F1/F3: record reset outcome for downstream logging
+     * (trajectory exports, wandb metrics) and arm gave-up termination if
+     * gave_up_action == 1 ("terminate"). */
+    {
+        double sat_rp_final = env->sat.orbit.a * (1.0 - env->sat.orbit.e);
+        double tgt_rp_final = env->target.a * (1.0 - env->target.e);
+        env->last_init_attempts = valid_init_attempts;
+        env->last_init_gave_up  = (env->valid_init_only
+                                   && valid_init_attempts >= env->max_valid_init_attempts
+                                   && (sat_rp_final < EARTH_KEEPOUT || tgt_rp_final < EARTH_KEEPOUT));
+        env->gave_up_terminate_pending = (env->last_init_gave_up && env->gave_up_action == 1);
+
+        /* Snapshot realized init state for per-episode wandb logging. sat.{a,e}
+         * will drift during episode via burns; these fields freeze the init. */
+        env->last_init_sat_a_m    = env->sat.orbit.a;
+        env->last_init_sat_e      = env->sat.orbit.e;
+        env->last_init_target_a_m = env->target.a;
+        env->last_init_target_e   = env->target.e;
+
+        /* Phase 5 verification I1: emit per-reset debug line. */
+        if (env->log_validation_debug) {
+            fprintf(stderr,
+                    "RESET ep=%d valid_init=%d attempts=%d sat_rp=%.4e tgt_rp=%.4e "
+                    "sat_a=%.4e sat_e=%.4f tgt_a=%.4e tgt_e=%.4f gave_up=%d\n",
+                    env->episode_id, env->valid_init_only, valid_init_attempts,
+                    sat_rp_final, tgt_rp_final,
+                    env->sat.orbit.a, env->sat.orbit.e,
+                    env->target.a, env->target.e,
+                    env->last_init_gave_up);
         }
     }
 
@@ -1020,6 +1103,24 @@ static inline void c_reset(Orbital* env) {
 static inline void c_step(Orbital* env) {
     env->rewards[0]   = 0.0f;
     env->terminals[0] = 0;
+
+    /* Phase 5 env-fix F3: gave-up termination. If c_reset's rejection sampler
+     * exhausted its attempt cap with a sub-keepout init AND gave_up_action=1
+     * ("terminate"), emit a single terminal step with reward 0 and skip physics.
+     * The episode contributes nothing to learning (no -10 collision penalty
+     * either — the doomed init was an env-sampling artifact, not policy fault).
+     * This cleanly excludes doomed inits from eval success-rate denominators. */
+    if (env->gave_up_terminate_pending) {
+        env->terminals[0] = 1;
+        write_traj_record(env, env->rewards[0], 0.0f);
+        fill_observations(env);
+        env->last_episode_steps = 1;
+        env->last_g_shape       = 0.0;
+        add_log(env, 0);
+        env->gave_up_terminate_pending = 0;
+        c_reset(env);
+        return;
+    }
 
     /* Write initial state at the start of each episode's first step.
      * Done here (not in c_reset) so that the autoreset at the end of a
