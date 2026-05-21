@@ -153,6 +153,7 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->gave_up_action          = (int)unpack(kwargs, "gave_up_action");
     env->obs_alt_scale_m         = (double)unpack(kwargs, "obs_alt_scale_m");
     env->phi_orbit_scale_k       = (double)unpack(kwargs, "phi_orbit_scale_k");
+    env->lvlh_scale_m            = (double)unpack(kwargs, "lvlh_scale_m");
     return 0;
 }
 

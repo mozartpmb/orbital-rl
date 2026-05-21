@@ -52,10 +52,11 @@
  * Each row: { dv_prograde, dv_radial, dv_normal }. dv_normal kept at 0 for
  * forward compatibility with a future 3D upgrade.
  */
-#define NUM_ACTIONS 10
-#define WARP_ACTION 9
-#define WARP_TAU    5    /* 5 × 60s = 5 min of sim time per warp step */
+#define NUM_ACTIONS 16
+#define WARP_ACTION 9    /* legacy: smallest warp action; still referenced */
+#define WARP_TAU    5    /* legacy: 5 × 60s = 5 min per warp; supplanted by ACTION_TAU */
 static const double ACTION_DV[NUM_ACTIONS][3] = {
+    /* 0-9: Phase 4-5b legacy. DO NOT renumber; existing ckpts depend on these indices. */
     {   0.0,   0.0,  0.0 },  /* 0: coast                 */
     {   5.0,   0.0,  0.0 },  /* 1: prograde fine    (new) */
     {  10.0,   0.0,  0.0 },  /* 2: prograde small        */
@@ -65,7 +66,25 @@ static const double ACTION_DV[NUM_ACTIONS][3] = {
     { -25.0,   0.0,  0.0 },  /* 6: retrograde medium     */
     {   0.0,  10.0,  0.0 },  /* 7: radial out            */
     {   0.0, -10.0,  0.0 },  /* 8: radial in             */
-    {   0.0,   0.0,  0.0 },  /* 9: warp 5min (τ=5 sub-steps, no burn) */
+    {   0.0,   0.0,  0.0 },  /* 9: warp 5min (τ=5)       */
+    /* M2 (phase5-5-env-mods): longer warps for high-altitude training */
+    {   0.0,   0.0,  0.0 },  /* 10: warp 30min (τ=30)    */
+    {   0.0,   0.0,  0.0 },  /* 11: warp 1hr   (τ=60)    */
+    /* M3: sub-5 m/s prograde/retrograde for MEO/GEO fine control */
+    {   1.0,   0.0,  0.0 },  /* 12: prograde 1           */
+    {  -1.0,   0.0,  0.0 },  /* 13: retrograde 1         */
+    {   2.0,   0.0,  0.0 },  /* 14: prograde 2           */
+    {  -2.0,   0.0,  0.0 },  /* 15: retrograde 2         */
+};
+
+/* M2 (phase5-5-env-mods): per-action sub-step count. τ=1 → single-step burn or
+ * coast; τ>1 → warp action (no burn). Replaces the single WARP_TAU constant for
+ * runtime dispatch in c_step. */
+static const int ACTION_TAU[NUM_ACTIONS] = {
+    1, 1, 1, 1, 1, 1, 1, 1, 1,   /* 0-8: single-step actions */
+    5,                            /* 9:  warp 5min  */
+    30, 60,                       /* 10-11: M2 longer warps */
+    1, 1, 1, 1,                   /* 12-15: M3 sub-5 m/s burns */
 };
 
 /* ── PufferLib Log struct ────────────────────────────────────────────────
@@ -238,6 +257,12 @@ typedef struct {
      * checkpoint compatibility. Set to ~4.2e7 for GEO-inclusive training. */
     double           obs_alt_scale_m;        /* altitude normalization scale (meters above R_EARTH) */
     double           phi_orbit_scale_k;      /* Φ_orbit scale gain; effective tol = max(SUCCESS_TOL_A, K * obs_alt_scale_m) */
+
+    /* M1 (phase5-5-env-mods): LVLH spatial obs normalizer for obs[33-34]. Default
+     * R_EARTH preserves Phase 5b/5e behavior byte-identically; set ~4.2e7 for GEO.
+     * Per pre-experiments E4, at GEO the same-orbit Δr can reach ~84 Mm, divided
+     * by R_EARTH gives obs values ~13 — far past Box(-2, 2) bound. */
+    double           lvlh_scale_m;
 
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
@@ -606,8 +631,10 @@ static inline void fill_observations(Orbital* env) {
         dvy_l -= n_tgt * dx_l;
 
         double v_circ_t = sqrt(MU / env->target.a);
-        obs[33] = (float)(dx_l  / R_EARTH);
-        obs[34] = (float)(dy_l  / R_EARTH);
+        /* M1 (phase5-5-env-mods): spatial LVLH normalizer is configurable via
+         * env->lvlh_scale_m (default R_EARTH; set ~4.2e7 for GEO training). */
+        obs[33] = (float)(dx_l  / env->lvlh_scale_m);
+        obs[34] = (float)(dy_l  / env->lvlh_scale_m);
         obs[35] = (float)(dvx_l / v_circ_t);
         obs[36] = (float)(dvy_l / v_circ_t);
         obs[37] = (float)(n_tgt / 1e-3);   /* ~LEO mean motion scale */
@@ -1132,14 +1159,16 @@ static inline void c_step(Orbital* env) {
 
     int action = env->actions[0];
 
-    /* R4 time-warp: action 9 = advance WARP_TAU sub-steps of DT with no
+    /* R4 time-warp: warp actions (9/10/11) advance τ sub-steps of DT with no
      * burn. Collision/termination checks run every sub-step so the warp
-     * never skips past a conjunction. Non-warp actions use τ=1. */
-    int tau = (action == WARP_ACTION) ? WARP_TAU : 1;
+     * never skips past a conjunction. M2 (phase5-5-env-mods): per-action τ
+     * lookup so we can have multiple warp durations without hardcoding. */
+    int tau = ACTION_TAU[action];
 
-    /* Apply burn if not coasting/warping and has fuel */
+    /* Apply burn if not coasting/warping and has fuel. M2/M3: any τ=1 non-coast
+     * action is a burn (excludes all warps generically, including new 10/11). */
     float dv_applied = 0.0f;
-    if (action != 0 && action != WARP_ACTION && env->sat.fuel_mass > 0.0) {
+    if (action != 0 && tau == 1 && env->sat.fuel_mass > 0.0) {
         double dv = apply_impulse(env,
                                    ACTION_DV[action][0],
                                    ACTION_DV[action][1],

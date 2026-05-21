@@ -25,7 +25,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              omega_offset_fixed=-99.0, a_min_override=-1.0, a_max_override=-1.0,
              log_validation_debug=0,
              max_valid_init_attempts=4096, gave_up_action="terminate",
-             obs_alt_scale_m=1.6e6, phi_orbit_scale_k=0.001):
+             obs_alt_scale_m=1.6e6, phi_orbit_scale_k=0.001,
+             lvlh_scale_m=6.371e6, legacy_action_space=None):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -57,9 +58,22 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         gave_up_action=gave_up_action,
         obs_alt_scale_m=obs_alt_scale_m,
         phi_orbit_scale_k=phi_orbit_scale_k,
+        lvlh_scale_m=lvlh_scale_m,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
+
+    # M2/M3 (phase5-5-env-mods): Phase 5b/5e ckpts have a 10-dim logits head.
+    # The env exposes Discrete(16); coerce env.single_action_space so policy
+    # construction produces a head matching the ckpt's state_dict shape.
+    # c_step still accepts any int in [0, NUM_ACTIONS); argmax over 10 logits
+    # produces only legacy actions 0-9.
+    if legacy_action_space is not None and legacy_action_space < env.single_action_space.n:
+        import gymnasium
+        full_n = env.single_action_space.n
+        env.single_action_space = gymnasium.spaces.Discrete(legacy_action_space)
+        print(f"[legacy-action-space] policy head sized to {legacy_action_space}; "
+              f"env still accepts ints in [0, {full_n}).")
 
     # Load model — PufferLib wraps Default in LSTMWrapper
     device = torch.device("cpu")
@@ -172,6 +186,14 @@ def main():
     parser.add_argument('--phi-orbit-scale-k', type=float, default=0.001,
                         help='Phase 5.5: Φ_orbit scale gain. Effective tolerance = '
                              'max(SUCCESS_TOL_A, K * obs_alt_scale_m). Default 0.001 → LEO compat.')
+    parser.add_argument('--lvlh-scale-m', type=float, default=6.371e6,
+                        help='M1 (phase5-5-env-mods): LVLH spatial obs normalizer. '
+                             'Default 6.371e6 (R_EARTH) preserves Phase 5b/5e LEO behavior. '
+                             'Set ~4.2e7 for GEO training.')
+    parser.add_argument('--legacy-action-space', type=int, default=None,
+                        help='M2/M3 backward compat: pass 10 to eval Phase 5b/5e ckpts whose '
+                             'policy head has 10 logits. Coerces env.single_action_space for '
+                             'policy construction; env still accepts ints in [0, NUM_ACTIONS).')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
@@ -180,7 +202,8 @@ def main():
              args.e_target_fixed, args.e_sat_fixed, args.phase_gap_fixed, args.omega_offset_fixed,
              args.a_min_override, args.a_max_override, args.log_validation_debug,
              args.max_valid_init_attempts, args.gave_up_action,
-             args.obs_alt_scale_m, args.phi_orbit_scale_k)
+             args.obs_alt_scale_m, args.phi_orbit_scale_k,
+             args.lvlh_scale_m, args.legacy_action_space)
 
 
 if __name__ == '__main__':

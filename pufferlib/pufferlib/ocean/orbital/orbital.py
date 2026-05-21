@@ -4,7 +4,9 @@ Single satellite performs a fuel-optimal rendezvous with a propagated
 target body, avoiding debris.
 
 Observation space: Box(float32, 38) — normalised to roughly [-1, 1] (33 legacy + 5 LVLH)
-Action space:      Discrete(10)     — coast + prograde/retrograde at 5/10/25 m/s + radial ±10 m/s + warp 5min
+Action space:      Discrete(16)     — Phase 4-5b legacy 0-9 (coast + ±{5,10,25} m/s prograde
+                                       + ±10 m/s radial + warp 5min) plus M2 warps (10:30min, 11:1hr)
+                                       and M3 fine burns (12-15: ±{1,2} m/s prograde).
 """
 
 import os
@@ -58,6 +60,9 @@ class Orbital(pufferlib.PufferEnv):
         collision_penalty_w=0.0,
         # Phase 5d I2: hard action masking. When 1, obs is 48-dim (last 10 = action mask).
         # Coast & warp always valid; burns masked when post-burn perigee < EARTH_KEEPOUT.
+        # NOTE post phase5-5-env-mods (M2/M3): the mask is still 10-dim covering only
+        # legacy actions 0-9. New actions 10-15 (warps + sub-5 m/s burns) are not masked.
+        # Extend fill_observations() if action masking with the new actions is needed.
         enable_action_mask=0,
         # Phase 5d: rejection-sample sat & target init until both perigees >= EARTH_KEEPOUT.
         # Without this, ~64% of e_max=0.20 inits are physically doomed (sub-surface perigee).
@@ -88,6 +93,10 @@ class Orbital(pufferlib.PufferEnv):
         # at LEO obs_alt_scale_m=1.6e6, max(10km, 1.6km)=10km → backward compat.
         # At GEO obs_alt_scale_m=4.2e7, max(10km, 42km)=42km → keeps Φ in O(1-10).
         phi_orbit_scale_k=0.001,
+        # M1 (phase5-5-env-mods): LVLH spatial obs normalizer (obs[33-34]).
+        # Default R_EARTH = 6.371e6 preserves Phase 5b/5e LEO behavior exactly.
+        # Set ~4.2e7 for GEO training; otherwise obs[33] saturates at ~20 at GEO.
+        lvlh_scale_m=6.371e6,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -103,7 +112,10 @@ class Orbital(pufferlib.PufferEnv):
         self.single_observation_space = gymnasium.spaces.Box(
             low=-2.0, high=2.0, shape=(obs_dim,), dtype=np.float32
         )
-        self.single_action_space = gymnasium.spaces.Discrete(10)
+        # M2/M3 (phase5-5-env-mods): extended action space. Phase 5b/5e ckpts have
+        # a 10-dim policy head; eval_checkpoint.py uses --legacy-action-space 10 to
+        # coerce the policy's view of the action space for backward compat.
+        self.single_action_space = gymnasium.spaces.Discrete(16)
         self.render_mode  = render_mode
         self.num_agents   = num_envs
         self.log_interval = log_interval
@@ -140,6 +152,7 @@ class Orbital(pufferlib.PufferEnv):
             gave_up_action=_gave_up_action_int,
             obs_alt_scale_m=obs_alt_scale_m,
             phi_orbit_scale_k=phi_orbit_scale_k,
+            lvlh_scale_m=lvlh_scale_m,
         )
 
         # Pre-allocated trajectory buffer (reused every call)
