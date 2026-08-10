@@ -97,6 +97,10 @@ class Orbital(pufferlib.PufferEnv):
         # Default R_EARTH = 6.371e6 preserves Phase 5b/5e LEO behavior exactly.
         # Set ~4.2e7 for GEO training; otherwise obs[33] saturates at ~20 at GEO.
         lvlh_scale_m=6.371e6,
+        # Phase 5.5 Stage 5.5.1: coerce single_action_space to a smaller Discrete(N) so
+        # a Phase 5b/5e 10-head ckpt can warm-start a Discrete(16) env without surgery.
+        # c_step still accepts any int in [0, 16). Default None = no coercion (full Discrete(16)).
+        legacy_action_space=None,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -115,7 +119,11 @@ class Orbital(pufferlib.PufferEnv):
         # M2/M3 (phase5-5-env-mods): extended action space. Phase 5b/5e ckpts have
         # a 10-dim policy head; eval_checkpoint.py uses --legacy-action-space 10 to
         # coerce the policy's view of the action space for backward compat.
-        self.single_action_space = gymnasium.spaces.Discrete(16)
+        _las = -1 if legacy_action_space is None else int(legacy_action_space)
+        _act_n = 16 if _las <= 0 else _las
+        if not (1 <= _act_n <= 16):
+            raise ValueError(f"legacy_action_space must be in [1, 16] or sentinel <=0, got {_las}")
+        self.single_action_space = gymnasium.spaces.Discrete(_act_n)
         self.render_mode  = render_mode
         self.num_agents   = num_envs
         self.log_interval = log_interval

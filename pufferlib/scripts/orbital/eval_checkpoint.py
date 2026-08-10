@@ -26,7 +26,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              log_validation_debug=0,
              max_valid_init_attempts=4096, gave_up_action="terminate",
              obs_alt_scale_m=1.6e6, phi_orbit_scale_k=0.001,
-             lvlh_scale_m=6.371e6, legacy_action_space=None):
+             lvlh_scale_m=6.371e6, legacy_action_space=None,
+             stochastic=False):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -88,6 +89,7 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
     print(f"Debris: {debris} (min={num_debris_min}, max={num_debris_max})")
     print(f"Saving trajectories to: {out_dir}")
 
+    torch.manual_seed(seed)  # reproducible stochastic sampling
     obs, _ = env.reset(seed=seed)
     episodes_done = 0
     episode_rewards = []
@@ -105,7 +107,12 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         obs_tensor = torch.from_numpy(obs).float().unsqueeze(0)
         with torch.no_grad():
             action_logits, _ = policy.forward_eval(obs_tensor, state)
-            action = torch.argmax(action_logits, dim=-1).numpy()
+            if stochastic:
+                # Sample from softmax distribution (matches PPO training-time policy)
+                probs = torch.softmax(action_logits, dim=-1)
+                action = torch.multinomial(probs.squeeze(0), num_samples=1).unsqueeze(0).numpy()
+            else:
+                action = torch.argmax(action_logits, dim=-1).numpy()
 
         obs, rewards, terminals, truncations, infos = env.step(action)
         step_count += 1
@@ -194,6 +201,9 @@ def main():
                         help='M2/M3 backward compat: pass 10 to eval Phase 5b/5e ckpts whose '
                              'policy head has 10 logits. Coerces env.single_action_space for '
                              'policy construction; env still accepts ints in [0, NUM_ACTIONS).')
+    parser.add_argument('--stochastic', action='store_true',
+                        help='Sample actions from softmax(logits) instead of argmax. Matches '
+                             'PPO training-time policy. Default: greedy (argmax).')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
@@ -203,7 +213,7 @@ def main():
              args.a_min_override, args.a_max_override, args.log_validation_debug,
              args.max_valid_init_attempts, args.gave_up_action,
              args.obs_alt_scale_m, args.phi_orbit_scale_k,
-             args.lvlh_scale_m, args.legacy_action_space)
+             args.lvlh_scale_m, args.legacy_action_space, args.stochastic)
 
 
 if __name__ == '__main__':
