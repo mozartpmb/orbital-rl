@@ -336,11 +336,24 @@ static inline double eccentric_to_true(double E, double e) {
     return 2.0 * atan2(y, x);
 }
 
-/* Convert true anomaly θ → mean anomaly M (inverse Kepler, exact). */
+/* Convert true anomaly θ → mean anomaly M (inverse Kepler, exact).
+ *
+ * θ → E half-angle relation: tan(E/2) = sqrt((1−e)/(1+e)) · tan(θ/2), i.e.
+ * E = 2·atan2(sqrt(1−e)·sin(θ/2), sqrt(1+e)·cos(θ/2)).
+ *
+ * BUG FIXED 2026-08-10: the factors were swapped (sqrt(1−e) on cos,
+ * sqrt(1+e) on sin), which is the FORWARD map E→θ applied a second time
+ * instead of its inverse. Since this function is reached only from
+ * cartesian_to_elements() — i.e. immediately after a burn — the chaser's
+ * mean anomaly was set with an error ≈ 2e·sin(θ), which materialized as an
+ * along-track position glitch of up to 2e·a on the next propagation step
+ * (~700 km measured at e=0.05, θ=90°, vs 0.1 m on coast steps). Burns at
+ * apsides (sinθ≈0) were unaffected to first order, which is why the
+ * Hohmann-style trained policy never exposed it. */
 static inline double true_to_mean(double theta, double e) {
-    /* θ → E via half-angle */
-    double x = sqrt(1.0 - e) * cos(theta / 2.0);
-    double y = sqrt(1.0 + e) * sin(theta / 2.0);
+    /* θ → E via half-angle (inverse of eccentric_to_true) */
+    double x = sqrt(1.0 + e) * cos(theta / 2.0);
+    double y = sqrt(1.0 - e) * sin(theta / 2.0);
     double E = 2.0 * atan2(y, x);
     return E - e * sin(E);
 }
