@@ -1,0 +1,16 @@
+ckpt,box,radius_m,vel_ms,success_n,total,phys_n,phys_total,causes,wall_s
+seed42,30km_50ms,30000.0,50.0,195,200,195,200,"success=195, safety_cap=5",3.8
+seedA,30km_50ms,30000.0,50.0,195,200,195,200,"success=195, safety_cap=5",3.8
+seed42,5km_1ms,5000.0,1.0,4,200,4,200,"success=4, safety_cap=155, stranded=41",7.1
+seed42,1km_0.5ms,1000.0,0.5,0,200,0,200,"safety_cap=157, stranded=43",7.3
+seedA,5km_1ms,5000.0,1.0,7,200,7,200,"success=7, safety_cap=137, stranded=56",6.3
+seedA,1km_0.5ms,1000.0,0.5,0,200,0,200,"safety_cap=142, stranded=58",6.5
+seedB,30km_50ms,30000.0,50.0,180,200,180,200,"success=180, safety_cap=20",4.0
+seedB,5km_1ms,5000.0,1.0,2,200,2,200,"success=2, safety_cap=146, stranded=52",6.8
+seedC,30km_50ms,30000.0,50.0,191,200,191,200,"success=191, safety_cap=9",3.9
+seedB,1km_0.5ms,1000.0,0.5,0,200,0,200,"safety_cap=146, stranded=54",7.6
+seedC,5km_1ms,5000.0,1.0,3,200,3,200,"success=3, safety_cap=134, stranded=63",7.1
+seedD,30km_50ms,30000.0,50.0,176,200,176,200,"success=176, safety_cap=24",5.2
+seedC,1km_0.5ms,1000.0,0.5,0,200,0,200,"safety_cap=136, stranded=64",7.9
+seedD,5km_1ms,5000.0,1.0,4,200,4,200,"success=4, safety_cap=98, stranded=98",6.2
+seedD,1km_0.5ms,1000.0,0.5,0,200,0,200,"safety_cap=99, stranded=101",6.3

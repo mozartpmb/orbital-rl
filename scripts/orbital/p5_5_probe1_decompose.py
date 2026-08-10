@@ -64,7 +64,7 @@ def run_cell(args):
     phase_rad = math.radians(phase_deg)
     cell_id = (f"{kind}_{alt_label}_et{e_t:.2f}_es{e_s:.2f}_p{phase_deg}_"
                f"{relation}_rs{rollout_seed}")
-    out_dir = f"/tmp/p5_5_probe1/{cell_id}"
+    out_dir = f"/tmp/p5_5_probe1_v2/{cell_id}"
 
     cmd = [
         "python3", "scripts/orbital/eval_checkpoint.py", CKPT,
@@ -94,19 +94,33 @@ def run_cell(args):
     t0 = time.time()
     proc = subprocess.run(cmd, capture_output=True, text=True, cwd=PUFFER)
     dt = time.time() - t0
-    succ_n = total = -1
+    succ_n = total = phys_n = phys_total = -1
+    causes = ""
     for line in proc.stdout.splitlines():
+        # Legacy classifier (terminal reward > 0) — kept for continuity with
+        # the original probe1 CSV, but Φ-clamp-leak-prone at wide alt bands.
         if "Success rate" in line:
             try:
                 frac = line.split()[-2]
                 succ_n, total = map(int, frac.split("/"))
             except Exception:
                 pass
-            break
+        # Corrected classifier: terminal branch == success, gave-up inits
+        # excluded from the denominator.
+        elif "Physical success" in line:
+            try:
+                frac = line.split()[2]
+                phys_n, phys_total = map(int, frac.split("/"))
+            except Exception:
+                pass
+        elif "Terminal causes" in line:
+            causes = line.split(":", 1)[1].strip()
     return {
         "kind": kind, "alt": alt_label, "e_target": e_t, "e_sat": e_s,
         "phase_deg": phase_deg, "relation": relation, "rollout_seed": rollout_seed,
-        "success_n": succ_n, "total": total, "wall_s": round(dt, 1),
+        "success_n": succ_n, "total": total,
+        "phys_n": phys_n, "phys_total": phys_total, "causes": causes,
+        "wall_s": round(dt, 1),
     }
 
 
@@ -114,7 +128,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--episodes", type=int, default=200)
     p.add_argument("--workers", type=int, default=4)
-    p.add_argument("--out-csv", default="web_data/results/p5_5_probe1_decompose.csv")
+    p.add_argument("--out-csv", default="web_data/results/p5_5_probe1_decompose_v2.csv")
     args = p.parse_args()
 
     cells_def = build_cells()
@@ -132,14 +146,16 @@ def main():
     with open(out_csv, "w") as fh:
         w = csv.writer(fh)
         w.writerow(["kind", "alt", "e_target", "e_sat", "phase_deg", "relation",
-                    "rollout_seed", "success_n", "total", "wall_s"])
+                    "rollout_seed", "success_n", "total",
+                    "phys_n", "phys_total", "causes", "wall_s"])
         with ProcessPoolExecutor(max_workers=args.workers) as ex:
             futures = [ex.submit(run_cell, c) for c in cells]
             for i, fut in enumerate(as_completed(futures)):
                 r = fut.result()
                 w.writerow([r["kind"], r["alt"], r["e_target"], r["e_sat"],
                             r["phase_deg"], r["relation"], r["rollout_seed"],
-                            r["success_n"], r["total"], r["wall_s"]])
+                            r["success_n"], r["total"],
+                            r["phys_n"], r["phys_total"], r["causes"], r["wall_s"]])
                 fh.flush()
                 if (i+1) % 50 == 0 or i+1 == len(cells):
                     el = time.time() - t0

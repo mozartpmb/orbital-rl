@@ -1,5 +1,11 @@
 # Orbital RL — Progress Log
 
+> **⚠️ ARCHIVED (2026-08-10): this log ends at 2026-04-23 ("Phase 3 not started") and is
+> ~4 months stale — Phases 3, 4, 4.5, 5a–5e, and 5.5 have all run since. For current state
+> see MODELS.md (with its 2026-08-10 corrections), phase5-retrospective.md, and
+> PHASE5_PRE_CLOSURE_MECHANISM_FINDINGS.md. Kept for history only.**
+
+
 > **⚠️ No debris training/eval — indefinite hold (2026-04-20).**
 > User has suspended all debris (num_debris_* > 0) training, warm-start, and evaluation runs. Rationale: debris masks the clean features of optimal transfers; the agent must learn orbital mechanics (efficient apsidal burns, (a, e, ω) matching) first. All puffer train / eval / eval_checkpoint.py invocations use `--env.num-debris-min 0 --env.num-debris-max 0` until the user re-authorizes. Existing debris-trained checkpoints are archival only. Strikes "debris regression" from Phase 2/3 completion criteria.
 

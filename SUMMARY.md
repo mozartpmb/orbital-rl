@@ -1,5 +1,12 @@
 # Orbital RL — Project Summary
 
+> **⚠️ ARCHIVED (2026-08-10): this document describes the project as of 2026-04-21 —
+> pre-rendezvous, Discrete(7) actions, Box(29) observations. None of that matches the
+> current codebase (rendezvous task, Discrete(16) env, Box(38) obs, LVLH block).
+> For current state see MODELS.md (with its 2026-08-10 corrections), phase5-retrospective.md,
+> and PHASE5_PRE_CLOSURE_MECHANISM_FINDINGS.md. Kept for history only.**
+
+
 *Last updated: 2026-04-21*
 
 A custom PufferLib Ocean environment that trains a PPO agent to perform fuel-efficient orbital maneuvers in 2D Keplerian dynamics. Written in C for performance (~550k SPS on 1024 parallel envs, CPU-only). Target: portfolio piece for space industry roles (APL, Lincoln Lab, Blue Origin).

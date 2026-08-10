@@ -1,8 +1,36 @@
 # MODELS.md — Canonical Checkpoint Registry
 
-Logical-name → on-disk-path → published-result mapping for the orbital RL project. Checkpoint files are not committed to git (they're large `.pt` binaries); this file is the durable record so future work can find them and reproduce results.
+Logical-name → on-disk-path → published-result mapping for the orbital RL project. Checkpoint files are not committed to git (they're large `.pt` binaries) **except the five Phase 5e canonical weights in `models/phase5e/`**; this file is the durable record so future work can find them and reproduce results.
 
-Last updated: 2026-05-15.
+Last updated: 2026-08-10 (corrections pass — see §"2026-08-10 corrections" below).
+
+> **⚠️ 2026-08-10 corrections — read before quoting any number from this file:**
+>
+> 1. **The raw-data-backed headline is 93.7% mean, 88.0–97.5% range** (5 Phase 5e
+>    seeds × 200 eps, deterministic, LEO 300–800 km, both e ~ U(0, 0.05), phase gap
+>    ±π; `web_data/results/multiseed_escan.csv` e_max=0.05 row, reproduced bit-exact
+>    post-classifier-fix in `web_data/results/successbox_scan.csv`). The Phase 5b
+>    "96.4% multi-seed" below has **no raw eval output anywhere in the repo** (the
+>    collapsed seeds' runs were never preserved) — treat it as reported, not verified.
+> 2. **The "2 of 5 seeds collapse" bimodality belongs to the retired Phase 5b
+>    recipe.** The superseding Phase 5e `valid_init_only=1` recipe produced 5/5
+>    working seeds (88.0–97.5%). Do not pair the collapse stat with current numbers.
+> 3. **The Phase 5e seed-42 row below was wrong** (dir/epoch cross-wired). MD5-settled:
+>    seed 42 = `puffer_orbital_177765503091/model_puffer_orbital_000325.pt`
+>    (= `models/phase5e/seed42_stage4_best.pt`); `177765655537` is seedA at epoch 375.
+>    `models/README.md` was correct; the table below is corrected in place.
+> 4. **Terminal criterion context for every number here:** success = 30 km position
+>    AND 50 m/s relative velocity vs the propagated target. The 2026-08-10 success-box
+>    scan (`successbox_scan.csv`) shows the policy zero-shots **2.0%** at 5 km / 1 m/s
+>    and **0.0%** at 1 km / 0.5 m/s — the deliverable is a far-field/terminal-approach
+>    policy, not a capture policy. Its 10-action head cannot reach the ±1/±2 m/s fine
+>    burns (M3) that velocity-nulling below its 5 m/s burn quantum would need.
+> 5. **All "e_max ≥ 0.10" rows measure the same task** (LEO geometry caps realized
+>    e at ≈ 0.084; realized mean ≈ 0.028) and pre-env-fix rows at e_max ≥ 0.5 are
+>    additionally contaminated by 256-cap doomed inits. See
+>    `PHASE5_PRE_CLOSURE_MECHANISM_FINDINGS.md` for the Φ-clamp leak retraction
+>    (any MEO/GEO `fully_random` "capability" published before 2026-08-10 is an
+>    eval artifact; corrected surface in `p5_5_probe1_decompose_v2.csv`).
 
 ---
 
@@ -36,7 +64,7 @@ These were trained with `valid_init_only=1` to filter doomed inits but evaluated
 
 | Logical name | Training seed | Headline (contaminated) | Pass-only (post env-fix) | Ckpt path |
 |---|---|---|---|---|
-| **phase5e_canonical_42** | 42 | 90.2% @ e_max=0.20 (skewed dist) | V1 measured 90.5% @ e=0.70 LEO with cap=4096 | `pufferlib/experiments/puffer_orbital_177765655537/model_puffer_orbital_000325.pt` |
+| **phase5e_canonical_42** | 42 | 92.0% @ e_max=0.20 (5-seed mean is 90.2%; skewed dist — realized e ≈ 0.028) | V1 measured 90.5% @ e=0.70 LEO with cap=4096 | `pufferlib/experiments/puffer_orbital_177765503091/model_puffer_orbital_000325.pt` (= `models/phase5e/seed42_stage4_best.pt`, MD5-verified) |
 | phase5e_seed_unknown_1 | ? | — | — | `pufferlib/experiments/puffer_orbital_177765658166/model_puffer_orbital_*.pt` |
 | phase5e_seed_unknown_2 | ? | — | — | `pufferlib/experiments/puffer_orbital_177765658729/model_puffer_orbital_*.pt` |
 | phase5e_seed_unknown_3 | ? | — | — | `pufferlib/experiments/puffer_orbital_177765659007/model_puffer_orbital_*.pt` |
