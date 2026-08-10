@@ -1,0 +1,580 @@
+"""T2 relative navigation — policy-on-estimated-state harness.
+
+Converts the orbital rendezvous agent from guidance (full-state feedback) to
+GN&C by inserting a measurement model + EKF between the environment and the
+policy. Nothing in the C env is modified: the harness reads the truth
+observation, recovers both absolute states from it, synthesizes a noisy
+range/bearing measurement of the target, runs the EKF, and hands the policy a
+38-dim observation whose target-derived slots have been recomputed from the
+*estimate*. Chaser-only slots stay truth (GPS/INS assumption).
+
+Stages
+  sanity   quick truth-obs control run, anchors the harness against 97.5%
+  qsweep   process-noise / sigma_v0 sweep, selected on NEES in-bounds fraction
+  validate open-loop filter Monte Carlo: NEES / NIS / RMSE + plots
+  eval     closed loop: truth, recon (rebuild path with zero estimation error),
+           and EKF at 1x / 3x / 10x sensor noise, plus a 30x / 100x / 300x
+           degradation tail
+  all      qsweep -> validate -> eval
+
+Run from /Users/pete/space_training/pufferlib.
+"""
+
+import argparse
+import csv
+import math
+import os
+import sys
+import time
+
+import numpy as np
+import torch
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, "/Users/pete/space_training/pufferlib")
+
+from pufferlib.ocean.orbital.orbital import Orbital          # noqa: E402
+from pufferlib.models import Default, LSTMWrapper            # noqa: E402
+
+import orbital_math as om                                    # noqa: E402
+from ekf import (TargetEKF, measure, wrap_pi, NEES_LO, NEES_HI,  # noqa: E402
+                 NIS_LO, NIS_HI, SIGMA_RHO_M, SIGMA_BETA_RAD,
+                 Q_ACCEL_PSD, SIGMA_V0)
+
+ROOT = "/Users/pete/space_training"
+CKPT = f"{ROOT}/pufferlib/experiments/puffer_orbital_177765503091/model_puffer_orbital_000325.pt"
+PLOT_DIR = f"{ROOT}/plots/relnav"
+RESULTS_CSV = f"{ROOT}/web_data/results/relnav_results.csv"
+
+# Headline eval conditions (canonical ckpt's training distribution).
+ENV_KWARGS = dict(
+    num_envs=1,
+    num_debris_min=0,
+    num_debris_max=0,
+    e_max_target=0.05,
+    e_max_sat=0.05,
+    init_phase_gap_max=3.14159,
+    valid_init_only=1,
+    gave_up_action="terminate",
+    max_valid_init_attempts=4096,
+    obs_alt_scale_m=1.6e6,
+    lvlh_scale_m=6.371e6,
+    legacy_action_space=10,
+)
+
+SETTLE = 10   # filter-acquisition transient, excluded from 'settled' RMSE
+
+CAUSE_NAMES = ['none', 'success', 'collision', 'escape', 'safety_cap',
+               'stranded', 'hyperbolic', 'gave_up']
+
+
+def make_env():
+    return Orbital(**ENV_KWARGS)
+
+
+def load_policy(env):
+    policy = LSTMWrapper(env, Default(env))
+    policy.load_state_dict(torch.load(CKPT, map_location="cpu", weights_only=True))
+    policy.eval()
+    return policy
+
+
+def zero_state(policy):
+    return {'lstm_h': torch.zeros(1, policy.hidden_size),
+            'lstm_c': torch.zeros(1, policy.hidden_size)}
+
+
+def run(num_episodes, mode="truth", noise_scale=1.0, q_a=Q_ACCEL_PSD,
+        sigma_v0=SIGMA_V0, seed=42, meas_seed=1234, collect_traces=0,
+        max_episodes_traced=0, label="", verbose=True):
+    """Roll out the policy for num_episodes.
+
+    mode="truth"  policy sees the truth observation; the EKF still runs, so the
+                  same pass yields the open-loop filter statistics.
+    mode="ekf"    policy sees the reconstructed observation (target slots from
+                  the estimate). Filter errors close the loop.
+
+    Returns a dict of per-episode arrays plus optional per-step traces.
+    """
+    env = make_env()
+    policy = load_policy(env)
+    obs, _ = env.reset(seed=seed)
+    rng = np.random.default_rng(meas_seed)
+    state = zero_state(policy)
+
+    s_rho = SIGMA_RHO_M * noise_scale
+    s_beta = SIGMA_BETA_RAD * noise_scale
+    ekf = TargetEKF(sigma_rho=s_rho, sigma_beta=s_beta, q_a=q_a,
+                    sigma_v0=sigma_v0)
+
+    ep_success, ep_cause, ep_len = [], [], []
+    ep_pos_rmse, ep_vel_rmse = [], []
+    ep_term_pos, ep_term_vel = [], []
+    ep_pos_rmse_s, ep_vel_rmse_s = [], []   # steps >= SETTLE only
+    all_nees, all_nis = [], []
+    step_nees, step_nis = {}, {}     # step index -> list
+    step_perr, step_verr, step_rho = {}, {}, {}
+    v0_guess_err = []
+    traces = []
+    n_hyperbolic = 0     # steps whose *estimate* went non-elliptical
+    ep_diverged = []     # per-episode: estimate left the elliptical regime
+    hyp_this_ep = 0
+
+    fresh = True
+    k = 0
+    ep_pe, ep_ve = [], []
+    trace = None
+    episodes = 0
+    t0 = time.time()
+
+    while episodes < num_episodes:
+        o = np.array(obs[0], dtype=np.float32, copy=True)
+        sat_el, tgt_el = om.recover_states(o)
+        sat_cart = om.orbit_to_cartesian(sat_el)
+        tgt_cart = om.orbit_to_cartesian(tgt_el)
+
+        rho, beta = measure(sat_cart, tgt_cart, rng, s_rho, s_beta)
+
+        if fresh:
+            ekf.initialize(sat_cart, rho, beta)
+            v0_guess_err.append(ekf.x[2] - tgt_cart[2])
+            v0_guess_err.append(ekf.x[3] - tgt_cart[3])
+            nis = None
+            fresh = False
+            k = 0
+            ep_pe, ep_ve = [], []
+            trace = {'t': [], 'err': [], 'sig': []} if (
+                collect_traces and len(traces) < max_episodes_traced) else None
+        else:
+            nu, S = ekf.update(sat_cart, rho, beta)
+            nis = float(nu @ np.linalg.solve(S, nu)) / 2.0
+
+        err = ekf.x - np.asarray(tgt_cart)
+        pe = math.hypot(err[0], err[1])
+        ve = math.hypot(err[2], err[3])
+        nees = ekf.nees(tgt_cart)
+
+        ep_pe.append(pe)
+        ep_ve.append(ve)
+        all_nees.append(nees)
+        step_nees.setdefault(k, []).append(nees)
+        step_perr.setdefault(k, []).append(pe)
+        step_verr.setdefault(k, []).append(ve)
+        step_rho.setdefault(k, []).append(
+            math.hypot(tgt_cart[0] - sat_cart[0], tgt_cart[1] - sat_cart[1]))
+        if nis is not None:
+            all_nis.append(nis)
+            step_nis.setdefault(k, []).append(nis)
+        if trace is not None:
+            trace['t'].append(k)
+            trace['err'].append(err.copy())
+            trace['sig'].append(ekf.sigmas())
+
+        # ── policy observation ──────────────────────────────────────────────
+        if mode == "truth":
+            pol_obs = o
+        elif mode == "recon":
+            # Control: same reconstruction path, zero estimation error. Isolates
+            # the obs-rebuild from the filter, and must reproduce truth exactly.
+            pol_obs = om.build_obs(o, sat_el, tgt_el,
+                                   ENV_KWARGS['obs_alt_scale_m'],
+                                   ENV_KWARGS['lvlh_scale_m'])
+        else:
+            est_el = om.cartesian_to_elements(*ekf.x)
+            if est_el['a'] <= 0.0:
+                n_hyperbolic += 1
+                hyp_this_ep += 1
+            pol_obs = om.build_obs(o, sat_el, est_el,
+                                   ENV_KWARGS['obs_alt_scale_m'],
+                                   ENV_KWARGS['lvlh_scale_m'],
+                                   tgt_cart=tuple(ekf.x))
+
+        with torch.no_grad():
+            logits, _ = policy.forward_eval(
+                torch.from_numpy(pol_obs).float().unsqueeze(0).unsqueeze(0), state)
+            action = int(torch.argmax(logits, dim=-1).item())
+
+        obs, rewards, terms, truncs, _ = env.step(np.array([action], dtype=np.int32))
+        k += 1
+
+        if terms[0]:
+            episodes += 1
+            sim_steps, cause = env.last_episode_result(0)
+            ep_cause.append(int(cause))
+            ep_success.append(1 if cause == 1 else 0)
+            ep_len.append(int(sim_steps))
+            ep_pos_rmse.append(float(np.sqrt(np.mean(np.square(ep_pe)))))
+            ep_vel_rmse.append(float(np.sqrt(np.mean(np.square(ep_ve)))))
+            ep_term_pos.append(ep_pe[-1])
+            ep_term_vel.append(ep_ve[-1])
+            ep_diverged.append(1 if hyp_this_ep else 0)
+            hyp_this_ep = 0
+            tail_p, tail_v = ep_pe[SETTLE:], ep_ve[SETTLE:]
+            if tail_p:
+                ep_pos_rmse_s.append(float(np.sqrt(np.mean(np.square(tail_p)))))
+                ep_vel_rmse_s.append(float(np.sqrt(np.mean(np.square(tail_v)))))
+            if trace is not None:
+                trace['err'] = np.array(trace['err'])
+                trace['sig'] = np.array(trace['sig'])
+                trace['t'] = np.array(trace['t'])
+                traces.append(trace)
+            fresh = True
+            state = zero_state(policy)
+            if verbose and episodes % 25 == 0:
+                sr = float(np.mean(ep_success))
+                print(f"    [{label}] ep {episodes}/{num_episodes} "
+                      f"success={sr:.1%} "
+                      f"pos_rmse={np.mean(ep_pos_rmse):.1f} m "
+                      f"({time.time()-t0:.0f}s)", flush=True)
+        else:
+            ekf.predict(om.ACTION_TAU[action] * om.DT)
+
+    env.close()
+    return dict(
+        label=label, mode=mode, noise_scale=noise_scale, q_a=q_a,
+        success=np.array(ep_success), cause=np.array(ep_cause),
+        length=np.array(ep_len),
+        pos_rmse=np.array(ep_pos_rmse), vel_rmse=np.array(ep_vel_rmse),
+        pos_rmse_s=np.array(ep_pos_rmse_s), vel_rmse_s=np.array(ep_vel_rmse_s),
+        term_pos=np.array(ep_term_pos), term_vel=np.array(ep_term_vel),
+        nees=np.array(all_nees), nis=np.array(all_nis),
+        step_nees=step_nees, step_nis=step_nis,
+        step_perr=step_perr, step_verr=step_verr, step_rho=step_rho,
+        v0_guess_err=np.array(v0_guess_err), traces=traces,
+        n_hyperbolic=n_hyperbolic, diverged=np.array(ep_diverged),
+        wall_s=time.time() - t0,
+    )
+
+
+def in_bounds(v, lo, hi):
+    v = np.asarray(v)
+    v = v[np.isfinite(v)]
+    if v.size == 0:
+        return float('nan')
+    return float(np.mean((v >= lo) & (v <= hi)))
+
+
+def bounds_split(v, lo, hi):
+    """(in, below, above). 'below' = conservative filter, 'above' = overconfident.
+
+    Only the 'above' tail is a safety problem: it means the reported covariance
+    understates the true error."""
+    v = np.asarray(v)
+    v = v[np.isfinite(v)]
+    if v.size == 0:
+        return float('nan'), float('nan'), float('nan')
+    return (float(np.mean((v >= lo) & (v <= hi))),
+            float(np.mean(v < lo)), float(np.mean(v > hi)))
+
+
+# ── stages ───────────────────────────────────────────────────────────────────
+def stage_sanity(args):
+    print("── Stage: sanity (truth-obs control, harness anchor) ──────────")
+    r = run(args.sanity_eps, mode="truth", label="sanity", seed=args.seed)
+    n_gave = int(np.sum(r['cause'] == 7))
+    n_valid = len(r['success']) - n_gave
+    sr = r['success'].sum() / max(n_valid, 1)
+    print(f"  success {r['success'].sum()}/{n_valid} = {sr:.1%}   "
+          f"(gave_up {n_gave})")
+    print(f"  mean ep length {r['length'].mean():.0f} steps, "
+          f"wall {r['wall_s']:.0f}s")
+    print(f"  passive-filter pos RMSE {np.mean(r['pos_rmse']):.1f} m, "
+          f"vel RMSE {np.mean(r['vel_rmse']):.3f} m/s")
+    print(f"  circular-guess v0 error RMS {np.sqrt(np.mean(r['v0_guess_err']**2)):.1f} m/s")
+    print(f"  NEES in-bounds {in_bounds(r['nees'], NEES_LO, NEES_HI):.3f}  "
+          f"NIS in-bounds {in_bounds(r['nis'], NIS_LO, NIS_HI):.3f}")
+    return r
+
+
+def stage_qsweep(args):
+    """Select (q_a, sigma_v0) on NEES in-bounds fraction.
+
+    Dynamics are exact, so q_a has no model error to absorb — it exists purely
+    as a covariance floor. sigma_v0 must match the actual spread of the
+    circular-velocity init guess, which the sweep also measures directly.
+    """
+    print("── Stage: qsweep (Q / sigma_v0 selection via NEES) ────────────")
+    rows = []
+    for sv in args.sigma_v0_grid:
+        for q in args.q_grid:
+            r = run(args.qsweep_eps, mode="truth", q_a=q, sigma_v0=sv,
+                    label=f"q={q:g}", seed=args.seed, verbose=False)
+            fn = in_bounds(r['nees'], NEES_LO, NEES_HI)
+            fi = in_bounds(r['nis'], NIS_LO, NIS_HI)
+            v0rms = float(np.sqrt(np.mean(r['v0_guess_err'] ** 2)))
+            rows.append(dict(q_a=q, sigma_v0=sv, nees_ib=fn, nis_ib=fi,
+                             nees_med=float(np.nanmedian(r['nees'])),
+                             pos=float(np.mean(r['pos_rmse'])),
+                             vel=float(np.mean(r['vel_rmse'])), v0rms=v0rms))
+            _, blo, bhi = bounds_split(r['nees'], NEES_LO, NEES_HI)
+            rows[-1]['nees_below'], rows[-1]['nees_above'] = blo, bhi
+            print(f"  sigma_v0={sv:6.0f}  q_a={q:8.1e}  NEES in-bounds {fn:.3f}"
+                  f"  (below {blo:.3f} / above {bhi:.3f})"
+                  f"  median {rows[-1]['nees_med']:6.3f}   NIS in-bounds {fi:.3f}"
+                  f"   pos RMSE {rows[-1]['pos']:7.1f} m", flush=True)
+    print(f"  measured circular-guess v0 error RMS: {rows[-1]['v0rms']:.1f} m/s")
+    best = max(rows, key=lambda d: d['nees_ib'])
+    print(f"  -> selected q_a={best['q_a']:g}, sigma_v0={best['sigma_v0']:g} "
+          f"(NEES in-bounds {best['nees_ib']:.3f}, NIS {best['nis_ib']:.3f})")
+    return best['q_a'], best['sigma_v0'], rows
+
+
+def stage_validate(args, q_a):
+    print("── Stage: validate (open-loop filter Monte Carlo) ─────────────")
+    r = run(args.validate_eps, mode="truth", q_a=q_a, sigma_v0=args.sigma_v0,
+            label="validate", seed=args.seed, collect_traces=1,
+            max_episodes_traced=3)
+    fn, nlo, nhi = bounds_split(r['nees'], NEES_LO, NEES_HI)
+    fi, ilo, ihi = bounds_split(r['nis'], NIS_LO, NIS_HI)
+    settled = np.concatenate([np.asarray(r['step_nees'][k])
+                              for k in sorted(r['step_nees']) if k >= 10])
+    print(f"  episodes {len(r['success'])}, filter updates {len(r['nis'])}, "
+          f"mean sim length {r['length'].mean():.0f} steps")
+    print(f"  NEES  in-bounds {fn:.3f} (below {nlo:.3f} / above {nhi:.3f})  "
+          f"median {np.nanmedian(r['nees']):.3f}   bounds [{NEES_LO:.3f}, {NEES_HI:.3f}]")
+    print(f"  NEES  in-bounds after step 10: "
+          f"{in_bounds(settled, NEES_LO, NEES_HI):.3f}")
+    print(f"  NIS   in-bounds {fi:.3f} (below {ilo:.3f} / above {ihi:.3f})  "
+          f"median {np.nanmedian(r['nis']):.3f}   bounds [{NIS_LO:.3f}, {NIS_HI:.3f}]")
+    print(f"  pos RMSE mean {np.mean(r['pos_rmse']):.1f} m  median "
+          f"{np.median(r['pos_rmse']):.1f} m")
+    print(f"  vel RMSE mean {np.mean(r['vel_rmse']):.3f} m/s  median "
+          f"{np.median(r['vel_rmse']):.3f} m/s")
+    print(f"  settled (step >= {SETTLE}) pos RMSE {np.mean(r['pos_rmse_s']):.1f} m, "
+          f"vel RMSE {np.mean(r['vel_rmse_s']):.4f} m/s")
+    print(f"  terminal pos err mean {np.mean(r['term_pos']):.1f} m, "
+          f"vel err mean {np.mean(r['term_vel']):.3f} m/s")
+    make_plots(r)
+    return r
+
+
+def stage_eval(args, q_a):
+    print("── Stage: eval (closed loop) ──────────────────────────────────")
+    conds = [("truth", "truth", 0.0),
+             ("recon", "recon", 0.0),
+             ("ekf_1x", "ekf", 1.0),
+             ("ekf_3x", "ekf", 3.0),
+             ("ekf_10x", "ekf", 10.0)]
+    conds += [(f"ekf_{int(n)}x", "ekf", float(n)) for n in args.extra_noise]
+    out = []
+    for name, mode, ns in conds:
+        r = run(args.eval_eps, mode=mode, noise_scale=max(ns, 1.0), q_a=q_a,
+                sigma_v0=args.sigma_v0, seed=args.seed, label=name)
+        r['cond'] = name
+        r['applied_noise'] = ns
+        out.append(r)
+        n_gave = int(np.sum(r['cause'] == 7))
+        n_valid = len(r['success']) - n_gave
+        dv = float(np.mean(r['diverged'])) if r['diverged'].size else 0.0
+        causes = ", ".join(f"{CAUSE_NAMES[c]}={int(np.sum(r['cause'] == c))}"
+                           for c in range(8) if np.sum(r['cause'] == c))
+        print(f"  {name:8s} success {r['success'].sum()}/{n_valid} = "
+              f"{r['success'].sum()/max(n_valid,1):.1%}   "
+              f"pos RMSE med {np.median(r['pos_rmse']):8.1f} m "
+              f"(settled med {np.median(r['pos_rmse_s']):8.1f} m)   "
+              f"vel RMSE med {np.median(r['vel_rmse']):7.3f} m/s   "
+              f"diverged {dv:.1%}   ({r['wall_s']:.0f}s)")
+        print(f"           causes: {causes}")
+    write_csv(out)
+    plot_success(out)
+    return out
+
+
+# ── outputs ──────────────────────────────────────────────────────────────────
+def write_csv(runs):
+    os.makedirs(os.path.dirname(RESULTS_CSV), exist_ok=True)
+    with open(RESULTS_CSV, 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(['condition', 'obs_source', 'sigma_rho_m', 'sigma_beta_rad',
+                    'episodes', 'gave_up', 'successes', 'success_rate',
+                    'mean_ep_len', 'pos_rmse_mean_m', 'pos_rmse_median_m',
+                    'pos_rmse_p95_m', 'vel_rmse_mean_ms', 'vel_rmse_median_ms',
+                    'pos_rmse_settled_m', 'vel_rmse_settled_ms',
+                    'pos_rmse_settled_median_m', 'vel_rmse_settled_median_ms',
+                    'term_pos_err_mean_m', 'term_vel_err_mean_ms',
+                    'nees_in_bounds', 'nis_in_bounds', 'hyperbolic_est_steps',
+                    'frac_episodes_diverged',
+                    'cause_success', 'cause_collision', 'cause_escape',
+                    'cause_safety_cap', 'cause_stranded', 'cause_hyperbolic'])
+        for r in runs:
+            n_gave = int(np.sum(r['cause'] == 7))
+            n_valid = len(r['success']) - n_gave
+            ns = r['applied_noise']
+            src = r['mode']
+            w.writerow([
+                r['cond'], src,
+                f"{SIGMA_RHO_M * r['noise_scale']:.1f}",
+                f"{SIGMA_BETA_RAD * r['noise_scale']:.1e}",
+                len(r['success']), n_gave, int(r['success'].sum()),
+                f"{r['success'].sum()/max(n_valid,1):.4f}",
+                f"{r['length'].mean():.1f}",
+                f"{np.mean(r['pos_rmse']):.2f}", f"{np.median(r['pos_rmse']):.2f}",
+                f"{np.percentile(r['pos_rmse'], 95):.2f}",
+                f"{np.mean(r['vel_rmse']):.4f}", f"{np.median(r['vel_rmse']):.4f}",
+                f"{np.mean(r['pos_rmse_s']):.2f}", f"{np.mean(r['vel_rmse_s']):.4f}",
+                f"{np.median(r['pos_rmse_s']):.2f}", f"{np.median(r['vel_rmse_s']):.4f}",
+                f"{np.mean(r['term_pos']):.2f}", f"{np.mean(r['term_vel']):.4f}",
+                f"{in_bounds(r['nees'], NEES_LO, NEES_HI):.4f}",
+                f"{in_bounds(r['nis'], NIS_LO, NIS_HI):.4f}", r['n_hyperbolic'],
+                f"{float(np.mean(r['diverged'])) if r['diverged'].size else 0.0:.4f}",
+                *[int(np.sum(r['cause'] == c)) for c in (1, 2, 3, 4, 5, 6)],
+            ])
+    print(f"  wrote {RESULTS_CSV}")
+
+
+def _band(step_dict, max_k):
+    ks = sorted(k for k in step_dict if k <= max_k and len(step_dict[k]) >= 5)
+    med = np.array([np.nanmedian(step_dict[k]) for k in ks])
+    lo = np.array([np.nanpercentile(step_dict[k], 5) for k in ks])
+    hi = np.array([np.nanpercentile(step_dict[k], 95) for k in ks])
+    return np.array(ks), med, lo, hi
+
+
+def make_plots(r):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    os.makedirs(PLOT_DIR, exist_ok=True)
+    max_k = int(np.percentile(r['length'], 75))
+
+    # NEES vs step
+    ks, med, lo, hi = _band(r['step_nees'], max_k)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.fill_between(ks, lo, hi, alpha=0.25, color='C0', label='5-95 pct')
+    ax.plot(ks, med, color='C0', lw=1.4, label='median NEES')
+    ax.axhline(NEES_LO, ls='--', c='r', lw=1)
+    ax.axhline(NEES_HI, ls='--', c='r', lw=1,
+               label=f'95% chi2(4) bounds [{NEES_LO:.2f}, {NEES_HI:.2f}]')
+    ax.axhline(1.0, ls=':', c='k', lw=1, label='consistent = 1')
+    ax.set_yscale('log'); ax.set_xlabel('step'); ax.set_ylabel('NEES / 4')
+    ax.set_title(f"EKF NEES consistency ({len(r['success'])} episodes, "
+                 f"in-bounds {in_bounds(r['nees'], NEES_LO, NEES_HI):.1%})")
+    ax.legend(fontsize=8); fig.tight_layout()
+    fig.savefig(f"{PLOT_DIR}/nees.png", dpi=140); plt.close(fig)
+
+    # NIS vs step
+    ks, med, lo, hi = _band(r['step_nis'], max_k)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.fill_between(ks, lo, hi, alpha=0.25, color='C2', label='5-95 pct')
+    ax.plot(ks, med, color='C2', lw=1.4, label='median NIS')
+    ax.axhline(NIS_LO, ls='--', c='r', lw=1)
+    ax.axhline(NIS_HI, ls='--', c='r', lw=1,
+               label=f'95% chi2(2) bounds [{NIS_LO:.2f}, {NIS_HI:.2f}]')
+    ax.axhline(1.0, ls=':', c='k', lw=1, label='consistent = 1')
+    ax.set_yscale('log'); ax.set_xlabel('step'); ax.set_ylabel('NIS / 2')
+    ax.set_title(f"EKF NIS consistency (in-bounds "
+                 f"{in_bounds(r['nis'], NIS_LO, NIS_HI):.1%})")
+    ax.legend(fontsize=8); fig.tight_layout()
+    fig.savefig(f"{PLOT_DIR}/nis.png", dpi=140); plt.close(fig)
+
+    # RMSE vs time
+    ksp, medp, lop, hip = _band(r['step_perr'], max_k)
+    ksv, medv, lov, hiv = _band(r['step_verr'], max_k)
+    fig, axes = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
+    axes[0].fill_between(ksp, lop, hip, alpha=0.25, color='C0')
+    axes[0].plot(ksp, medp, color='C0', lw=1.4)
+    axes[0].set_yscale('log'); axes[0].set_ylabel('|pos error| (m)')
+    axes[0].set_title('Target-state estimation error vs time (median, 5-95 pct)')
+    axes[1].fill_between(ksv, lov, hiv, alpha=0.25, color='C3')
+    axes[1].plot(ksv, medv, color='C3', lw=1.4)
+    axes[1].set_yscale('log'); axes[1].set_ylabel('|vel error| (m/s)')
+    axes[1].set_xlabel('step (60 s each)')
+    ksr, medr, _, _ = _band(r['step_rho'], max_k)
+    for ax in axes:
+        tw = ax.twinx()
+        tw.plot(ksr, medr / 1e3, color='0.5', lw=1.0, ls=':')
+        tw.set_yscale('log'); tw.set_ylabel('median true range (km)', color='0.4')
+        tw.tick_params(axis='y', colors='0.4')
+    fig.tight_layout(); fig.savefig(f"{PLOT_DIR}/rmse_vs_time.png", dpi=140)
+    plt.close(fig)
+
+    # error vs +-3 sigma, representative episodes
+    names = ['x (m)', 'y (m)', 'vx (m/s)', 'vy (m/s)']
+    for i, tr in enumerate(r['traces']):
+        fig, axes = plt.subplots(4, 1, figsize=(8, 9), sharex=True)
+        for j, ax in enumerate(axes):
+            ax.plot(tr['t'], tr['err'][:, j], lw=1.0, color='C0', label='error')
+            ax.plot(tr['t'], 3 * tr['sig'][:, j], lw=1.0, ls='--', color='r',
+                    label=r'$\pm 3\sigma$')
+            ax.plot(tr['t'], -3 * tr['sig'][:, j], lw=1.0, ls='--', color='r')
+            ax.set_yscale('symlog', linthresh=(1.0 if j < 2 else 1e-3))
+            ax.set_ylabel(names[j]); ax.grid(alpha=0.25)
+            if j == 0:
+                ax.legend(fontsize=8)
+        axes[0].set_title(f'Estimation error vs $\\pm3\\sigma$ — episode {i+1}')
+        axes[-1].set_xlabel('step (60 s each)')
+        fig.tight_layout()
+        fig.savefig(f"{PLOT_DIR}/err_3sigma_ep{i+1}.png", dpi=140); plt.close(fig)
+
+    print(f"  wrote plots to {PLOT_DIR}/")
+
+
+def plot_success(runs):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    os.makedirs(PLOT_DIR, exist_ok=True)
+    labels, rates, errs = [], [], []
+    for r in runs:
+        n_gave = int(np.sum(r['cause'] == 7))
+        n = len(r['success']) - n_gave
+        p = r['success'].sum() / max(n, 1)
+        labels.append(r['cond'])
+        rates.append(100 * p)
+        errs.append(100 * math.sqrt(max(p * (1 - p), 1e-9) / max(n, 1)))
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    cols = ['0.4', '0.6'] + [f'C{i}' for i in range(len(labels) - 2)]
+    ax.bar(labels, rates, yerr=errs, capsize=4, color=cols[:len(labels)])
+    ax.tick_params(axis='x', labelrotation=20)
+    for i, v in enumerate(rates):
+        ax.text(i, v + 1.5, f"{v:.1f}%", ha='center', fontsize=10)
+    ax.set_ylabel('rendezvous success rate (%)')
+    ax.set_ylim(0, 105)
+    ax.set_title('Policy on estimated state — sensor-noise sweep')
+    fig.tight_layout(); fig.savefig(f"{PLOT_DIR}/success_vs_noise.png", dpi=140)
+    plt.close(fig)
+
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument('--stage', default='all',
+                   choices=['sanity', 'qsweep', 'validate', 'eval', 'all'])
+    p.add_argument('--seed', type=int, default=42)
+    p.add_argument('--sanity-eps', type=int, default=50)
+    p.add_argument('--qsweep-eps', type=int, default=30)
+    p.add_argument('--validate-eps', type=int, default=100)
+    p.add_argument('--eval-eps', type=int, default=200)
+    p.add_argument('--q-a', type=float, default=None,
+                   help='skip qsweep and use this process-noise PSD')
+    p.add_argument('--sigma-v0', type=float, default=SIGMA_V0)
+    p.add_argument('--q-grid', type=float, nargs='*',
+                   default=[1e-13, 1e-12, 1e-11, 1e-10, 1e-9, 1e-8])
+    p.add_argument('--sigma-v0-grid', type=float, nargs='*',
+                   default=[SIGMA_V0])
+    p.add_argument('--extra-noise', type=float, nargs='*', default=[30, 100, 300],
+                   help='degradation-curve points beyond the headline 1/3/10x')
+    args = p.parse_args()
+
+    torch.manual_seed(args.seed)
+    torch.set_num_threads(1)
+
+    if args.stage == 'sanity':
+        stage_sanity(args); return
+
+    q_a, sv0 = args.q_a, args.sigma_v0
+    if args.stage in ('qsweep', 'all') and q_a is None:
+        q_a, sv0, _ = stage_qsweep(args)
+    if q_a is None:
+        q_a = Q_ACCEL_PSD
+    args.sigma_v0 = sv0
+    if args.stage == 'qsweep':
+        return
+
+    if args.stage in ('validate', 'all'):
+        stage_validate(args, q_a)
+    if args.stage in ('eval', 'all'):
+        stage_eval(args, q_a)
+
+
+if __name__ == '__main__':
+    main()
