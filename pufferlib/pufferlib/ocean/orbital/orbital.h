@@ -34,8 +34,21 @@
 #define DEBRIS_KEEPOUT  5000.0      /* Debris keep-out radius (m)            */
 #define DEBRIS_HARD_R   1.0         /* Debris hard collision radius (m)       */
 #define EARTH_KEEPOUT   (R_EARTH + ALT_MIN)  /* ~6571 km                      */
-#define RENDEZVOUS_RADIUS   30000.0 /* 30 km — rendezvous position tolerance  */
-#define REL_VEL_TOL         50.0    /* 50 m/s — relative velocity tolerance   */
+#define RENDEZVOUS_RADIUS   30000.0 /* 30 km — rendezvous position tolerance (default; see rendezvous_radius_m kwarg) */
+#define REL_VEL_TOL         50.0    /* 50 m/s — relative velocity tolerance (default; see rel_vel_tol_ms kwarg) */
+
+/* Terminal-cause codes. Set at every episode end so success classification can
+ * key on which branch fired instead of the terminal reward's sign — the sign
+ * is corrupted by the Φ-clamp at wide altitude bands (Φ-clamp leak,
+ * PHASE5_PRE_CLOSURE_MECHANISM_FINDINGS.md). */
+#define TERM_NONE       0
+#define TERM_SUCCESS    1
+#define TERM_COLLISION  2
+#define TERM_ESCAPE     3
+#define TERM_SAFETY_CAP 4
+#define TERM_STRANDED   5
+#define TERM_HYPERBOLIC 6
+#define TERM_GAVE_UP    7
 
 /* ── Phase 4 R2: gated multi-stage potential shaping ────────────────────── */
 #define BETA_SHAPE   1.0    /* Gated Φ weight; re-enabled for R3a to restore per-step signal */
@@ -264,6 +277,15 @@ typedef struct {
      * by R_EARTH gives obs values ~13 — far past Box(-2, 2) bound. */
     double           lvlh_scale_m;
 
+    /* Runtime success-box tolerances (T1: terminal-criterion tightening).
+     * Defaults RENDEZVOUS_RADIUS / REL_VEL_TOL preserve the historical 30 km /
+     * 50 m/s box. These affect ONLY the termination check; the shaping
+     * normalizers (Φ_vel / REL_VEL_TOL, Φ_orbit tol) deliberately keep the
+     * historical constants so shaping magnitude stays comparable across
+     * success-box sweeps. */
+    double           rendezvous_radius_m;
+    double           rel_vel_tol_ms;
+
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
 
@@ -281,6 +303,9 @@ typedef struct {
     TrajectoryRecord traj_log[MAX_STEPS];
     int              log_enabled;           /* 0 = off (fast), 1 = on       */
     int              last_episode_steps;    /* step count at last terminal (for Python export) */
+    int              last_traj_records;     /* valid traj_log rows at last terminal (= steps+1
+                                             * incl. the terminal record, capped at MAX_STEPS) */
+    int              last_terminal_cause;   /* TERM_* code of the last episode's ending */
 } Orbital;
 
 
@@ -736,6 +761,7 @@ static inline int check_termination(Orbital* env) {
     if (sat->orbit.a <= 0.0) {
         env->rewards[0]   = -10.0f;
         env->terminals[0] = 1;
+        env->last_terminal_cause = TERM_HYPERBOLIC;
         R2_NHR_CLAMP();
         return 1;
     }
@@ -753,6 +779,7 @@ static inline int check_termination(Orbital* env) {
         if (d < env->bodies[i].hard_radius) {
             env->rewards[0]   = -10.0f;
             env->terminals[0] = 1;
+            env->last_terminal_cause = TERM_COLLISION;
             R2_NHR_CLAMP();
             return 1;
         }
@@ -764,15 +791,26 @@ static inline int check_termination(Orbital* env) {
     if (E_orb >= 0.0) {
         env->rewards[0]   = -10.0f;
         env->terminals[0] = 1;
+        env->last_terminal_cause = TERM_ESCAPE;
         R2_NHR_CLAMP();
         return 1;
     }
 
-    /* 3. Safety cap */
+    /* 3. Safety cap. NO Φ-clamp here — this terminal is clock-caused, not
+     * state-caused. Clamping potential to zero on a timeout pays out
+     * β·|Φ_prev|, which grows with distance-from-target and flipped the
+     * terminal reward positive at wide altitude bands (the Φ-clamp leak:
+     * do-nothing GEO timeouts scored as "successes"). State-caused terminals
+     * keep the clamp (PBRS boundary condition at absorbing states).
+     * KNOWN ISSUE for future wide-band TRAINING: the per-step shaping term
+     * β(γ^τΦ' − Φ) still pays ~β(γ−1)|Φ| per step to a frozen policy far
+     * from target; bound Φ (phi_orbit_scale_k) or use γ_shape=1 before
+     * training with a_max − a_min ≳ 10,000 km. */
     if (env->step >= MAX_STEPS) {
         env->rewards[0]   = -10.0f;
         env->terminals[0] = 1;
-        R2_NHR_CLAMP();
+        env->last_terminal_cause = TERM_SAFETY_CAP;
+        env->phi_prev     = 0.0;   /* c_reset re-derives; keep state consistent */
         return 1;
     }
 
@@ -785,10 +823,12 @@ static inline int check_termination(Orbital* env) {
     double dist_to_target = sqrt(dx*dx + dy*dy);
     double rvx = svx - tvx, rvy = svy - tvy;
     double rel_vel = sqrt(rvx*rvx + rvy*rvy);
-    int at_target = (dist_to_target < RENDEZVOUS_RADIUS) && (rel_vel < REL_VEL_TOL);
+    int at_target = (dist_to_target < env->rendezvous_radius_m) &&
+                    (rel_vel < env->rel_vel_tol_ms);
     if (sat->fuel_mass <= 0.0 && !at_target) {
         env->rewards[0]   = -10.0f;
         env->terminals[0] = 1;
+        env->last_terminal_cause = TERM_STRANDED;
         R2_NHR_CLAMP();
         return 1;
     }
@@ -804,6 +844,7 @@ static inline int check_termination(Orbital* env) {
         if (fuel_remaining > 1.0) fuel_remaining = 1.0;
         env->rewards[0]   = 10.0f * (float)(0.5 + 0.5 * fuel_remaining);
         env->terminals[0] = 1;
+        env->last_terminal_cause = TERM_SUCCESS;
         R2_NHR_CLAMP();
         return 1;
     }
@@ -876,12 +917,17 @@ static inline void write_traj_record(Orbital* env, float reward, float dv) {
 /* ── Log aggregation ─────────────────────────────────────────────────────── */
 
 static inline void add_log(Orbital* env, int success) {
-    double fuel_frac = env->sat.fuel_mass /
-                       (env->sat.dry_mass + env->sat.fuel_mass);
+    /* Fraction of the fuel BUDGET consumed, 0 (no burns) .. 1 (tank empty).
+     * The old formula (FUEL_FRAC - fuel_frac*FUEL_FRAC, with fuel_frac =
+     * fuel/total mass) had FUEL_FRAC applied twice: its range was only
+     * [0.1275, 0.15] and zero burns logged 0.1275. */
+    double initial_fuel = env->sat.dry_mass * FUEL_FRAC / (1.0 - FUEL_FRAC);
+    double budget_used  = 1.0 - env->sat.fuel_mass / initial_fuel;
+    if (budget_used < 0.0) budget_used = 0.0;
     env->log.perf           += success ? 1.0f : 0.0f;
     env->log.episode_return += env->rewards[0];
     env->log.episode_length += (float)env->step;
-    env->log.fuel_used      += (float)(FUEL_FRAC - fuel_frac * FUEL_FRAC);
+    env->log.fuel_used      += (float)budget_used;
     env->log.g_shape_abs    += (float)env->g_shape_accum;
     /* Phase 5 env-fix F4 + Phase 5.5: realized-init metrics. vec_log divides
      * sums by n automatically, so per-episode contributions yield epoch means. */
@@ -1139,9 +1185,11 @@ static inline void c_step(Orbital* env) {
      * This cleanly excludes doomed inits from eval success-rate denominators. */
     if (env->gave_up_terminate_pending) {
         env->terminals[0] = 1;
+        env->last_terminal_cause = TERM_GAVE_UP;
         write_traj_record(env, env->rewards[0], 0.0f);
         fill_observations(env);
         env->last_episode_steps = 1;
+        env->last_traj_records  = 1;
         env->last_g_shape       = 0.0;
         add_log(env, 0);
         env->gave_up_terminate_pending = 0;
@@ -1198,9 +1246,11 @@ static inline void c_step(Orbital* env) {
         env->g_shape_accum += fabs(_clamp);
         env->phi_prev       = 0.0;
         env->terminals[0]   = 1;
+        env->last_terminal_cause = TERM_HYPERBOLIC;
         write_traj_record(env, env->rewards[0], dv_applied);
         fill_observations(env);
         env->last_episode_steps = env->step;
+        env->last_traj_records  = (env->step + 1 > MAX_STEPS) ? MAX_STEPS : env->step + 1;
         env->last_g_shape       = env->g_shape_accum;
         add_log(env, 0);
         c_reset(env);
@@ -1253,8 +1303,12 @@ static inline void c_step(Orbital* env) {
      * the shaping delta and making the NHR clamp use the wrong value. */
     if (warped_terminated) {
         write_traj_record(env, env->rewards[0], dv_applied);
-        int success = (env->rewards[0] > 0.0f);
+        /* Classify on the terminal branch, not the reward sign — the Φ-clamp
+         * can push failure-terminal rewards positive at wide altitude bands
+         * (Φ-clamp leak). */
+        int success = (env->last_terminal_cause == TERM_SUCCESS);
         env->last_episode_steps = env->step;
+        env->last_traj_records  = (env->step + 1 > MAX_STEPS) ? MAX_STEPS : env->step + 1;
         env->last_g_shape       = env->g_shape_accum;
         add_log(env, success);
         c_reset(env);

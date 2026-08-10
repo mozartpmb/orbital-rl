@@ -27,7 +27,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              max_valid_init_attempts=4096, gave_up_action="terminate",
              obs_alt_scale_m=1.6e6, phi_orbit_scale_k=0.001,
              lvlh_scale_m=6.371e6, legacy_action_space=None,
-             stochastic=False):
+             stochastic=False,
+             rendezvous_radius_m=30000.0, rel_vel_tol_ms=50.0):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -60,6 +61,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         obs_alt_scale_m=obs_alt_scale_m,
         phi_orbit_scale_k=phi_orbit_scale_k,
         lvlh_scale_m=lvlh_scale_m,
+        rendezvous_radius_m=rendezvous_radius_m,
+        rel_vel_tol_ms=rel_vel_tol_ms,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -94,7 +97,11 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
     episodes_done = 0
     episode_rewards = []
     episode_lengths = []
-    successes = 0
+    successes = 0           # legacy classifier: terminal reward > 0 (Φ-clamp-leak prone)
+    physical_successes = 0  # corrected classifier: terminal branch == success
+    cause_names = ['none', 'success', 'collision', 'escape', 'safety_cap',
+                   'stranded', 'hyperbolic', 'gave_up']
+    cause_counts = {name: 0 for name in cause_names}
     step_count = 0
 
     # LSTM hidden state (dict form for LSTMWrapper.forward_eval)
@@ -124,6 +131,15 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
             episode_lengths.append(step_count)
             if rew > 0:
                 successes += 1
+            # Corrected classifier: key on the terminal branch that fired, not
+            # the reward sign — the Φ-clamp can flip failure terminals positive
+            # at wide altitude bands (Φ-clamp leak, 9th metric-vs-implementation
+            # instance). Gave-up inits are counted separately and excluded from
+            # the physical-success denominator.
+            sim_steps, cause = env.last_episode_result(0)
+            cause_counts[cause_names[cause]] += 1
+            if cause == 1:
+                physical_successes += 1
             step_count = 0
             # Reset LSTM state for new episode
             state['lstm_h'] = torch.zeros(1, policy.hidden_size)
@@ -140,6 +156,13 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
     print(f"Evaluation Summary ({num_episodes} episodes)")
     print(f"{'='*50}")
     print(f"Success rate:    {successes}/{num_episodes} ({successes/num_episodes:.1%})")
+    n_gave_up = cause_counts['gave_up']
+    n_valid = num_episodes - n_gave_up
+    phys_rate = physical_successes / n_valid if n_valid > 0 else 0.0
+    print(f"Physical success: {physical_successes}/{n_valid} ({phys_rate:.1%})"
+          f"  [terminal branch == success; {n_gave_up} gave-up inits excluded]")
+    causes_str = ", ".join(f"{k}={v}" for k, v in cause_counts.items() if v > 0)
+    print(f"Terminal causes: {causes_str}")
     print(f"Mean reward:     {np.mean(episode_rewards):.2f}")
     print(f"Mean ep length:  {np.mean(episode_lengths):.0f} steps")
 
@@ -204,6 +227,12 @@ def main():
     parser.add_argument('--stochastic', action='store_true',
                         help='Sample actions from softmax(logits) instead of argmax. Matches '
                              'PPO training-time policy. Default: greedy (argmax).')
+    parser.add_argument('--rendezvous-radius-m', type=float, default=30000.0,
+                        help='Success-box position tolerance (m). Default 30000 = historical '
+                             '30 km far-field criterion. T1 tightening: try 5000 / 1000.')
+    parser.add_argument('--rel-vel-tol-ms', type=float, default=50.0,
+                        help='Success-box relative-velocity tolerance (m/s). Default 50 = '
+                             'historical criterion. T1 tightening: try 1.0 / 0.5.')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
@@ -213,7 +242,8 @@ def main():
              args.a_min_override, args.a_max_override, args.log_validation_debug,
              args.max_valid_init_attempts, args.gave_up_action,
              args.obs_alt_scale_m, args.phi_orbit_scale_k,
-             args.lvlh_scale_m, args.legacy_action_space, args.stochastic)
+             args.lvlh_scale_m, args.legacy_action_space, args.stochastic,
+             args.rendezvous_radius_m, args.rel_vel_tol_ms)
 
 
 if __name__ == '__main__':

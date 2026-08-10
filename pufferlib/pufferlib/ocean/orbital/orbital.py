@@ -101,6 +101,11 @@ class Orbital(pufferlib.PufferEnv):
         # a Phase 5b/5e 10-head ckpt can warm-start a Discrete(16) env without surgery.
         # c_step still accepts any int in [0, 16). Default None = no coercion (full Discrete(16)).
         legacy_action_space=None,
+        # T1 terminal-criterion tightening: runtime success box. Defaults preserve the
+        # historical 30 km / 50 m/s far-field criterion. Affects only the termination
+        # check; shaping normalizers keep the historical constants.
+        rendezvous_radius_m=30000.0,
+        rel_vel_tol_ms=50.0,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -161,6 +166,8 @@ class Orbital(pufferlib.PufferEnv):
             obs_alt_scale_m=obs_alt_scale_m,
             phi_orbit_scale_k=phi_orbit_scale_k,
             lvlh_scale_m=lvlh_scale_m,
+            rendezvous_radius_m=rendezvous_radius_m,
+            rel_vel_tol_ms=rel_vel_tol_ms,
         )
 
         # Pre-allocated trajectory buffer (reused every call)
@@ -197,11 +204,15 @@ class Orbital(pufferlib.PufferEnv):
 
     def _save_trajectory(self, env_idx=0, episode_reward=0.0):
         """Copy traj_log from C, save to .npz."""
-        steps = binding.vec_get_trajectory(self.c_envs, env_idx, self._traj_buf)
-        if steps <= 0:
+        # vec_get_trajectory returns the number of valid records, which now
+        # includes the terminal record (steps+1, capped at MAX_STEPS). The old
+        # count dropped the terminal record, so the last row of every exported
+        # trajectory was the state 60 s before the episode actually ended.
+        records = binding.vec_get_trajectory(self.c_envs, env_idx, self._traj_buf)
+        if records <= 0:
             return
 
-        data = self._traj_buf[:steps]  # slice to actual episode length
+        data = self._traj_buf[:records]
         ep_id = int(self._episode_count)
         reward = episode_reward
         path = os.path.join(self.traj_log_dir, f"ep_{ep_id:07d}.npz")
@@ -220,19 +231,26 @@ class Orbital(pufferlib.PufferEnv):
         arrays['last_init_attempts'] = np.array([int(attempts)])
         arrays['last_init_gave_up']  = np.array([int(gave_up)])
 
+        # Outcome metadata: sim-step count and terminal-cause code, so
+        # downstream analysis can classify success without relying on the
+        # terminal reward's sign (Φ-clamp leak). Cause codes: 0 none,
+        # 1 success, 2 collision, 3 escape, 4 safety_cap, 5 stranded,
+        # 6 hyperbolic, 7 gave_up_init.
+        sim_steps, cause = binding.vec_get_episode_result(self.c_envs, env_idx)
+        arrays['episode_steps']  = np.array([int(sim_steps)])
+        arrays['terminal_cause'] = np.array([int(cause)])
+
         np.savez_compressed(path, **arrays)
 
-    def enable_logging(self, env_idx=None):
-        """Enable C-side trajectory logging (call before training/eval runs)."""
-        binding.env_put(
-            binding.vectorize(*[
-                binding.env_init.__self__ if False else h
-                for h in []
-            ])
-        )
-        # Simpler: just set via vec_put if available, or accept it's always on
-        # for now. In practice, log_enabled defaults to 0 and we control
-        # saving from the Python terminal check above.
+    def last_episode_result(self, env_idx=0):
+        """(sim_steps, terminal_cause) of env_idx's most recent completed episode.
+
+        Cause codes: 0 none, 1 success, 2 collision, 3 escape, 4 safety_cap,
+        5 stranded, 6 hyperbolic, 7 gave_up_init. Use cause == 1 as the success
+        classifier — the terminal reward's sign is unreliable at wide altitude
+        bands (Φ-clamp leak).
+        """
+        return binding.vec_get_episode_result(self.c_envs, env_idx)
 
     def render(self):
         binding.vec_render(self.c_envs, 0)

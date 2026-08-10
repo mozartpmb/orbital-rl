@@ -5,13 +5,16 @@
 /* Forward declarations so MY_METHODS can reference them before the function bodies. */
 static PyObject* vec_get_trajectory(PyObject* self, PyObject* args);
 static PyObject* vec_get_episode_init_info(PyObject* self, PyObject* args);
+static PyObject* vec_get_episode_result(PyObject* self, PyObject* args);
 
 /* Hook into env_binding.h method table — no trailing comma, the sentinel follows */
 #define MY_METHODS \
     {"vec_get_trajectory", (PyCFunction)vec_get_trajectory, METH_VARARGS, \
-     "Copy traj_log to numpy array: (vec_handle, env_idx, out_float32_array) -> steps"}, \
+     "Copy traj_log to numpy array: (vec_handle, env_idx, out_float32_array) -> records"}, \
     {"vec_get_episode_init_info", (PyCFunction)vec_get_episode_init_info, METH_VARARGS, \
-     "Get last-reset info: (vec_handle, env_idx) -> (attempts:int, gave_up:int)"}
+     "Get last-reset info: (vec_handle, env_idx) -> (attempts:int, gave_up:int)"}, \
+    {"vec_get_episode_result", (PyCFunction)vec_get_episode_result, METH_VARARGS, \
+     "Get last-episode outcome: (vec_handle, env_idx) -> (sim_steps:int, terminal_cause:int)"}
 
 #define Env Orbital
 #include "../env_binding.h"
@@ -88,17 +91,24 @@ static PyObject* vec_get_trajectory(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    /* Use last_episode_steps — env->step resets to 0 after terminal */
-    int steps = env->last_episode_steps;
-    if (steps <= 0 || steps > MAX_STEPS) steps = env->step;
-    if (steps > MAX_STEPS) steps = MAX_STEPS;
+    /* Use last_traj_records — the number of valid rows including the terminal
+     * record (steps+1 for normal episodes, capped at MAX_STEPS). The old code
+     * copied last_episode_steps rows, which silently dropped the terminal
+     * record from every exported trajectory. Fall back to the legacy count if
+     * the field is unset (e.g. mid-episode query). */
+    int records = env->last_traj_records;
+    if (records <= 0 || records > MAX_STEPS) {
+        records = env->last_episode_steps;
+        if (records <= 0 || records > MAX_STEPS) records = env->step;
+        if (records > MAX_STEPS) records = MAX_STEPS;
+    }
 
     float* out = (float*)PyArray_DATA(arr);
-    for (int s = 0; s < steps; s++) {
+    for (int s = 0; s < records; s++) {
         fill_traj_row(&env->traj_log[s], out + s * TRAJ_FLOATS);
     }
 
-    return PyLong_FromLong(steps);
+    return PyLong_FromLong(records);
 }
 
 /* Phase 5 env-fix F2: per-episode reset-outcome accessor. Returns the
@@ -124,6 +134,30 @@ static PyObject* vec_get_episode_init_info(PyObject* self, PyObject* args) {
     }
     Orbital* env = vec->envs[env_idx];
     return Py_BuildValue("(ii)", env->last_init_attempts, env->last_init_gave_up);
+}
+
+/* Last-episode outcome accessor: sim-step count and TERM_* cause code of the
+ * most recent completed episode. Lets eval harnesses classify success on the
+ * terminal branch that actually fired instead of the terminal reward's sign
+ * (which the Φ-clamp can corrupt at wide altitude bands). */
+static PyObject* vec_get_episode_result(PyObject* self, PyObject* args) {
+    if (PyTuple_Size(args) != 2) {
+        PyErr_SetString(PyExc_TypeError,
+            "vec_get_episode_result(vec_handle, env_idx) -> (sim_steps, terminal_cause)");
+        return NULL;
+    }
+
+    PyObject* handle_obj = PyTuple_GetItem(args, 0);
+    VecEnv* vec = (VecEnv*)PyLong_AsVoidPtr(handle_obj);
+    if (!vec) { PyErr_SetString(PyExc_ValueError, "Invalid vec handle"); return NULL; }
+
+    int env_idx = (int)PyLong_AsLong(PyTuple_GetItem(args, 1));
+    if (env_idx < 0 || env_idx >= vec->num_envs) {
+        PyErr_SetString(PyExc_ValueError, "env_idx out of range");
+        return NULL;
+    }
+    Orbital* env = vec->envs[env_idx];
+    return Py_BuildValue("(ii)", env->last_episode_steps, env->last_terminal_cause);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -154,6 +188,10 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->obs_alt_scale_m         = (double)unpack(kwargs, "obs_alt_scale_m");
     env->phi_orbit_scale_k       = (double)unpack(kwargs, "phi_orbit_scale_k");
     env->lvlh_scale_m            = (double)unpack(kwargs, "lvlh_scale_m");
+    env->rendezvous_radius_m     = (double)unpack(kwargs, "rendezvous_radius_m");
+    env->rel_vel_tol_ms          = (double)unpack(kwargs, "rel_vel_tol_ms");
+    env->last_terminal_cause     = TERM_NONE;
+    env->last_traj_records       = 0;
     return 0;
 }
 
