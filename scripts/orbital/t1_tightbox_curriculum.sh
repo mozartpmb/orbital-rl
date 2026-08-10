@@ -14,18 +14,22 @@
 # stages. Stage-1 best ckpt is picked by held-out eval at STAGE-4 conditions
 # (discipline §6.7: warm-start quality, not in-stage metric).
 #
-# Usage: t1_tightbox_curriculum.sh <arm d10|d16> <seed>
+# Usage: t1_tightbox_curriculum.sh <arm d10|d16> <seed> [radius_m] [vel_tol_ms]
+#   radius/vel default to the T1 tight box (5 km / 1 m/s); pass 30000 50 to
+#   rerun the standard recipe (e.g. revalidation under corrected dynamics).
 # macOS-compatible (bash 3.2).
 
 set -uo pipefail
 ROOT=/Users/pete/space_training
 PUFFER=$ROOT/pufferlib
 LOG=/tmp/t1_tightbox.log
-RADIUS=5000.0
-VELTOL=1.0
 
 ARM="${1:?arm required: d10|d16}"
 SEED="${2:?seed required}"
+RADIUS="${3:-5000.0}"
+VELTOL="${4:-1.0}"
+S1_BUDGET="${S1_BUDGET:-40000000}"
+S4_BUDGET="${S4_BUDGET:-50000000}"
 
 case "$ARM" in
     d10) LAS_TRAIN="--env.legacy-action-space 10"; LAS_EVAL="--legacy-action-space 10" ;;
@@ -39,7 +43,7 @@ train_stage() {
     local stage="$1" soi="$2" budget="$3" warm_ckpt="$4"
     local warm_arg=""
     [ "$warm_ckpt" != "-" ] && warm_arg="--load-model-path $warm_ckpt"
-    local tag="t1box_${ARM}_${stage}_s${SEED}"
+    local tag="t1box_${ARM}_r${RADIUS%.*}_${stage}_s${SEED}"
     echo "$(date) START $tag soi=$soi budget=$budget warm=$warm_ckpt" >> $LOG
     cd $PUFFER
     puffer train puffer_orbital --train.seed $SEED --train.total-timesteps $budget \
@@ -60,7 +64,8 @@ scan_best() {
     local dir="$1" soi="$2" eps="$3"
     local best_pct="-1"; local best_ckpt=""
     cd $PUFFER
-    local ckpts=$(ls $dir/model_puffer_orbital_*.pt 2>/dev/null | sort -t_ -k4 -n | awk 'NR==1 || NR%5==0 || NR==last{print}' last=$(ls $dir/model_puffer_orbital_*.pt 2>/dev/null | wc -l))
+    local n_ckpts=$(ls $dir/model_puffer_orbital_*.pt 2>/dev/null | wc -l | tr -d ' ')
+    local ckpts=$(ls $dir/model_puffer_orbital_*.pt 2>/dev/null | sort -t_ -k4 -n | awk -v last="$n_ckpts" 'NR==1 || NR%5==0 || NR==last{print}')
     for ckpt in $ckpts; do
         local out=$(python3 scripts/orbital/eval_checkpoint.py $ckpt --episodes $eps \
             --e-max-target 0.05 --e-max-sat 0.05 --init-phase-gap-max 3.14159 \
@@ -83,17 +88,17 @@ scan_best() {
 
 echo "$(date) ===== T1 tightbox arm=$ARM seed=$SEED box=${RADIUS}m/${VELTOL}m/s =====" >> $LOG
 
-# Stage 1.0 — fresh bootstrap (same_orbit_init=1), 40M
-S1_DIR=$(train_stage s10 1 40000000 -)
+# Stage 1.0 — fresh bootstrap (same_orbit_init=1)
+S1_DIR=$(train_stage s10 1 $S1_BUDGET -)
 # Warm-start quality: scan Stage-1 ckpts at STAGE-4 conditions (soi=0)
 read S1_BEST S1_PCT <<< "$(scan_best $S1_DIR 0 50)"
 echo "$(date) Stage1 best-for-warmstart: $S1_BEST ($S1_PCT% at stage-4 conditions)" >> $LOG
-if [ -z "$S1_BEST" ] || [ "$S1_BEST" = "" ]; then
-    echo "$(date) ABORT: no stage-1 ckpt scanned" >> $LOG; exit 1
+if [ -z "$S1_BEST" ] || [ ! -f "$S1_BEST" ]; then
+    echo "$(date) ABORT: no valid stage-1 ckpt ('$S1_BEST')" >> $LOG; exit 1
 fi
 
-# Stage 4.0 — random init (same_orbit_init=0), 50M, warm from Stage-1 best
-S4_DIR=$(train_stage s40 0 50000000 $S1_BEST)
+# Stage 4.0 — random init (same_orbit_init=0), warm from Stage-1 best
+S4_DIR=$(train_stage s40 0 $S4_BUDGET $S1_BEST)
 read S4_BEST S4_PCT <<< "$(scan_best $S4_DIR 0 100)"
 echo "$(date) Stage4 best: $S4_BEST ($S4_PCT%)" >> $LOG
 
