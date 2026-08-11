@@ -260,7 +260,8 @@ T3 env flags for every arm: `--env.shaping-mode 1 --env.shape-gamma 1.0
 | # | arm | config | result |
 |---|---|---|---|
 | S1 | Karpathy overfit-one | fixed 30° gap, e=0, same-orbit, 10M | **perf 1.000**, return ≈ 9.4 — pipeline sound (pre-red-team build; cap −10 didn't bite at this scale) |
-| L1 | full gap, circular | same-orbit init, e=0, gap ±180° (physical), a ∈ 500–800 km, 50M, seed 42 | *(running)* |
+| L1 | full gap, circular | same-orbit init, e=0, gap ±180° (physical), a ∈ 500–800 km, 50M fresh, seed 42 | rolling 1.000; **held-out greedy 200/200 (100.0%)**, seed 123, causes: success=200. Ckpt `puffer_orbital_178642016215/model_..._000382.pt`. First RL success under corrected dynamics — full gap distribution, zero failures. |
+| L2 | **headline** | e≤0.05 both (independent ω), ±180°, LEO 300–800, 50M warm from L1 | *(running)* |
 
 ## 7. Final results
 
