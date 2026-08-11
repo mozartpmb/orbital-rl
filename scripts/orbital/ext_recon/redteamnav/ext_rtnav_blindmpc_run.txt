@@ -1,0 +1,44 @@
+/Users/pete/space_training/scripts/orbital/ext_recon/ext_bo_filter.py:356: RuntimeWarning: invalid value encountered in scalar divide
+  (dx * dvy - dy * dvx) / rho2,
+/Users/pete/space_training/scripts/orbital/ext_recon/ext_bo_filter.py:357: RuntimeWarning: invalid value encountered in scalar divide
+  (dx * dvx + dy * dvy) / rho2,
+
+=== G1_leo_10km_drift :: 278 obs @ 60s, 4.62 h ===
+    separation rho: 10.2-66.6 km, mean rho/r = 0.0057
+    range prior from annulus: 2 interval(s), 0.1-4054.7 km  (span 40547x)
+    CRLB sigma_LOS  bearings-only    222.87 m   range+bearing     5.39 m   (ratio     41.4x)
+    FIM cond        bearings-only 4.587e+10   range+bearing 2.976e+09
+  BO-MPC   posRMSE     89842.9 m | velRMSE 101.9137 m/s | relRng 1.513e+00 | NEES med 139222.945 in 0.04 | conv   0.0% @     nan min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-BLS-MPC posRMSE       994.5 m | velRMSE   1.1251 m/s | relRng 1.383e-02 | NEES med    0.556 in 0.95 | conv 100.0% @   166.5 min | acq  114.0 min (fail 0.00) | div 0.00
+
+=== G2_leo_300km :: 186 obs @ 60s, 3.08 h ===
+    separation rho: 301.5-1435.0 km, mean rho/r = 0.1267
+    range prior from annulus: 2 interval(s), 0.1-3865.2 km  (span 38652x)
+    CRLB sigma_LOS  bearings-only    711.41 m   range+bearing     9.29 m   (ratio     76.6x)
+    FIM cond        bearings-only 8.149e+08   range+bearing 2.800e+09
+  BO-MPC   posRMSE    597133.2 m | velRMSE 679.2883 m/s | relRng 4.759e-01 | NEES med 36401615.123 in 0.00 | conv   0.0% @     nan min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-BLS-MPC posRMSE      1066.7 m | velRMSE   1.1821 m/s | relRng 6.549e-04 | NEES med    0.777 in 0.99 | conv 100.0% @    71.0 min | acq   71.0 min (fail 0.00) | div 0.00
+
+=== G3_leo_180deg :: 140 obs @ 60s, 2.32 h ===
+    separation rho: 13554.7-13572.6 km, mean rho/r = 2.0035
+    range prior from annulus: 2 interval(s), 0.1-14108.0 km  (span 141080x)
+    CRLB sigma_LOS  bearings-only    899.47 m   range+bearing    10.90 m   (ratio     82.5x)
+    FIM cond        bearings-only 1.174e+09   range+bearing 1.307e+11
+Traceback (most recent call last):
+  File "/Users/pete/space_training/scripts/orbital/ext_recon/ext_bo_filter.py", line 1209, in <module>
+    main()
+  File "/Users/pete/space_training/scripts/orbital/ext_recon/ext_bo_filter.py", line 1150, in main
+    r = run_filter(kind, times, sats, tgts, rng, SIGMA_BETA,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pete/space_training/scripts/orbital/ext_recon/ext_bo_filter.py", line 1051, in run_filter
+    f.predict(dt, sats[k - 1], sats[k])
+  File "/Users/pete/space_training/scripts/orbital/ext_recon/ext_bo_filter.py", line 436, in predict
+    self._trans(ym, sat_from, sat_to, dt)) / (2.0 * h[j])
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pete/space_training/scripts/orbital/ext_recon/ext_bo_filter.py", line 422, in _trans
+    return msc_encode(sat_to, xt2)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pete/space_training/scripts/orbital/ext_recon/ext_bo_filter.py", line 358, in msc_encode
+    math.log(rho)])
+    ^^^^^^^^^^^^^
+ValueError: math domain error

@@ -1,0 +1,13 @@
+test,variant,n,frac_double_mismatch,frac_float32_mismatch,max_abs_dPhi,verdict
+A2_same_weights,V0_spec_hypot_cartesian_evec,20000,0.87705,0.0,6.8833827526759706e-15,f32-exact
+A2_same_weights,V1_sqrt_cartesian_evec,20000,0.87715,0.0,6.8833827526759706e-15,f32-exact
+A2_same_weights,V2_hypot_element_evec,200000,0.04992,0.0,2.220446049250313e-16,f32-exact
+A2_same_weights,V3_sqrt_element_evec_EXACT,200000,0.0,0.0,0.0,BIT-EXACT
+A2_reward_f32,V0_spec_hypot_cartesian_evec,20000,,0.0001,1.12121248815439e-07,REWARD DIFFERS
+A2_reward_f32,V1_sqrt_cartesian_evec,20000,,0.0001,1.12121248815439e-07,REWARD DIFFERS
+A2_reward_f32,V2_hypot_element_evec,60000,,0.0,0.0,reward f32-exact
+A2_reward_f32,V3_sqrt_element_evec_EXACT,60000,,0.0,0.0,reward f32-exact
+weight_rule,W_m=0.817000@dv_ref=700,0,,,0.0004081632653061413,per_ms=1.167142857e-03 rel_err_vs_mode1=4.082e-04 Phi_range=1.8170 terminal_ratio=5.504
+weight_rule,W_m=0.816667@dv_ref=700,0,,,0.0,per_ms=1.166666667e-03 rel_err_vs_mode1=0.000e+00 Phi_range=1.8167 terminal_ratio=5.505
+weight_rule,W_m=1.050000@dv_ref=900,0,,,1.8586322956894363e-16,per_ms=1.166666667e-03 rel_err_vs_mode1=1.859e-16 Phi_range=2.0500 terminal_ratio=4.878
+weight_rule,W_m=1.050000@dv_ref=900,0,,,1.8586322956894363e-16,per_ms=1.166666667e-03 rel_err_vs_mode1=1.859e-16 Phi_range=2.0500 terminal_ratio=4.878

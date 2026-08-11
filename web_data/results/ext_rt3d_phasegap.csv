@@ -1,0 +1,9 @@
+di_max_deg,patched_to_varpi,realized_gap_err_p50_deg,realized_gap_err_max_deg,invariant_gauge_err_p50_deg,invariant_gauge_err_p90_deg,invariant_gauge_err_max_deg,ks_vs_uniform,verdict
+0.0,True,0.0,0.0,0.0,0.0,0.0,0.00795,knob EXACT in lambda
+0.0,False,180.0,180.0,180.0,180.0,180.0,0.00325,KNOB INERT/BROKEN in lambda
+0.25,True,0.0,0.0,0.0,0.0,0.0,0.00795,knob EXACT in lambda
+0.25,False,90.41820641,179.99356531,90.418206,161.848765,179.993565,0.00834,KNOB INERT/BROKEN in lambda
+1.0,True,0.0,0.0,0.0,0.0,0.0,0.00795,knob EXACT in lambda
+1.0,False,90.41820641,179.99356531,90.418206,161.848765,179.993565,0.00834,KNOB INERT/BROKEN in lambda
+2.0,True,0.0,0.0,0.0,0.0,0.0,0.00795,knob EXACT in lambda
+2.0,False,90.41820641,179.99356531,90.418206,161.848765,179.993565,0.00834,KNOB INERT/BROKEN in lambda

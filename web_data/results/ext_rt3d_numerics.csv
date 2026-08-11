@@ -1,0 +1,15 @@
+test,n,value,units,verdict
+F1_inplane_burn_preserves_hxy_zero,200000,0,nonzero hx/hy events,CLOSURE HOLDS (bitwise)
+F2_one_normal_burn_inc,1,0.000131769693040612,rad,0.007550 deg; fast path (inc==0.0) OFF PERMANENTLY after one action-2x
+F2_one_normal_burn_inc,1,0.0013176961753832738,rad,0.075498 deg; fast path (inc==0.0) OFF PERMANENTLY after one action-2x
+F2_one_normal_burn_inc,1,0.0032942304287506712,rad,0.188746 deg; fast path (inc==0.0) OFF PERMANENTLY after one action-2x
+H1_inc_acos_vs_atan2,3000,1e-09,rad,"i=1e-09: acos err 1.00e-09, atan2 err 4.14e-25, ratio 2417851639229258.5x"
+H1_inc_acos_vs_atan2,3000,1e-08,rad,"i=1e-08: acos err 1.00e-08, atan2 err 4.96e-24, ratio 2014876366024382.0x"
+H1_inc_acos_vs_atan2,3000,4.444930334196474e-11,rad,"i=1e-06: acos err 4.44e-11, atan2 err 4.24e-22, ratio 104952950144.5x"
+H1_inc_acos_vs_atan2,3000,2.622068821832649e-13,rad,"i=1e-04: acos err 2.62e-13, atan2 err 4.07e-20, ratio 6449151.0x"
+H1_inc_acos_vs_atan2,3000,1.2543785454788292e-14,rad,"i=1e-02: acos err 1.25e-14, atan2 err 5.20e-18, ratio 2410.3x"
+H1_inc_acos_vs_atan2,3000,3.3306690738754696e-16,rad,"i=5e-01: acos err 3.33e-16, atan2 err 2.22e-16, ratio 1.5x"
+H2_roundtrip_400burn,20000,1.7279736059978114e-07,m,"X0/X1 circular equatorial: per-burn p99 8.640e-09 m, 400-burn random walk 1.728e-07 m = 3.46e-11 of the 5 km box"
+H2_roundtrip_400burn,20000,1.8626542441557703e-07,m,"X3 LEO: per-burn p99 9.313e-09 m, 400-burn random walk 1.863e-07 m = 3.73e-11 of the 5 km box"
+H2_roundtrip_400burn,20000,1.808647709969754e-07,m,"X4 wide: per-burn p99 9.043e-09 m, 400-burn random walk 1.809e-07 m = 3.62e-11 of the 5 km box"
+H2_roundtrip_400burn,20000,1.945505140320995e-07,m,"X5 MEO: per-burn p99 9.728e-09 m, 400-burn random walk 1.946e-07 m = 3.89e-11 of the 5 km box"
