@@ -62,10 +62,157 @@ ENV_KWARGS = dict(
     legacy_action_space=10,
 )
 
+# ── T3 corrected-dynamics config (--t3) ──────────────────────────────────────
+# The T3 recovery checkpoint trains on phase_obs_mode=1 (mean-longitude phase
+# channels + episode clock + apsidal alignment in obs[13-16]) with a Discrete(16)
+# head, so legacy_action_space is deliberately absent. Everything the filter
+# touches — the physical relative state — is unchanged; only the *encoding* of
+# the target into the observation moves.
+T3_CKPT = (f"{ROOT}/pufferlib/experiments/puffer_orbital_178642097817/"
+           f"model_puffer_orbital_000382.pt")
+T3_PLOT_DIR = f"{ROOT}/plots/relnav_t3"
+T3_RESULTS_CSV = f"{ROOT}/web_data/results/t3_relnav_corrected.csv"
+T3_ENV_KWARGS = dict(
+    num_envs=1,
+    num_debris_min=0,
+    num_debris_max=0,
+    e_max_target=0.05,
+    e_max_sat=0.05,
+    init_phase_gap_max=3.14159,
+    valid_init_only=1,
+    gave_up_action="terminate",
+    max_valid_init_attempts=4096,
+    obs_alt_scale_m=1.6e6,
+    lvlh_scale_m=6.371e6,
+    shaping_mode=1,
+    shape_gamma=1.0,
+    phase_gap_mode=1,
+    phase_obs_mode=1,
+    episode_cap_steps=3000,
+    cap_terminal_reward=0.0,
+)
+
+# 0 = legacy true-anomaly obs[13-16]; 1 = T3 mean-longitude layout. Set by main().
+PHASE_OBS_MODE = 0
+
+# Sensor sampling period (s). 0 = legacy: exactly one measurement per env.step(),
+# i.e. the navigation rate is welded to the guidance rate. That is harmless while
+# decisions are <= 5 min apart (the T2 policy warped 5 min, 97% of the time) but
+# becomes a sensor blackout under T3, whose policy spends 51% of its decisions on
+# the 1-hour warp. Set to e.g. 60 to run the filter at a fixed sensor cadence
+# through coasts and warps while the policy still acts only at decision epochs.
+SENSOR_DT = 0.0
+
+# Appended to condition names in the results CSV (keeps rows from two cadences
+# distinguishable without touching the CSV schema).
+COND_SUFFIX = ''
+
 SETTLE = 10   # filter-acquisition transient, excluded from 'settled' RMSE
 
 CAUSE_NAMES = ['none', 'success', 'collision', 'escape', 'safety_cap',
                'stranded', 'hyperbolic', 'gave_up']
+
+
+# ── observation decode / re-encode, phase_obs_mode aware ─────────────────────
+def _mean_anomaly(theta, e):
+    """theta -> M using the *corrected* inverse, i.e. orbital.h at HEAD.
+
+    orbital_math.true_to_mean deliberately mirrors the pre-fix (inverted)
+    C routine and is inert there because M is never read. Under
+    phase_obs_mode=1, M *is* read — lambda = M + omega is the phase channel —
+    so the corrected map (orbital_math.mean_from_true) is the one that matches
+    the environment. e is clamped below 1 so a hyperbolic estimate degrades
+    instead of producing NaN.
+    """
+    m = om.mean_from_true(theta, min(max(e, 0.0), 1.0 - 1e-12))
+    return m % (2.0 * math.pi)
+
+
+def recover_states_t3(o, obs_alt_scale_m=om.OBS_ALT_SCALE_M):
+    """Invert fill_observations() under phase_obs_mode=1.
+
+    Chaser is unchanged (a,e from [0,1], theta from [2,3], omega from [9,10]).
+    The target's anomaly is no longer in the observation directly: obs[13,14]
+    carry sin/cos of the mean-longitude gap dlambda = lambda_s - lambda_t, so
+        lambda_t = lambda_s - dlambda,  M_t = lambda_t - omega_t,
+    and theta_t follows from Kepler. obs[15] is the episode clock and obs[16]
+    is cos(omega_s - omega_t) — neither adds target information beyond
+    obs[11,12], so the recovery is exact up to float32 obs quantization.
+    """
+    sat = {
+        'a': float(o[0]) * obs_alt_scale_m + om.R_EARTH,
+        'e': float(o[1]),
+        'theta': math.atan2(float(o[2]), float(o[3])),
+        'omega': math.atan2(float(o[9]), float(o[10])),
+    }
+    sat['M'] = _mean_anomaly(sat['theta'], sat['e'])
+    tgt = {
+        'a': float(o[7]) * obs_alt_scale_m + om.R_EARTH,
+        'e': float(o[8]),
+        'omega': math.atan2(float(o[11]), float(o[12])),
+    }
+    dlam = math.atan2(float(o[13]), float(o[14]))       # lambda_s - lambda_t
+    lam_s = sat['M'] + sat['omega']
+    tgt['M'] = ((lam_s - dlam) - tgt['omega']) % (2.0 * math.pi)
+    tgt['theta'] = om.eccentric_to_true(om.solve_kepler(tgt['M'], tgt['e']),
+                                        tgt['e'])
+    return sat, tgt
+
+
+def build_obs_t3(o, sat_el, tgt_el, obs_alt_scale_m, lvlh_scale_m,
+                 tgt_cart=None):
+    """Re-emit the observation with every target-derived slot from tgt_el.
+
+    om.build_obs already handles the slots whose meaning is mode-independent
+    ([7] a_t, [8] e_t, [11,12] sin/cos omega_t, [33-37] LVLH relative state);
+    only obs[13-16] are re-encoded here:
+        [13,14] sin/cos(lambda_s - lambda_t), lambda = M + omega
+        [15]    episode clock — chaser-side, NOT target-derived: restored to
+                truth (overwriting it would inject a fake mission deadline)
+        [16]    cos(omega_s - omega_t)
+    """
+    out = om.build_obs(o, sat_el, tgt_el, obs_alt_scale_m, lvlh_scale_m,
+                       tgt_cart=tgt_cart)
+    lam_s = _mean_anomaly(sat_el['theta'], sat_el['e']) + sat_el['omega']
+    lam_t = _mean_anomaly(tgt_el['theta'], tgt_el['e']) + tgt_el['omega']
+    dlam = lam_s - lam_t
+    out[13] = math.sin(dlam)
+    out[14] = math.cos(dlam)
+    out[15] = o[15]
+    out[16] = math.cos(sat_el['omega'] - tgt_el['omega'])
+    return np.nan_to_num(out, nan=0.0, posinf=1.0, neginf=-1.0)
+
+
+def recover_states(o):
+    if PHASE_OBS_MODE == 1:
+        return recover_states_t3(o, ENV_KWARGS['obs_alt_scale_m'])
+    return om.recover_states(o)
+
+
+# Target-derived observation slots, grouped so a closed-loop loss can be
+# attributed to the entry that carries it. Mode 1 moves cos(omega_s - omega_t)
+# into [16] and hands [15] to the episode clock, which is chaser-side and never
+# injected.
+INJECT_GROUPS = {
+    0: {'a_e': (7, 8), 'omega': (11, 12), 'lam': (13, 14), 'anom': (15, 16),
+        'lvlh': (33, 34, 35, 36, 37)},
+    1: {'a_e': (7, 8), 'omega': (11, 12, 16), 'lam': (13, 14),
+        'lvlh': (33, 34, 35, 36, 37)},
+}
+# None = inject every target-derived slot (the only behaviour before this flag).
+INJECT = None
+
+
+def build_obs(o, sat_el, tgt_el, tgt_cart=None):
+    fn = build_obs_t3 if PHASE_OBS_MODE == 1 else om.build_obs
+    out = fn(o, sat_el, tgt_el, ENV_KWARGS['obs_alt_scale_m'],
+             ENV_KWARGS['lvlh_scale_m'], tgt_cart=tgt_cart)
+    if INJECT is not None:
+        for g, slots in INJECT_GROUPS[PHASE_OBS_MODE].items():
+            if g not in INJECT:
+                for i in slots:
+                    out[i] = o[i]        # this group stays truth
+    return out
 
 
 def make_env():
@@ -129,7 +276,7 @@ def run(num_episodes, mode="truth", noise_scale=1.0, q_a=Q_ACCEL_PSD,
 
     while episodes < num_episodes:
         o = np.array(obs[0], dtype=np.float32, copy=True)
-        sat_el, tgt_el = om.recover_states(o)
+        sat_el, tgt_el = recover_states(o)
         sat_cart = om.orbit_to_cartesian(sat_el)
         tgt_cart = om.orbit_to_cartesian(tgt_el)
 
@@ -176,18 +323,13 @@ def run(num_episodes, mode="truth", noise_scale=1.0, q_a=Q_ACCEL_PSD,
         elif mode == "recon":
             # Control: same reconstruction path, zero estimation error. Isolates
             # the obs-rebuild from the filter, and must reproduce truth exactly.
-            pol_obs = om.build_obs(o, sat_el, tgt_el,
-                                   ENV_KWARGS['obs_alt_scale_m'],
-                                   ENV_KWARGS['lvlh_scale_m'])
+            pol_obs = build_obs(o, sat_el, tgt_el)
         else:
             est_el = om.cartesian_to_elements(*ekf.x)
             if est_el['a'] <= 0.0:
                 n_hyperbolic += 1
                 hyp_this_ep += 1
-            pol_obs = om.build_obs(o, sat_el, est_el,
-                                   ENV_KWARGS['obs_alt_scale_m'],
-                                   ENV_KWARGS['lvlh_scale_m'],
-                                   tgt_cart=tuple(ekf.x))
+            pol_obs = build_obs(o, sat_el, est_el, tgt_cart=tuple(ekf.x))
 
         with torch.no_grad():
             logits, _ = policy.forward_eval(
@@ -227,7 +369,27 @@ def run(num_episodes, mode="truth", noise_scale=1.0, q_a=Q_ACCEL_PSD,
                       f"pos_rmse={np.mean(ep_pos_rmse):.1f} m "
                       f"({time.time()-t0:.0f}s)", flush=True)
         else:
-            ekf.predict(om.ACTION_TAU[action] * om.DT)
+            dt_total = om.ACTION_TAU[action] * om.DT
+            if SENSOR_DT > 0.0 and dt_total > SENSOR_DT + 1e-9:
+                # Guidance decided once; navigation keeps running. A warp applies
+                # no impulse, so both truth states simply coast, and
+                # propagate_cartesian is the same exact Kepler map the env
+                # sub-steps with — no env access and no dynamics mismatch.
+                n_sub = max(1, int(round(dt_total / SENSOR_DT)))
+                h = dt_total / n_sub
+                s_c, t_c = sat_cart, tgt_cart
+                for i in range(n_sub):
+                    s_c = om.propagate_cartesian(s_c, h)
+                    t_c = om.propagate_cartesian(t_c, h)
+                    ekf.predict(h)
+                    if i < n_sub - 1:
+                        # The last sub-interval's update is the next loop
+                        # iteration's, taken against the env's own truth obs, so
+                        # the NEES/NIS tallies stay decision-epoch statistics.
+                        r_i, b_i = measure(s_c, t_c, rng, s_rho, s_beta)
+                        ekf.update(s_c, r_i, b_i)
+            else:
+                ekf.predict(dt_total)
 
     env.close()
     return dict(
@@ -360,7 +522,7 @@ def stage_eval(args, q_a):
     for name, mode, ns in conds:
         r = run(args.eval_eps, mode=mode, noise_scale=max(ns, 1.0), q_a=q_a,
                 sigma_v0=args.sigma_v0, seed=args.seed, label=name)
-        r['cond'] = name
+        r['cond'] = name + COND_SUFFIX
         r['applied_noise'] = ns
         out.append(r)
         n_gave = int(np.sum(r['cause'] == 7))
@@ -553,7 +715,51 @@ def main():
                    default=[SIGMA_V0])
     p.add_argument('--extra-noise', type=float, nargs='*', default=[30, 100, 300],
                    help='degradation-curve points beyond the headline 1/3/10x')
+    p.add_argument('--ckpt', default=None,
+                   help='policy checkpoint (default: the T2 legacy 10-action ckpt, '
+                        'or the T3 headline ckpt under --t3)')
+    p.add_argument('--t3', action='store_true',
+                   help='corrected-dynamics T3 config: shaping_mode=1, '
+                        'shape_gamma=1, phase_gap_mode=1, phase_obs_mode=1, '
+                        'cap 3000 @ reward 0, Discrete(16) head, and the '
+                        'mean-longitude obs[13-16] injection layout')
+    p.add_argument('--results-csv', default=None)
+    p.add_argument('--plot-dir', default=None)
+    p.add_argument('--sensor-dt', type=float, default=0.0,
+                   help='sensor sampling period in s; 0 (default) welds the '
+                        'measurement cadence to the decision cadence')
+    p.add_argument('--cond-suffix', default='',
+                   help='appended to condition names in the results CSV')
+    p.add_argument('--inject', default=None,
+                   help="comma-separated subset of target-obs groups to feed "
+                        "from the estimate (a_e, omega, lam, anom, lvlh); the "
+                        "rest stay truth. Default: all of them.")
     args = p.parse_args()
+
+    global CKPT, ENV_KWARGS, PHASE_OBS_MODE, RESULTS_CSV, PLOT_DIR, SENSOR_DT
+    global COND_SUFFIX, INJECT
+    SENSOR_DT = args.sensor_dt
+    COND_SUFFIX = args.cond_suffix
+    if args.inject:
+        INJECT = set(s.strip() for s in args.inject.split(',') if s.strip())
+    if args.t3:
+        ENV_KWARGS = T3_ENV_KWARGS
+        PHASE_OBS_MODE = 1
+        CKPT = T3_CKPT
+        RESULTS_CSV = T3_RESULTS_CSV
+        PLOT_DIR = T3_PLOT_DIR
+    if args.ckpt:
+        CKPT = args.ckpt
+    if args.results_csv:
+        RESULTS_CSV = args.results_csv
+    if args.plot_dir:
+        PLOT_DIR = args.plot_dir
+    print(f"  ckpt      {CKPT}")
+    print(f"  config    {'T3 corrected-dynamics' if args.t3 else 'legacy T2'} "
+          f"(phase_obs_mode={PHASE_OBS_MODE})")
+    print(f"  sensor    {'1 measurement per decision (legacy)' if SENSOR_DT <= 0 else f'{SENSOR_DT:g} s cadence'}")
+    if INJECT is not None:
+        print(f"  inject    {sorted(INJECT)} (all other target slots stay truth)")
 
     torch.manual_seed(args.seed)
     torch.set_num_threads(1)

@@ -38,6 +38,11 @@ last_ckpt() { ls "$1"/model_puffer_orbital_*.pt 2>/dev/null | sort -t_ -k4 -n | 
 echo "$(date) ===== t3_ladder seed=$SEED =====" >> $LOG
 
 # ── L1 ──────────────────────────────────────────────────────────────────────
+# NOTE: get_latest_dir() is only correct when ONE ladder runs at a time.
+# Batch-1 (seeds 7/1337, concurrent) raced on it — dirs disambiguated post hoc
+# by launch-time stamps. Run ladders SEQUENTIALLY; the guard below aborts if
+# the "new" dir predates this ladder's start.
+DIR_BEFORE=$(get_latest_dir)
 cd $PUFFER
 puffer train puffer_orbital --train.seed $SEED --train.total-timesteps 50000000 \
     --train.device cpu $T3_ENV \
@@ -46,6 +51,10 @@ puffer train puffer_orbital --train.seed $SEED --train.total-timesteps 50000000 
     --train.checkpoint-interval 20 --tag t3_L1_s${SEED} \
     > /tmp/t3_L1_s${SEED}_train.log 2>&1
 L1_DIR=$(get_latest_dir)
+if [ "$L1_DIR" = "$DIR_BEFORE" ]; then
+    echo "$(date) ABORT seed=$SEED: no new experiment dir after L1 training" >> $LOG
+    echo "RESULT seed=$SEED L1=NO_NEW_DIR"; exit 1
+fi
 L1_CKPT=$(last_ckpt "$L1_DIR")
 L1_RES=$(heval "$L1_CKPT" 1 0.0 6.871e6 200)
 echo "$(date) L1 seed=$SEED dir=$(basename $L1_DIR) ckpt=$(basename $L1_CKPT) heldout=$L1_RES" >> $LOG
@@ -57,6 +66,7 @@ if [ -z "$L1_CKPT" ] || [ ! -f "$L1_CKPT" ]; then
 fi
 
 # ── L2 (warm from L1) ───────────────────────────────────────────────────────
+DIR_BEFORE=$L1_DIR
 puffer train puffer_orbital --train.seed $SEED --train.total-timesteps 50000000 \
     --train.device cpu $T3_ENV \
     --env.same-orbit-init 0 --env.e-max-target 0.05 --env.e-max-sat 0.05 \
@@ -65,6 +75,10 @@ puffer train puffer_orbital --train.seed $SEED --train.total-timesteps 50000000 
     --load-model-path "$L1_CKPT" \
     > /tmp/t3_L2_s${SEED}_train.log 2>&1
 L2_DIR=$(get_latest_dir)
+if [ "$L2_DIR" = "$DIR_BEFORE" ]; then
+    echo "$(date) ABORT seed=$SEED: no new experiment dir after L2 training" >> $LOG
+    echo "RESULT seed=$SEED L1=$L1_RES L2=NO_NEW_DIR"; exit 1
+fi
 L2_CKPT=$(last_ckpt "$L2_DIR")
 L2_RES=$(heval "$L2_CKPT" 0 0.05 none 200)
 echo "$(date) L2 seed=$SEED dir=$(basename $L2_DIR) ckpt=$(basename $L2_CKPT) heldout=$L2_RES" >> $LOG

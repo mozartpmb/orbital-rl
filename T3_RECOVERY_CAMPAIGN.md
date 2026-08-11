@@ -279,6 +279,26 @@ policy/two-impulse **time-matched median 1.14×** — the pre-fix impossibility 
 legitimately (multi-impulse drift phasing classically undercuts two-impulse plans under
 a deadline).
 
+**Multi-seed batch 1 (seeds 7 and 1337 — the historical 0%-flatline seed):**
+all four runs at **200/200 (100.0%)** held-out — both L1 dirs (`…176815`, `…177125`) and
+both L2 dirs (`…258109`, `…259027`) evaluated independently. *Attribution caveat,
+recorded honestly:* the two ladders ran concurrently and raced on latest-dir capture, so
+each L2's warm-start source is ambiguous between the two (both-perfect) L1 checkpoints;
+launch-order timestamp analysis gives L1 s7=`176815` / s1337=`177125`, L2 s7=`258109` /
+s1337=`259027` (dir IDs are launch-time centisecond stamps; 3.1 s and 9.2 s ID gaps match
+the observed launch offsets). Every run's own `--train.seed` is unambiguous from its
+command line. Ladder script hardened (sequential + no-new-dir guard); batch 2
+(20260423, 31415) runs sequentially.
+
+**Relative-navigation re-validation (T3 port of the T2 EKF harness, 200 eps):**
+**truth 100.0% = EKF-nominal 100.0%** at nav cadence 60 s (also 100.0% at 300 s); NEES
+0.944 / NIS 0.951 in-bounds, settled position RMSE 7.5 m (pre-fix T2: 0.897 / ~570 m).
+New finding worth reporting: the corrected policy's 1-hour warps mean a harness that
+ties sensor updates to decision epochs starves the filter (1-hr blackouts → divergence
+→ 50.5% closed-loop); decoupling nav rate from guidance rate (`--sensor-dt 60`) is both
+the realistic model and the fix. Degraded-sensor curve at nav-60: 3×→100.0%, 10×→99.5%,
+30×→96.0%, 100×→81.5%, 300×→61.0%. `t3_relnav_corrected.csv`, plots in `plots/relnav_t3*/`.
+
 ## 7. Final results
 
 *(pending)*
