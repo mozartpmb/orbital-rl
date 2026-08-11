@@ -31,6 +31,16 @@ Last updated: 2026-08-10 (corrections pass — see §"2026-08-10 corrections" be
 >    `PHASE5_PRE_CLOSURE_MECHANISM_FINDINGS.md` for the Φ-clamp leak retraction
 >    (any MEO/GEO `fully_random` "capability" published before 2026-08-10 is an
 >    eval artifact; corrected surface in `p5_5_probe1_decompose_v2.csv`).
+> 6. **DYNAMICS FIX (f55d9cb, later on 2026-08-10) — supersedes everything above
+>    for forward claims.** `true_to_mean()` was inverted: every burn teleported the
+>    chaser along-track by ≈ 2e·sin(θ) (median 24.5° of free phase per episode).
+>    ALL checkpoints in this file were trained on those dynamics and every number
+>    in this file describes them. Under corrected dynamics the canonical seed-42
+>    ckpt scores **13.0%**; the best corrected-dynamics checkpoint so far is the
+>    interim re-adapt `puffer_orbital_178640242476/model_puffer_orbital_000025.pt`
+>    at **33.5%** greedy. Fresh bootstrap fails at 2× budget (shaping fights
+>    drift-orbit phasing — see `T1_DYNAMICS_FIX_FINDINGS.md` §4). Do not quote any
+>    success/Δv figure from this registry without stating "pre-fix dynamics".
 
 ---
 
