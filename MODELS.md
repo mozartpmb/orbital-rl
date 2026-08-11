@@ -44,6 +44,44 @@ Last updated: 2026-08-10 (corrections pass — see §"2026-08-10 corrections" be
 
 ---
 
+## T3 corrected-dynamics recovery (2026-08-11) — CURRENT CANONICAL
+
+> Everything in this section is measured under **corrected dynamics** (post `f55d9cb`)
+> with the T3 env config, and supersedes correction-banner item #6 for forward claims.
+> Full campaign record: `T3_RECOVERY_CAMPAIGN.md`; recon reports in
+> `scripts/orbital/t3/reports/`.
+
+**T3 env config (required to reproduce — all are runtime kwargs, legacy defaults differ):**
+`shaping_mode=1, shape_gamma=1.0, phase_gap_mode=1, phase_obs_mode=1,
+episode_cap_steps=3000, cap_terminal_reward=0.0, valid_init_only=1`.
+Checkpoints have **Discrete(16) heads** — do NOT pass `--legacy-action-space`.
+`phase_obs_mode=1` checkpoints are incompatible with pre-T3 checkpoints (obs semantics).
+
+**Headline (LEO 300–800 km, e ≤ 0.05 both, independent ω, physical gap ±180°, 30 km/50 m/s box):**
+
+| Logical name | Train seed | Held-out success | Ckpt (durable copy) | Experiment dir |
+|---|---|---|---|---|
+| **t3_canonical_seed42** | 42 | **100.0%** — 200/200 greedy s123, 200/200 stochastic, 200/200 at legacy cap 2000, 500/500 s777 | `models/t3/seed42_L2_headline.pt` (MD5 10a8ba37…) | `puffer_orbital_178642097817/model_..._000382.pt` |
+| t3_seed42_L1 (e=0 rung) | 42 | 200/200 at L1 conditions | `models/t3/seed42_L1_final.pt` | `puffer_orbital_178642016215/model_..._000382.pt` |
+| t3_batch1_L2_a / _b | 7 / 1337† | 200/200 each (headline) | `models/t3/batch1_L2_{a,b}_*.pt` | `…258109` / `…259027` |
+| t3_batch1_L1_a / _b | 7 / 1337† | 200/200 each (L1 conditions) | `models/t3/batch1_L1_{a,b}_*.pt` | `…176815` / `…177125` |
+
+† Batch-1 ladders ran concurrently and raced dir attribution; seed↔dir mapping above is
+from launch-time dir-ID stamp analysis (campaign doc §6), each run's `--train.seed` is
+certain from its command line, and **every one of the four dirs was independently
+evaluated at 200/200**, so the multi-seed claim is attribution-independent. Seeds
+20260423 and 31415 run sequentially (batch 2).
+
+**Supporting numbers (seed-42 canonical):** Δv p50 235 m/s = 1.58× shape-only two-impulse
+lower bound (`t3_headline_characterization.csv`); Lambert time-matched ratio p50 1.14×
+(pre-fix impossibility 0.31× resolved, `t3_lambert_corrected.csv`); EKF closed-loop
+truth 100.0% = EKF-nominal 100.0% at 60 s nav cadence (`t3_relnav_corrected.csv`).
+Capture at box edge (29.2 km / 34.8 m/s p50) — far-field rendezvous, not terminal capture.
+Classical scripted-GNC reference: 99.2% (500 eps) / 100 of 100 at T3 config
+(`scripts/orbital/t3/expert_controller.py --t3`).
+
+---
+
 ## Phase 5b deliverable (the working LEO low-e specialist)
 
 Phase 5b's "two-stage curriculum" (Stage 1.0 → Stage 4.0 directly) is the shippable Phase 5 deliverable. At LEO 300-800 km / e ≤ 0.05 fully random / init_phase_gap_max = π, the recipe achieves **96.4% multi-seed mean** (3 of 5 training seeds succeed at 94-98%; 2 of 5 collapse to 2-16% — the recipe is bimodal at the edge).
