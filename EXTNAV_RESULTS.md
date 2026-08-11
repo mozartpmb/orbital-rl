@@ -49,4 +49,52 @@ capture, is what the 30.5 pp gap is made of.
 
 ## Arms
 
-_(filled in per arm as the campaign runs)_
+| arm | native | truth | truth-tax | gate | ckpt |
+|---|---|---|---|---|---|
+| canonical (reference) | 139/200 = 69.5% | 200/200 = 100.0% | 0.0 pp | — | `models/t3/seed42_L2_headline.pt` |
+| **NB1-warm** (seed 42, warm) | **196/200 = 98.0%** (+28.5 pp) | **200/200 = 100.0%** | **0.0 pp** | **PASS** | `models/t3/extnav_nb1_warm.pt` |
+
+### NB1-warm — 50M steps, `nav_mode=bearings_only`, warm from `seed42_L2_headline.pt`
+
+wandb group `t5-nav-nb1-warm`; final checkpoint epoch 382 (the epoch-200
+checkpoint screens identically at 100/100 on the surrogate path, so this is not
+a late-training spike). Training: 27.1K SPS, `perf` 0.998 throughout,
+`nav_diverge_rate` 0.000, `nav_clip_rate` 0.000. `nav_acq_per_ep` rose
+0.870 → 0.974 over training — visible in the training metrics before any eval.
+
+| metric | canonical | NB1-warm | Δ |
+|---|---|---|---|
+| native success | 139/200 = 69.5% | **196/200 = 98.0%** | **+28.5 pp** |
+| native causes | collision 38, stranded 22, cap 1 | **cap 4 only** | no collisions, no strandings |
+| truth | 200/200 | 200/200 | **0.0 pp tax** |
+| episodes never acquiring | 44/200 | **0/200** | −44 |
+| blind decisions | 30.7% | **5.2%** | −25.5 pp |
+| filter divergences | 56 | 8 | −48 |
+| acquisition failures | 0/200 | 1/200 | +1 |
+| conditional success \| min sep < 200 km | 131/136 | **181/183** | +2.6 pp |
+| acquisition latency | median 109 min | median 105 min | ≈ unchanged |
+| σ_LOS/ρ (100 km–1 Mm) | 0.0010 | 0.0009 | ≈ unchanged |
+
+**Blind-window behaviour — the policy inverted it.**
+
+| metric | canonical | NB1-warm |
+|---|---|---|
+| Δv spent **before** acquisition | median 75.0 m/s, p90 200, max 445 | **median 0.0 m/s**, p90 0.0, max 285 |
+| fuel budget left **at** acquisition | median 0.832, p10 0.562 | **median 1.000**, p10 1.000 |
+| burn rate blind ÷ acquired | **1.94×** (0.822 vs 0.425) | **0.26×** (0.127 vs 0.494) |
+| Δv/decision blind ÷ acquired | **2.04×** (19.32 vs 9.49) | **0.25×** (2.67 vs 10.72) |
+| stranded | 22/200 = 11.0% (10 blind at terminal) | **0/200** |
+| total Δv/episode | median 322.5 m/s | median 285.0 m/s |
+| episodes that ever acquired | 78.0% | **100.0%** |
+
+The canonical policy burned **1.94× harder** while blind than while acquired.
+NB1-warm burns **0.26× as hard** — a 7.5× swing in the ratio — and reaches
+acquisition with a **full tank** (median Δv-before-acquisition 75 → 0 m/s).
+
+It did **not** learn NAV-G's predicted 1 m/s observability burn. It learned the
+complementary policy: *coast through the blind window, then maneuver.* Bearings
+accrue during a coast regardless, so waiting costs only clock, and it removes
+both failure modes at once — the 38 collisions and 22 strandings are gone, and
+never-acquire goes 44 → 0 because the vehicle is still alive and fuelled when
+the solver converges. Total Δv per episode also fell (322.5 → 285.0 m/s), so
+this is not "spend later instead"; it is waste removed.
