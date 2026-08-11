@@ -22,14 +22,14 @@
 #define ALT_MAX     1600e3          /* Scenario altitude ceiling              */
 #define DT          60.0            /* Simulation timestep (seconds)          */
 #define MAX_BODIES  16              /* Earth + debris (max)                   */
-#define MAX_STEPS   6000            /* Trajectory-buffer size + max runtime episode cap.
+#define MAX_STEPS   12000           /* Trajectory-buffer size + max runtime episode cap.
                                      * The actual per-episode cap is env->episode_cap_steps
                                      * (default 2000 = legacy 33.3 h; T3 recovery 3000;
-                                     * wide-envelope L4+ 6000 = 100 h — periods scale as
-                                     * a^1.5, see recon feasibility §3.5). Counts 60 s SIM
-                                     * SUB-STEPS, not agent decisions — warps buy decisions,
-                                     * never wall clock. Buffer memory is virtual unless
-                                     * log_enabled (gated on traj_log_dir). */
+                                     * wide-envelope 6000 = 100 h; MEO 12000 = 200 h —
+                                     * periods scale as a^1.5, recon feasibility §3.5).
+                                     * Counts 60 s SIM SUB-STEPS, not agent decisions —
+                                     * warps buy decisions, never wall clock. Buffer memory
+                                     * is virtual unless log_enabled (gated on traj_log_dir). */
 #define FUEL_FRAC   0.15            /* Fuel = 15% of initial total mass       */
 #define ISP         300.0           /* Specific impulse (seconds)             */
 #define G0          9.80665         /* Standard gravity (m/s²)                */
@@ -72,7 +72,7 @@
  * Each row: { dv_prograde, dv_radial, dv_normal }. dv_normal kept at 0 for
  * forward compatibility with a future 3D upgrade.
  */
-#define NUM_ACTIONS 16
+#define NUM_ACTIONS 20
 #define WARP_ACTION 9    /* legacy: smallest warp action; still referenced */
 #define WARP_TAU    5    /* legacy: 5 × 60s = 5 min per warp; supplanted by ACTION_TAU */
 static const double ACTION_DV[NUM_ACTIONS][3] = {
@@ -95,6 +95,20 @@ static const double ACTION_DV[NUM_ACTIONS][3] = {
     {  -1.0,   0.0,  0.0 },  /* 13: retrograde 1         */
     {   2.0,   0.0,  0.0 },  /* 14: prograde 2           */
     {  -2.0,   0.0,  0.0 },  /* 15: retrograde 2         */
+    /* T3 follow-ups (2026-08-11), Discrete-20. The exposed action space
+     * DEFAULTS to Discrete(16) (orbital.py legacy_action_space) so every
+     * pre-existing checkpoint and command is untouched; new lineages opt in
+     * with legacy_action_space=20.
+     * 16-17: MEO/GEO warps — periods scale a^1.5; a 12,000-step (200 h)
+     *        MEO episode needs mean τ ≳ 27 to stay inside the γ=0.995
+     *        credit horizon (recon feasibility §3.5).
+     * 18-19: radial ±1 m/s — the 10 m/s radial quantum was the binding
+     *        floor for the tight success box (best |v_rel| 5.02 m/s with
+     *        16 actions → 0.71 m/s with fine radial; red-team/recon §4). */
+    {   0.0,   0.0,  0.0 },  /* 16: warp 3hr  (τ=180)    */
+    {   0.0,   0.0,  0.0 },  /* 17: warp 6hr  (τ=360)    */
+    {   0.0,   1.0,  0.0 },  /* 18: radial out 1         */
+    {   0.0,  -1.0,  0.0 },  /* 19: radial in 1          */
 };
 
 /* M2 (phase5-5-env-mods): per-action sub-step count. τ=1 → single-step burn or
@@ -105,6 +119,8 @@ static const int ACTION_TAU[NUM_ACTIONS] = {
     5,                            /* 9:  warp 5min  */
     30, 60,                       /* 10-11: M2 longer warps */
     1, 1, 1, 1,                   /* 12-15: M3 sub-5 m/s burns */
+    180, 360,                     /* 16-17: T3 MEO/GEO warps */
+    1, 1,                         /* 18-19: T3 fine radial burns */
 };
 
 /* ── PufferLib Log struct ────────────────────────────────────────────────

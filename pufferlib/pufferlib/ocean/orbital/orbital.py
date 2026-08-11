@@ -124,7 +124,7 @@ class Orbital(pufferlib.PufferEnv):
         # instead of true anomaly. BREAKING for pre-T3 checkpoints.
         phase_obs_mode=0,
         # Runtime safety cap in 60 s sim sub-steps (wall clock = cap minutes).
-        # Legacy 2000 = 33.3 h. T3 recovery 3000. Wide-envelope L4+ 6000 (max).
+        # Legacy 2000 = 33.3 h. T3 recovery 3000. Wide-envelope 6000. MEO 12000 (max).
         episode_cap_steps=2000,
         # Reward at the safety-cap terminal. Legacy −10. T3 recovery uses 0.0:
         # under flat per-decision γ a −10 timeout prices warp-heavy play as a
@@ -156,13 +156,15 @@ class Orbital(pufferlib.PufferEnv):
         self.single_observation_space = gymnasium.spaces.Box(
             low=-2.0, high=2.0, shape=(obs_dim,), dtype=np.float32
         )
-        # M2/M3 (phase5-5-env-mods): extended action space. Phase 5b/5e ckpts have
-        # a 10-dim policy head; eval_checkpoint.py uses --legacy-action-space 10 to
-        # coerce the policy's view of the action space for backward compat.
+        # M2/M3 (phase5-5-env-mods) + T4 (Discrete-20): the C env accepts actions
+        # in [0, 20) — 16-17 are 3h/6h warps, 18-19 radial ±1 m/s. The EXPOSED
+        # space defaults to Discrete(16) so every pre-T4 checkpoint and command
+        # is untouched; new lineages opt in with legacy_action_space=20. Phase
+        # 5b/5e ckpts (10-dim heads) still use legacy_action_space=10.
         _las = -1 if legacy_action_space is None else int(legacy_action_space)
         _act_n = 16 if _las <= 0 else _las
-        if not (1 <= _act_n <= 16):
-            raise ValueError(f"legacy_action_space must be in [1, 16] or sentinel <=0, got {_las}")
+        if not (1 <= _act_n <= 20):
+            raise ValueError(f"legacy_action_space must be in [1, 20] or sentinel <=0, got {_las}")
         self.single_action_space = gymnasium.spaces.Discrete(_act_n)
         self.render_mode  = render_mode
         self.num_agents   = num_envs
@@ -220,9 +222,9 @@ class Orbital(pufferlib.PufferEnv):
         )
 
         # Pre-allocated trajectory buffer (reused every call).
-        # Row count MUST equal MAX_STEPS in orbital.h (wide-envelope: 6000) —
+        # Row count MUST equal MAX_STEPS in orbital.h (MEO lineage: 12000) —
         # vec_get_trajectory can fill up to that many records.
-        self._traj_buf = np.zeros((6000, TRAJ_FLOATS), dtype=np.float32)
+        self._traj_buf = np.zeros((12000, TRAJ_FLOATS), dtype=np.float32)
 
         if traj_log_dir:
             os.makedirs(traj_log_dir, exist_ok=True)
