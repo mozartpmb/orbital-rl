@@ -53,6 +53,7 @@ capture, is what the 30.5 pp gap is made of.
 |---|---|---|---|---|---|
 | canonical (reference) | 139/200 = 69.5% | 200/200 = 100.0% | 0.0 pp | — | `models/t3/seed42_L2_headline.pt` |
 | **NB1-warm** (seed 42, warm) | **196/200 = 98.0%** (+28.5 pp) | **200/200 = 100.0%** | **0.0 pp** | **PASS** | `models/t3/extnav_nb1_warm.pt` |
+| **NB1-fresh-42** (seed 42, fresh) | **198/200 = 99.0%** (+29.5 pp) | **200/200 = 100.0%** | **0.0 pp** | **PASS** | `models/t3/extnav_nb1_fresh_42.pt` |
 
 ### NB1-warm — 50M steps, `nav_mode=bearings_only`, warm from `seed42_L2_headline.pt`
 
@@ -98,3 +99,27 @@ both failure modes at once — the 38 collisions and 22 strandings are gone, and
 never-acquire goes 44 → 0 because the vehicle is still alive and fuelled when
 the solver converges. Total Δv per episode also fell (322.5 → 285.0 m/s), so
 this is not "spend later instead"; it is waste removed.
+
+### NB1-fresh-42 — 50M steps, `nav_mode=bearings_only`, fresh nets, seed 42
+
+wandb group `t5-nav-nb1-fresh-42`; final checkpoint epoch 382 (epoch-200 screens
+99/100). Training: 27.3K SPS, `nav_diverge_rate` 0.000, `nav_clip_rate` 0.000,
+`nav_acq_per_ep` 0.985. Rolling `perf` was 0.056 at 5M in the V5 smoke and
+0.906 by 11.3M — a fresh bearings-only run does bootstrap, and takes off between
+5M and 11M.
+
+| metric | canonical | NB1-fresh-42 |
+|---|---|---|
+| native success | 139/200 = 69.5% | **198/200 = 99.0%** (+29.5 pp) |
+| native causes | collision 38, stranded 22, cap 1 | cap 1, stranded 1 |
+| truth | 200/200 | 200/200 (**0.0 pp tax**) |
+| never acquiring | 44/200 | **0/200** |
+| blind decisions | 30.7% | 5.2% |
+| divergences | 56 | 6 |
+| conditional \| min sep < 200 km | 131/136 | **185/186** |
+| Δv before acquisition | median 75.0 m/s | **median 0.0 m/s** |
+| fuel left at acquisition | 0.832 | **1.000** |
+| burn rate blind ÷ acquired | **1.94×** | **0.41×** (0.189 vs 0.458) |
+| Δv/decision blind ÷ acquired | **2.04×** | **0.40×** (4.04 vs 10.02) |
+| stranded | 11.0% | 0.5% |
+| total Δv/episode | 322.5 m/s | **257.5 m/s** |
