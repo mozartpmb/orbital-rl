@@ -124,7 +124,7 @@ class Orbital(pufferlib.PufferEnv):
         # instead of true anomaly. BREAKING for pre-T3 checkpoints.
         phase_obs_mode=0,
         # Runtime safety cap in 60 s sim sub-steps (wall clock = cap minutes).
-        # Legacy 2000 = 33.3 h. T3 recovery training uses 3000. Max 3000.
+        # Legacy 2000 = 33.3 h. T3 recovery 3000. Wide-envelope L4+ 6000 (max).
         episode_cap_steps=2000,
         # Reward at the safety-cap terminal. Legacy −10. T3 recovery uses 0.0:
         # under flat per-decision γ a −10 timeout prices warp-heavy play as a
@@ -220,9 +220,9 @@ class Orbital(pufferlib.PufferEnv):
         )
 
         # Pre-allocated trajectory buffer (reused every call).
-        # Row count MUST equal MAX_STEPS in orbital.h (T3: 3000) —
+        # Row count MUST equal MAX_STEPS in orbital.h (wide-envelope: 6000) —
         # vec_get_trajectory can fill up to that many records.
-        self._traj_buf = np.zeros((3000, TRAJ_FLOATS), dtype=np.float32)
+        self._traj_buf = np.zeros((6000, TRAJ_FLOATS), dtype=np.float32)
 
         if traj_log_dir:
             os.makedirs(traj_log_dir, exist_ok=True)

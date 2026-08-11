@@ -22,11 +22,14 @@
 #define ALT_MAX     1600e3          /* Scenario altitude ceiling              */
 #define DT          60.0            /* Simulation timestep (seconds)          */
 #define MAX_BODIES  16              /* Earth + debris (max)                   */
-#define MAX_STEPS   3000            /* Trajectory-buffer size + max runtime episode cap.
+#define MAX_STEPS   6000            /* Trajectory-buffer size + max runtime episode cap.
                                      * The actual per-episode cap is env->episode_cap_steps
-                                     * (default 2000 = legacy 33.3 h; T3 recovery runs use
-                                     * 3000 = 50 h). Counts 60 s SIM SUB-STEPS, not agent
-                                     * decisions — warps buy decisions, never wall clock. */
+                                     * (default 2000 = legacy 33.3 h; T3 recovery 3000;
+                                     * wide-envelope L4+ 6000 = 100 h — periods scale as
+                                     * a^1.5, see recon feasibility §3.5). Counts 60 s SIM
+                                     * SUB-STEPS, not agent decisions — warps buy decisions,
+                                     * never wall clock. Buffer memory is virtual unless
+                                     * log_enabled (gated on traj_log_dir). */
 #define FUEL_FRAC   0.15            /* Fuel = 15% of initial total mass       */
 #define ISP         300.0           /* Specific impulse (seconds)             */
 #define G0          9.80665         /* Standard gravity (m/s²)                */
