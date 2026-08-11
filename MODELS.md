@@ -86,8 +86,22 @@ evaluated at 200/200**, so the multi-seed claim is attribution-independent. Batc
 | **t3_wide_WL4** | **e≤0.30, 300–8000 km, ±180°, cap 6000** (wide obs scales: `obs_alt_scale_m=8e6, lvlh_scale_m=1.5e7` — REQUIRED at eval; incompatible with LEO-scale ckpts) | `models/t3/seed42_WL4_wide.pt` (`…988768`) |
 | t3_wide_WL1–WL3 | lineage rungs, 200/200 each | `models/t3/seed42_WL{1,2,3}_wide.pt` |
 
-WL4 realized e_target p50 0.140 / p90 0.261 / max 0.293. Wide family is single-seed;
-seed-robustness established at LEO (5/5). de_max bounds e-vector mismatch (0.08 at WL4).
+WL4 realized e_target p50 0.140 / p90 0.261 / max 0.293. de_max bounds e-vector
+mismatch (0.08 at WL4).
+
+**T4 follow-ups (2026-08-11, campaign doc §8). Env now Discrete-20 (3h/6h warps +
+radial ±1 m/s; exposed default still Discrete(16)); eval 20-head ckpts with
+`--legacy-action-space 20`. wandb: wandb.ai/mozartpmb_training/orbital-rl.**
+
+| Logical name | Conditions (held-out, seed 123) | Result | Ckpt |
+|---|---|---|---|
+| t3_wide (multi-seed) | WL1–WL4 × seeds 42/7/1337/20260423 | **3,199/3,200 (99.97%)**; WL4: 800/800 | `models/t3/seed{7,1337,20260423}_WL4_wide.pt` |
+| **t4_tb3_box10k10** | headline @ **10 km/10 m/s**, D20 | **200/200** | `models/t3/seed42_TB3_box10k10.pt` |
+| t4_tb4_box5k2 | headline @ 5 km/2 m/s, D20 | 200/200 | `models/t3/seed42_TB4_box5k2.pt` |
+| **t4_tb5_box5k1** | headline @ **5 km/1 m/s**, D20 | **191/200 (95.5%)**, 9 cap timeouts; capture p50 0.91 m/s | `models/t3/seed42_TB5_box5k1.pt` |
+| **t4_m5_meo** | **300–20,200 km, e≤0.50**, de 0.10, ±180°, cap 12000, D20, scales 2.1e7/4e7 (REQUIRED at eval) | **199/200 (99.5%)**; realized e_t p50 0.216/max 0.500 | `models/t3/seed42_M5_meo.pt` (M4: `seed42_M4_meo.pt`) |
+
+EKF at wide envelope: nominal = truth = 200/200 (`t4_relnav_wl4.csv`).
 
 **Supporting numbers (seed-42 canonical):** Δv p50 235 m/s = 1.58× shape-only two-impulse
 lower bound (`t3_headline_characterization.csv`); Lambert time-matched ratio p50 1.14×

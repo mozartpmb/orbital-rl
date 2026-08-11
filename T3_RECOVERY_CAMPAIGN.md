@@ -366,3 +366,54 @@ interesting task, stated as such. MEO/GEO rungs (L5) would need 3 h/6 h warp act
 **The user-stated campaign goal — "rendezvous at wide range of eccentricity and phase
 difference, working fully" — is met:** ±180° phase gaps at e up to 0.30 across
 300–8000 km, 100% held-out, under verified-correct physics, with lawful comparators.
+
+## 8. T4 follow-up campaign ✅ COMPLETE (2026-08-11, later)
+
+All four follow-ups from §7's caveats, executed. New env surface: **Discrete-20**
+(actions 16–17 = 3 h/6 h warps, 18–19 = radial ±1 m/s; exposed space still defaults to
+Discrete(16) — both anchors bit-exact) and MAX_STEPS 12000. Chain-private
+`--train.data-dir` per lineage ended the attribution-race class. wandb live for later
+chains + 24 backfilled summary runs: **wandb.ai/mozartpmb_training/orbital-rl**.
+
+### 8.1 (A) Wide family is multi-seed ✅
+4 seeds × 4 rungs = **3,199/3,200 held-out (99.97%)**; at the WL4 envelope itself
+(e≤0.30, 300–8000 km): **4/4 seeds at 200/200 = 800/800**. Sole miss anywhere: one cap
+timeout at seed-7 WL2 (reproduced: 199/200, cause=safety_cap). Per-seed WL4 ckpts in
+`models/t3/seed{42,7,1337,20260423}_WL4_wide.pt`.
+
+### 8.2 (B) EKF validated at the wide envelope ✅
+`eval_relnav.py --wide` (scale-parametrized encode/inject; recon bit-identical to
+truth): **EKF-nominal 200/200 = truth**; NEES 0.934 / NIS 0.947 after re-tune
+(q_a 1e-13, σ_v0 500); settled pos RMSE 8.0 m; degradation curve matches the LEO family
+within binomial noise at every multiplier. Measured findings: σ_v0 scales with
+**eccentricity** (circular-guess error ≈ v_c·e), not range; bearing noise at Mm
+separations is structurally harmless for a Keplerian target (filter 795× better than a
+single bearing sample; error ∝ ρ^0.4); filter consistency (NEES) degrades a full decade
+of sensor noise before success does — the argument for reporting NEES at all.
+`t4_relnav_wl4.csv`, `plots/relnav_wl4/`.
+
+### 8.3 (D) Tight success box ✅ (supersedes the old "conjunction detector" critique)
+TB ladder, Discrete-20, seed 42: TB1 200/200 (fresh 20-head bootstraps cleanly — the
+Phase-2 "wider action spaces regress" finding was a broken-signal artifact), TB2
+200/200, **TB3 200/200 at 10 km/10 m/s**, **TB4 200/200 at 5 km/2 m/s**, **TB5 191/200
+(95.5%) at 5 km/1 m/s** — all 9 failures benign cap timeouts; captures null to median
+0.91 m/s residual vs the 1.0 tolerance (p90 0.99), i.e. operating at the 0.71 m/s
+actuation floor with the predicted 1.4× margin. Pre-fix zero-shot at this box: 2.0%;
+scripted expert: 18%. Ckpts `models/t3/seed42_TB{3,4,5}_*.pt`.
+
+### 8.4 (C) MEO envelope ✅
+M lineage (obs scales 2.1e7/4e7, Discrete-20 with 3 h/6 h warps, cap up to 12000 =
+200 h): M1–M4 all 200/200; **M5 (300–20,200 km, e≤0.50, de_max 0.10, ±180°) = 199/200
+(99.5%)** — above the analytic 93.0% feasibility screen (its fixed-drift-cap Δv model
+was conservative). Realized e_target p50 **0.216** / p90 **0.438** / max 0.500 (chaser
+to 0.576). The single failure is the predicted Δv/time corner: e_t=0.435, Δa₀=−957 km,
+455/478 m/s spent, full clock. Δv p50 270 m/s (1.46× shape bound); capture residual
+p50 14.0 m/s. Ckpts `models/t3/seed42_M{4,5}_meo.pt`;
+`t4_meo_m5_characterization.csv`. Single-seed (recipe 4-seed-robust at WL4).
+
+**Final capability statement (all under verified-correct Keplerian physics, far-field
+box unless stated):** ±180° phase gaps at 100.0% (5 seeds, LEO) · e≤0.30 at 100.0%
+(4 seeds, 300–8000 km) · e≤0.50 at 99.5% (seed 42, 300–20,200 km) · terminal boxes to
+5 km/2 m/s at 100.0% and 5 km/1 m/s at 95.5% (seed 42, LEO) · EKF-in-the-loop lossless
+at both envelopes. Standing simplifications unchanged: 2D coplanar, two-body, impulsive,
+no debris.
