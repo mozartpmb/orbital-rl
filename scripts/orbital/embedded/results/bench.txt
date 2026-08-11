@@ -1,0 +1,69 @@
+### bench_policy (default: GELU exact erff, float32 accumulation)
+=== policy.c inference benchmark (single core) ===
+build            : gelu=erf_exact acc=float32
+ckpt sha256      : 75fbee2e60e09132182f12e901f3583ac5d8b1bb99ed758234445d4d1ab104c2
+obs source       : /tmp/emb_obs_s123.bin (4742 frames)
+calls            : 100000 (warmup 5000, excluded)
+state size       : 1032 B   stack scratch: 3648 B   weights: 557124 B rodata
+--- per-call latency (us) ---
+  min            :     45.125
+  p50 (median)   :     50.500
+  mean           :     50.721
+  p90            :     52.291
+  p99            :     62.041
+  p99.9          :     72.708
+  max            :    198.458
+  clock overhead :     0.0000  (median of 20000 back-to-back reads; not subtracted)
+  note           : max/p99.9 outliers are OS scheduler preemptions on a
+                   non-real-time host, not algorithmic variance — the work
+                   per call is a fixed MAC count with no data-dependent path.
+--- throughput ---
+  wall total     : 5.0738 s for 100000 calls -> 19709 calls/s
+--- real-time margin vs 60 s decision period ---
+  duty cycle p50 : 8.417e-07  (1 call per 60 s)
+  duty cycle p99 : 1.034e-06
+  margin p99     : 967102x  (period / p99 latency)
+  budget used p99: 0.0001034 % of the 60 s epoch
+
+### bench_policy_poly (GELU erf-poly, expf-only libm)
+=== policy.c inference benchmark (single core) ===
+build            : gelu=erf_poly_AS7.1.26 acc=float32
+ckpt sha256      : 75fbee2e60e09132182f12e901f3583ac5d8b1bb99ed758234445d4d1ab104c2
+obs source       : /tmp/emb_obs_s123.bin (4742 frames)
+calls            : 100000 (warmup 5000, excluded)
+state size       : 1032 B   stack scratch: 3648 B   weights: 557124 B rodata
+--- per-call latency (us) ---
+  min            :     43.416
+  p50 (median)   :     48.458
+  mean           :     48.788
+  p90            :     50.125
+  p99            :     59.292
+  p99.9          :     70.167
+  max            :    176.333
+  clock overhead :     0.0000  (median of 20000 back-to-back reads; not subtracted)
+  note           : max/p99.9 outliers are OS scheduler preemptions on a
+                   non-real-time host, not algorithmic variance — the work
+                   per call is a fixed MAC count with no data-dependent path.
+--- throughput ---
+  wall total     : 4.8806 s for 100000 calls -> 20489 calls/s
+--- real-time margin vs 60 s decision period ---
+  duty cycle p50 : 8.076e-07  (1 call per 60 s)
+  duty cycle p99 : 9.882e-07
+  margin p99     : 1011941x  (period / p99 latency)
+  budget used p99: 0.0000988 % of the 60 s epoch
+
+### stack + size (clang -O2 -fstack-usage, arm64)
+policy_infer frame: 3808 B static; policy_act 32 B; policy_reset 0 B
+Segment : 560152
+	Section (__TEXT, __text): 2668
+	Section (__TEXT, __literal8): 8
+	Section (__TEXT, __const): 557120
+	Section (__TEXT, __cstring): 157
+	Section (__LD, __compact_unwind): 192
+### repeatability: 5 independent 100k-call runs (default build)
+run  p50_us  p99_us  calls_per_s
+  1   51.71   63.54  18942
+  2   52.33   58.25  19144
+  3   52.17   59.71  19305
+  4   49.54   63.42  19945
+  5   49.58   62.38  19910

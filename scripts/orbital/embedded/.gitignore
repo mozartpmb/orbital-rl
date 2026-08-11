@@ -1,0 +1,13 @@
+# Build products (regenerate with `make all poly variants sanitize`).
+# policy_weights.h and policy_manifest.json are NOT ignored: they are the
+# generated deliverable, and their checkpoint sha256 is the provenance record.
+*.o
+*.dylib
+*.so
+*.su
+bench_policy
+bench_policy_poly
+closed_loop
+closed_loop_poly
+closed_loop_asan
+*.dSYM/

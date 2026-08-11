@@ -1,0 +1,189 @@
+{
+  "generated_utc": "2026-08-11T17:32:35Z",
+  "generator": "scripts/orbital/embedded/export_weights.py",
+  "checkpoint_path": "/Users/pete/space_training/models/t3/seed42_L2_headline.pt",
+  "checkpoint_sha256": "75fbee2e60e09132182f12e901f3583ac5d8b1bb99ed758234445d4d1ab104c2",
+  "weights_blob_sha256": "4803b458a62842905a69697193ea5612bc90a03861a431f5c4a47aae7eba9ace",
+  "torch_version": "2.11.0",
+  "obs_dim": 38,
+  "hidden_size": 128,
+  "num_actions": 16,
+  "unique_parameters": 139281,
+  "obs_normalization_in_policy": false,
+  "obs_normalization_note": "PufferLib Default.encode_observations() = view(B,-1).float() -> Linear. All scaling is done by the C env in fill_observations().",
+  "graph": [
+    {
+      "stage": "encoder",
+      "op": "linear",
+      "in": 38,
+      "out": 128,
+      "weight": "POLICY_ENC_W",
+      "bias": "POLICY_ENC_B",
+      "activation": "gelu_exact_erf"
+    },
+    {
+      "stage": "recurrent",
+      "op": "lstm_cell",
+      "in": 128,
+      "out": 128,
+      "weight_ih": "POLICY_LSTM_W_IH",
+      "weight_hh": "POLICY_LSTM_W_HH",
+      "bias_ih": "POLICY_LSTM_B_IH",
+      "bias_hh": "POLICY_LSTM_B_HH",
+      "gate_order": [
+        "i",
+        "f",
+        "g",
+        "o"
+      ],
+      "gate_activations": {
+        "i": "sigmoid",
+        "f": "sigmoid",
+        "g": "tanh",
+        "o": "sigmoid"
+      },
+      "equations": [
+        "c' = f*c + i*g",
+        "h' = o*tanh(c')"
+      ],
+      "bias_convention": "torch: b_ih and b_hh both added (redundant but must match)"
+    },
+    {
+      "stage": "decoder",
+      "op": "linear",
+      "in": 128,
+      "out": 16,
+      "weight": "POLICY_DEC_W",
+      "bias": "POLICY_DEC_B",
+      "activation": "none",
+      "note": "greedy control = argmax(logits), ties broken by lowest index"
+    },
+    {
+      "stage": "value",
+      "op": "linear",
+      "in": 128,
+      "out": 1,
+      "weight": "POLICY_VAL_W",
+      "bias": "POLICY_VAL_B",
+      "activation": "none",
+      "note": "critic head; not used by the flight control path"
+    }
+  ],
+  "layers": [
+    {
+      "state_dict_key": "policy.encoder.0.weight",
+      "c_symbol": "POLICY_ENC_W",
+      "shape": [
+        128,
+        38
+      ],
+      "numel": 4864,
+      "layout": "row_major",
+      "dtype": "float32",
+      "abs_max": 7.094624042510986
+    },
+    {
+      "state_dict_key": "policy.encoder.0.bias",
+      "c_symbol": "POLICY_ENC_B",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "layout": "row_major",
+      "dtype": "float32",
+      "abs_max": 0.0725012794137001
+    },
+    {
+      "state_dict_key": "lstm.weight_ih_l0",
+      "c_symbol": "POLICY_LSTM_W_IH",
+      "shape": [
+        512,
+        128
+      ],
+      "numel": 65536,
+      "layout": "row_major",
+      "dtype": "float32",
+      "abs_max": 4.4516921043396
+    },
+    {
+      "state_dict_key": "lstm.weight_hh_l0",
+      "c_symbol": "POLICY_LSTM_W_HH",
+      "shape": [
+        512,
+        128
+      ],
+      "numel": 65536,
+      "layout": "row_major",
+      "dtype": "float32",
+      "abs_max": 3.3512520790100098
+    },
+    {
+      "state_dict_key": "lstm.bias_ih_l0",
+      "c_symbol": "POLICY_LSTM_B_IH",
+      "shape": [
+        512
+      ],
+      "numel": 512,
+      "layout": "row_major",
+      "dtype": "float32",
+      "abs_max": 0.09487725794315338
+    },
+    {
+      "state_dict_key": "lstm.bias_hh_l0",
+      "c_symbol": "POLICY_LSTM_B_HH",
+      "shape": [
+        512
+      ],
+      "numel": 512,
+      "layout": "row_major",
+      "dtype": "float32",
+      "abs_max": 0.10136774927377701
+    },
+    {
+      "state_dict_key": "policy.decoder.weight",
+      "c_symbol": "POLICY_DEC_W",
+      "shape": [
+        16,
+        128
+      ],
+      "numel": 2048,
+      "layout": "row_major",
+      "dtype": "float32",
+      "abs_max": 5.208404541015625
+    },
+    {
+      "state_dict_key": "policy.decoder.bias",
+      "c_symbol": "POLICY_DEC_B",
+      "shape": [
+        16
+      ],
+      "numel": 16,
+      "layout": "row_major",
+      "dtype": "float32",
+      "abs_max": 0.09286288172006607
+    },
+    {
+      "state_dict_key": "policy.value.weight",
+      "c_symbol": "POLICY_VAL_W",
+      "shape": [
+        1,
+        128
+      ],
+      "numel": 128,
+      "layout": "row_major",
+      "dtype": "float32",
+      "abs_max": 1.0802122354507446
+    },
+    {
+      "state_dict_key": "policy.value.bias",
+      "c_symbol": "POLICY_VAL_B",
+      "shape": [
+        1
+      ],
+      "numel": 1,
+      "layout": "row_major",
+      "dtype": "float32",
+      "abs_max": 0.12932579219341278
+    }
+  ]
+}

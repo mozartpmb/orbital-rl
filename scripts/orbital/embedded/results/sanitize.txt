@@ -1,0 +1,15 @@
+### AddressSanitizer + UndefinedBehaviorSanitizer, 25 episodes
+=== fully-C closed loop (orbital.h env + policy.c) ===
+build          : gelu=erf_exact acc=float32
+ckpt sha256    : 75fbee2e60e09132182f12e901f3583ac5d8b1bb99ed758234445d4d1ab104c2
+config         : T3 canonical (e<=0.05 both, gap +-180 deg, cap 3000, box 30km/50m/s)
+seed           : 123   episodes: 25
+physical success: 25/25 (100.0%)
+terminal causes: success=25
+mean reward    : 7.891
+decisions      : 501  (mean 20.0/episode)
+sim sub-steps  : 31201  (mean 1248.0/episode, 60 s each)
+policy faults  : 0
+wall time      : 0.0861 s
+throughput     : 5817 decisions/s  |  362289 env sub-steps/s
+(no sanitizer diagnostics above == clean)
