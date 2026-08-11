@@ -279,25 +279,26 @@ class OrbitalNav(Orbital):
         self._acq.reset_rows(idx, sat_c, tgt_c, period)
         self._acq.accumulate(idx, sat_c, tgt_c, tgt_c, self._nav_dt, first=True)
 
-    # ── one 60 s navigation tick on a subset ─────────────────────────────────
-    def _tick(self, idx, sat_from, sat_to, tgt_to, tgt_prev):
+    # ── one navigation tick on a subset ──────────────────────────────────────
+    def _tick(self, idx, sat_from, sat_to, tgt_to, tgt_prev, dt=None):
+        dt = self._nav_dt if dt is None else dt
         d = tgt_to[:, :2] - sat_to[:, :2]
         rho_t = np.maximum(np.hypot(d[:, 0], d[:, 1]), 1.0)
         beta = nm.wrap_pi(np.arctan2(d[:, 1], d[:, 0])
                           + self._rng.normal(0.0, self._s_beta, idx.size))
 
         if self._nav_mode == 'rb_ekf':
-            self._filt.predict(idx, self._nav_dt)
+            self._filt.predict(idx, dt)
             rho = np.maximum(rho_t + self._rng.normal(0.0, self._s_rho, idx.size), 1.0)
             self._filt.update(idx, sat_to, rho, beta)
             return
 
-        self._filt.predict(idx, self._nav_dt, sat_from, sat_to)
+        self._filt.predict(idx, dt, sat_from, sat_to)
         self._filt.update(idx, sat_to, beta)
 
         # Acquisition surrogate: information accrues on the realized geometry.
-        self._acq.accumulate(idx, sat_to, tgt_to, tgt_prev, self._nav_dt)
-        rows, sig = self._acq.ready(idx, self._nav_dt)
+        self._acq.accumulate(idx, sat_to, tgt_to, tgt_prev, dt)
+        rows, sig = self._acq.ready(idx, dt)
         if rows.size:
             sel = np.searchsorted(idx, rows)
             x_hat, P_acq, _ = self._acq.draw(rows, sig, tgt_to[sel], sat_to[sel],
@@ -343,7 +344,23 @@ class OrbitalNav(Orbital):
         reset = np.asarray(done, dtype=bool).reshape(-1)
         live = ~reset
 
-        if live.any():
+        if live.any() and self._nav_dt <= 0.0:
+            # V6 cross-check path, OFF by design. nav_sensor_dt=0 welds the
+            # navigation rate to the guidance rate: exactly one measurement per
+            # decision, the filter propagated by the whole tau*60 s in one step.
+            # That is the T3/T4 "perdec" condition, measured at 50.5% closed
+            # loop against 100% at a 60 s cadence, because the canonical policy
+            # spends 51% of its decisions on the 1-hour warp and the filter goes
+            # blind for the duration. Kept runnable so the finding is
+            # reproducible inside the wrapper rather than only in the serial
+            # harness; never used for training.
+            for tv in np.unique(tau[live]):
+                idx = np.flatnonzero(live & (tau == tv))
+                if idx.size:
+                    self._tick(idx, self._prev_sat[idx], sat_c[idx],
+                               tgt_c[idx], self._prev_tgt[idx],
+                               dt=float(tv) * nm.DT)
+        elif live.any():
             sc = self._prev_sat.copy()
             tc = self._prev_tgt.copy()
             n_tick = int(tau[live].max())

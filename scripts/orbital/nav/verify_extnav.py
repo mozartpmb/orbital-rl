@@ -376,16 +376,36 @@ def _surrogate_qq(args, n_draw=4000):
     return out
 
 
+# ── V6 ───────────────────────────────────────────────────────────────────────
+def stage_v6(args):
+    """Does the T4 sensor-cadence finding reproduce inside the wrapper?
+
+    The wrapper runs navigation at a fixed 60 s cadence, sub-propagating both
+    truth states through warps, DECOUPLED from the guidance cadence. Welding
+    them ('perdec': one measurement per decision, the filter propagated by the
+    whole tau*60 s) is what T3/T4 measured at 50.5% closed loop against 100%.
+    That mode is reachable here only via nav_sensor_dt=0 and is never used for
+    training; this cell exists so the finding is reproducible in the wrapper
+    rather than only in the serial harness.
+    """
+    print('== V6  sensor cadence is decoupled from the decision cadence ======')
+    for lbl, dt in (('nav60 (shipped)', 60.0), ('perdec (welded, OFF)', 0.0)):
+        env = OrbitalNav(num_envs=1, nav_mode='rb_ekf', nav_sensor_dt=dt, **T3_KW)
+        show(rollout(env, T3_CKPT, args.v6_eps, 123, lbl, verbose=False))
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--stage', default='all',
-                   choices=['v1', 'v2', 'v3', 'v4', 'all'])
+                   choices=['v1', 'v2', 'v3', 'v4', 'v6', 'all'])
+    p.add_argument('--v6-eps', type=int, default=100)
     p.add_argument('--eps', type=int, default=200)
     p.add_argument('--v2-eps', type=int, default=60)
     args = p.parse_args()
     torch.set_num_threads(1)
-    fns = dict(v1=stage_v1, v2=stage_v2, v3=stage_v3, v4=stage_v4)
-    order = ['v1', 'v2', 'v3', 'v4'] if args.stage == 'all' else [args.stage]
+    fns = dict(v1=stage_v1, v2=stage_v2, v3=stage_v3, v4=stage_v4, v6=stage_v6)
+    order = (['v1', 'v2', 'v3', 'v4', 'v6'] if args.stage == 'all'
+             else [args.stage])
     for s in order:
         fns[s](args)
         print()
