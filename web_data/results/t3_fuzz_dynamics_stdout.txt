@@ -1,0 +1,262 @@
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+== Check L: true_to_mean inverse (unit test, 20k draws, e<=0.15) ==
+   max |M_c - M_ref|          = 0.000e+00 rad
+   max |theta -> M -> theta|  = 1.776e-15 rad
+   verdict: PASS
+
+== Check L2: 5-iteration solve_kepler residual vs e ==
+        e   max |M_resid| (rad)  ~along-track err (m)
+     0.00             0.000e+00             0.000e+00
+     0.05             8.882e-16             6.217e-09
+     0.10             8.882e-16             6.217e-09
+     0.20             8.882e-16             6.217e-09
+     0.30             8.882e-16             6.217e-09
+     0.50             8.882e-16             6.217e-09
+     0.60             8.882e-16             6.217e-09
+     0.70             8.882e-16             6.217e-09
+     0.80             1.107e-05             7.748e+01
+     0.85             8.999e-05             6.300e+02
+     0.90             6.388e-04             4.472e+03
+     0.95             3.374e-03             2.362e+04
+   verdict (operational e<=0.15): PASS
+
+== Check R: does phase_gap_fixed=30 deg set the PHYSICAL gap? ==
+   case                                  phys mean   phys sd  |phys| p5  |phys| p95  trueanom mean      sd
+   e=0 both (circular)                      -30.00      0.00      30.00       30.00         -30.00    0.00
+   e=0.05 fixed, indep omega                -15.87    111.87       7.49      174.00         -30.04    2.10
+   e=0.05 fixed, same_orbit_init=1          -30.03      2.11      27.24       33.11         -30.03    2.11
+
+== Check S: drift-orbit phasing vs the 33.3 h episode clock (a = 550 km alt) ==
+    |da| km    deg/h  h for 180deg  round-trip dv  fits clock  fits fuel
+         50     2.45          73.4           54.8       False       True
+        100     4.90          36.7          109.7       False       True
+        150     7.35          24.5          164.5        True       True
+        200     9.80          18.4          219.3        True       True
+        300    14.71          12.2          329.0        True       True
+        400    19.61           9.2          438.6        True       True
+        500    24.51           7.3          548.3        True      False
+  S0_circular        uniform16   n= 20 causes={'stranded': 19, 'collision': 1}
+  S0_circular        burn_heavy  n= 20 causes={'stranded': 19, 'collision': 1}
+  S0_circular        warp_burn   n= 20 causes={'safety_cap': 15, 'stranded': 5}
+  S0_circular        theta90     n= 20 causes={'stranded': 20}
+  S0_circular        periapsis   n= 20 causes={'stranded': 20}
+  S0_circular        burst       n= 20 causes={'stranded': 16, 'collision': 4}
+  S0_circular        coast_warp  n= 20 causes={'safety_cap': 20}
+  S1_headline        uniform16   n= 20 causes={'stranded': 18, 'collision': 2}
+  S1_headline        burn_heavy  n= 20 causes={'stranded': 19, 'collision': 1}
+  S1_headline        warp_burn   n= 20 causes={'safety_cap': 13, 'stranded': 7}
+  S1_headline        theta90     n= 20 causes={'stranded': 20}
+  S1_headline        periapsis   n= 20 causes={'stranded': 20}
+  S1_headline        burst       n= 20 causes={'stranded': 17, 'collision': 3}
+  S1_headline        coast_warp  n= 20 causes={'safety_cap': 20}
+  S2_sameorbit       uniform16   n= 20 causes={'stranded': 19, 'collision': 1}
+  S2_sameorbit       burn_heavy  n= 20 causes={'stranded': 19, 'collision': 1}
+  S2_sameorbit       warp_burn   n= 20 causes={'safety_cap': 10, 'stranded': 9, 'collision': 1}
+  S2_sameorbit       theta90     n= 20 causes={'stranded': 20}
+  S2_sameorbit       periapsis   n= 20 causes={'stranded': 20}
+  S2_sameorbit       burst       n= 20 causes={'stranded': 18, 'collision': 2}
+  S2_sameorbit       coast_warp  n= 20 causes={'safety_cap': 20}
+  S3_hi_e            uniform16   n= 20 causes={'stranded': 20}
+  S3_hi_e            burn_heavy  n= 20 causes={'stranded': 20}
+  S3_hi_e            warp_burn   n= 20 causes={'safety_cap': 12, 'collision': 2, 'stranded': 6}
+  S3_hi_e            theta90     n= 20 causes={'stranded': 20}
+  S3_hi_e            periapsis   n= 20 causes={'stranded': 20}
+  S3_hi_e            burst       n= 20 causes={'stranded': 18, 'collision': 2}
+  S3_hi_e            coast_warp  n= 20 causes={'safety_cap': 20}
+  S4_hi_e_sameorb    uniform16   n= 20 causes={'stranded': 20}
+  S4_hi_e_sameorb    burn_heavy  n= 20 causes={'stranded': 19, 'collision': 1}
+  S4_hi_e_sameorb    warp_burn   n= 20 causes={'stranded': 7, 'safety_cap': 11, 'collision': 2}
+  S4_hi_e_sameorb    theta90     n= 20 causes={'stranded': 19, 'collision': 1}
+  S4_hi_e_sameorb    periapsis   n= 20 causes={'stranded': 20}
+  S4_hi_e_sameorb    burst       n= 20 causes={'stranded': 19, 'collision': 1}
+  S4_hi_e_sameorb    coast_warp  n= 20 causes={'safety_cap': 20}
+  S5_fixed_e10       uniform16   n= 20 causes={'collision': 18, 'stranded': 2}
+  S5_fixed_e10       burn_heavy  n= 20 causes={'collision': 15, 'stranded': 5}
+  S5_fixed_e10       warp_burn   n= 20 causes={'collision': 19, 'stranded': 1}
+  S5_fixed_e10       theta90     n= 20 causes={'collision': 19, 'stranded': 1}
+  S5_fixed_e10       periapsis   n= 20 causes={'collision': 17, 'stranded': 3}
+  S5_fixed_e10       burst       n= 20 causes={'collision': 13, 'stranded': 7}
+  S5_fixed_e10       coast_warp  n= 20 causes={'collision': 16, 'safety_cap': 4}
+  S6_debris_path     uniform16   n= 20 causes={'stranded': 20}
+  S6_debris_path     burn_heavy  n= 20 causes={'stranded': 19, 'collision': 1}
+  S6_debris_path     warp_burn   n= 20 causes={'stranded': 11, 'safety_cap': 9}
+  S6_debris_path     theta90     n= 20 causes={'stranded': 19, 'collision': 1}
+  S6_debris_path     periapsis   n= 20 causes={'stranded': 20}
+  S6_debris_path     burst       n= 20 causes={'stranded': 18, 'collision': 2}
+  S6_debris_path     coast_warp  n= 20 causes={'safety_cap': 20}
+
+980 episodes in 14.7s
+
+check                                                       n        mean         p50         p99         max     thresh   over  verdict
+------------------------------------------------------------------------------------------------------------------------------------------
+A chaser step-local |dpos| (m)                         617999   2.020e-01   1.869e-01   4.777e-01   6.779e-01  1.000e+01      0  PASS
+A chaser step-local |dvel| (m/s)                       617999   2.045e-04   1.903e-04   4.790e-04   9.455e-04  2.000e-02      0  PASS
+A  ...on burn sub-steps (m)                             40540   2.011e-01   1.852e-01   4.791e-01   6.569e-01  1.000e+01      0  PASS
+A  ...on coast sub-steps (m)                           577459   2.020e-01   1.870e-01   4.776e-01   6.779e-01  1.000e+01      0  PASS
+A  ...burn @|sin th|>0.7, e in [.02,.12] (m)            12088   2.018e-01   1.863e-01   4.776e-01   6.569e-01  1.000e+01      0  PASS
+G target step-local |dpos| (m)                         617999   2.018e-01   1.867e-01   4.778e-01   6.674e-01  1.000e+01      0  PASS
+G target step-local |dvel| (m/s)                       617999   2.051e-04   1.910e-04   4.807e-04   9.168e-04  2.000e-02      0  PASS
+B coast dE / sigma_E (z)                               577459   2.577e-01   2.217e-01   7.881e-01   1.277e+00  2.000e+01      0  PASS
+B coast dh / sigma_h (z)                               577459   1.289e-01   1.109e-01   3.942e-01   6.373e-01  2.000e+01      0  PASS
+C burn dE residual / sigma_E (z)                        40540   2.564e-01   2.198e-01   7.895e-01   1.245e+00  2.000e+01      0  PASS
+C burn dh residual / sigma_h (z)                        40540   1.282e-01   1.099e-01   3.950e-01   6.116e-01  2.000e+01      0  PASS
+D Tsiolkovsky dm residual (kg)                          40540   2.679e-06   1.578e-06   1.344e-05   1.660e-05  1.000e-03      0  PASS
+E |dv - table| unclamped (m/s)                          39901   0.000e+00   0.000e+00   0.000e+00   0.000e+00  1.000e-04      0  PASS
+E clamped dv overshoot (m/s)                              639   0.000e+00   0.000e+00   0.000e+00   0.000e+00  1.000e-04      0  PASS
+F sub-steps per decision - ACTION_TAU                   67058   0.000e+00   0.000e+00   0.000e+00   0.000e+00  5.000e-01      0  PASS
+F dv on warp/coast actions (m/s)                        19315   0.000e+00   0.000e+00   0.000e+00   0.000e+00  1.000e-09      0  PASS
+J |a_cart - a_log| (m)                                 618979   3.253e-01   2.824e-01   9.559e-01   1.561e+00  5.000e+00      0  PASS
+J |e_cart - e_log|                                     618979   2.548e-08   2.105e-08   8.206e-08   1.681e-07  1.000e-05      0  PASS
+J |(th+w)_cart - (th+w)_log| (rad)                     618979   8.530e-08   6.756e-08   2.914e-07   4.840e-07  1.000e-05      0  PASS
+I sign(phys gap) == sign(LVLH dy) [1=bad]               65198   0.000e+00   0.000e+00   0.000e+00   0.000e+00  0.000e+00      0  PASS
+I sign(obs13) wrong, w_sat==w_tgt [1=bad]                1799   0.000e+00   0.000e+00   0.000e+00   0.000e+00  0.000e+00      0  PASS
+I sign(obs13) wrong, w_sat!=w_tgt [1=bad]               63399   3.929e-01   0.000e+00   1.000e+00   1.000e+00  0.000e+00  24907  FAIL
+I |true-anom - physical| gap, same w (deg)               1799   1.414e-16   0.000e+00   0.000e+00   5.089e-14  1.000e+00      0  PASS
+I |true-anom - physical| gap, diff w (deg)              63399   7.206e+01   6.410e+01   1.771e+02   1.800e+02  1.000e+00  61894  FAIL
+N |d(theta+omega)| across impulse (deg)                 40540   4.663e-06   3.564e-06   1.597e-05   2.624e-05  1.000e-03      0  PASS
+N |d theta| across impulse (deg)                        40540   5.763e+00   1.704e+00   8.189e+01   1.799e+02  1.000e-03  40516  FAIL
+N  ...for e_pre < 0.005 (deg)                            2718   3.229e+01   1.476e+01   1.718e+02   1.799e+02  1.000e-03   2718  FAIL
+O cumulative re-sim |dpos| / ULP envelope                  98   1.814e-01   1.678e-01   5.815e-01   7.559e-01  8.000e+00      0  PASS
+P sigma2 gate open rate [audit, 1=open]                 67058   1.072e-01   0.000e+00   1.000e+00   1.000e+00  1.100e+00      0  PASS
+P |shaping_true - shaping_inertial| (reward)            67058   1.542e-04   8.326e-30   4.464e-03   1.969e-02  1.000e+09      0  PASS
+P  ...gate-open decisions only                           7190   7.750e-04   7.714e-05   1.199e-02   1.969e-02  1.000e+09      0  PASS
+P |phase shaping paid|, gate open                        7190   1.948e-03   4.079e-04   1.801e-02   1.990e-02  1.000e+09      0  PASS
+Q undetected sub-surface arc [1=bad]                   617999   0.000e+00   0.000e+00   0.000e+00   0.000e+00  0.000e+00      0  PASS
+Q undetected sub-keepout arc [1=bad]                   617999   3.236e-06   0.000e+00   0.000e+00   1.000e+00  0.000e+00      2  FAIL
+Q true-anomaly arc per 60 s sub-step (deg)             617999   3.745e+00   3.751e+00   4.217e+00   4.895e+00  1.000e+09      0  PASS
+Q debris closest approach, -km (>-5 = keepout)          99219  -3.163e+03  -2.445e+03  -1.213e+02  -3.071e+00 -5.000e+00      1  FAIL
+Q unsampled dip below sampled r_min (m)                617999   3.479e-01   0.000e+00   0.000e+00   4.303e+02  1.000e+09      0  PASS
+P artifact / |phase shaping paid|, gate open             7186   3.315e+01   2.637e-01   6.980e+01   6.658e+04  1.000e+09      0  PASS
+M |reward - shaping delta|                              67058   1.098e-07   5.663e-08   4.593e-07   8.579e-06  2.000e-05      0  PASS
+K terminal cause inconsistent [1=bad]                     980   0.000e+00   0.000e+00   0.000e+00   0.000e+00  0.000e+00      0  PASS
+H obs[0]                                                67058   7.825e-08   7.867e-08   1.623e-07   1.841e-07  3.000e-05      0  PASS
+H obs[1]                                                67058   0.000e+00   0.000e+00   0.000e+00   0.000e+00  3.000e-06      0  PASS
+H obs[2]                                                67058   4.510e-08   2.895e-08   2.012e-07   2.435e-07  3.000e-06      0  PASS
+H obs[3]                                                67058   5.026e-08   3.074e-08   2.170e-07   2.423e-07  3.000e-06      0  PASS
+H obs[4]                                                67058   1.268e-08   8.791e-09   5.447e-08   8.678e-08  3.000e-06      0  PASS
+H obs[5]                                                67058   2.752e-08   2.393e-08   8.306e-08   1.224e-07  3.000e-06      0  PASS
+H obs[6]                                                67058   0.000e+00   0.000e+00   0.000e+00   0.000e+00  3.000e-06      0  PASS
+H obs[7]                                                67058   7.651e-08   7.521e-08   1.595e-07   1.690e-07  3.000e-05      0  PASS
+H obs[8]                                                67058   0.000e+00   0.000e+00   0.000e+00   0.000e+00  3.000e-06      0  PASS
+H obs[9]                                                67058   2.742e-08   1.837e-08   1.140e-07   2.096e-07  3.000e-06      0  PASS
+H obs[10]                                               67058   2.800e-08   2.261e-08   1.069e-07   2.368e-07  3.000e-06      0  PASS
+H obs[11]                                               67058   3.874e-08   2.148e-08   1.899e-07   2.236e-07  3.000e-06      0  PASS
+H obs[12]                                               67058   4.045e-08   2.120e-08   2.169e-07   2.403e-07  3.000e-06      0  PASS
+H obs[13]                                               67058   6.513e-08   4.283e-08   2.842e-07   4.780e-07  3.000e-06      0  PASS
+H obs[14]                                               67058   6.642e-08   4.422e-08   2.828e-07   4.814e-07  3.000e-06      0  PASS
+H obs[15]                                               67058   4.279e-08   2.476e-08   2.111e-07   2.734e-07  3.000e-06      0  PASS
+H obs[16]                                               67058   4.259e-08   2.489e-08   2.107e-07   2.722e-07  3.000e-06      0  PASS
+H obs[17]                                               56691   1.998e-08   1.748e-08   5.477e-08   8.811e-08  3.000e-06      0  PASS
+H obs[18]                                               56691   1.045e-08   8.302e-09   3.247e-08   4.360e-08  3.000e-06      0  PASS
+H obs[19]                                               56691   1.272e-08   8.817e-09   5.431e-08   8.678e-08  3.000e-06      0  PASS
+H obs[20]                                               56691   2.576e-08   2.576e-08   2.576e-08   2.576e-08  3.000e-06      0  PASS
+H obs[33]                                               67058   3.696e-08   3.025e-08   1.343e-07   1.900e-07  3.000e-06      0  PASS
+H obs[34]                                               67058   2.335e-08   1.903e-08   7.919e-08   1.078e-07  3.000e-06      0  PASS
+H obs[35]                                               67058   2.863e-08   2.324e-08   9.557e-08   1.565e-07  3.000e-06      0  PASS
+H obs[36]                                               67058   4.072e-08   3.378e-08   1.373e-07   1.986e-07  3.000e-06      0  PASS
+H obs[37]                                               67058   3.779e-08   3.316e-08   1.066e-07   1.153e-07  3.000e-05      0  PASS
+H empty body slots == 0                                680292   0.000e+00   0.000e+00   0.000e+00   0.000e+00  1.000e-09      0  PASS
+
+== anomalies (first few contexts over threshold) ==
+  I sign(obs13) wrong, w_sat!=w_tgt [1=bad]: 24907/63399 over 0.00e+00
+      val=1.0000e+00  ctx={'i': 2, 'phys': 2.008110596064636, 'dth_true': -0.3855895267686158, 'dw': 2.393700122833252}
+      val=1.0000e+00  ctx={'i': 64, 'phys': 1.8067055977389987, 'dth_true': -2.7537533643783316, 'dw': -1.7227263450622559}
+      val=1.0000e+00  ctx={'i': 94, 'phys': 1.709025518194264, 'dth_true': -2.8514334439230664, 'dw': -1.7227263450622559}
+      val=1.0000e+00  ctx={'i': 95, 'phys': 1.7057218520024193, 'dth_true': -0.6666095288416969, 'dw': 2.372331380844116}
+      val=1.0000e+00  ctx={'i': 96, 'phys': 1.7024335523386664, 'dth_true': -0.8027606348256402, 'dw': 2.5051941871643066}
+  I |true-anom - physical| gap, diff w (deg): 61894/63399 over 1.00e+00
+      val=4.7526e+01  ctx={'i': 1, 'phys': 2.0113685833764343, 'dth_true': 2.8408599602532654, 'dw': -0.829491376876831}
+      val=1.3715e+02  ctx={'i': 2, 'phys': 2.008110596064636, 'dth_true': -0.3855895267686158, 'dw': 2.393700122833252}
+      val=2.8964e+01  ctx={'i': 3, 'phys': 2.00493930053827, 'dth_true': 2.5104592270862742, 'dw': -0.5055199265480042}
+      val=2.8964e+01  ctx={'i': 63, 'phys': 1.8099838117307518, 'dth_true': 2.315503738278756, 'dw': -0.5055199265480042}
+      val=9.8705e+01  ctx={'i': 64, 'phys': 1.8067055977389987, 'dth_true': -2.7537533643783316, 'dw': -1.7227263450622559}
+  N |d theta| across impulse (deg): 40516/40540 over 1.00e-03
+      val=4.7530e+01  ctx={'i': 1, 'act': 14, 'dv': 2.0, 'e_pre': 0.0, 'e_post': 0.000528395980647789, 'dth_deg': 47.53036104410129, 'dw_deg': 47.53035422957399}
+      val=1.7532e+02  ctx={'i': 2, 'act': 5, 'dv': 10.0, 'e_pre': 0.0005284526851028204, 'e_post': 0.0021138167662564703, 'dth_deg': 175.3245611458083, 'dw_deg': 175.3245596430854}
+      val=1.6611e+02  ctx={'i': 3, 'act': 2, 'dv': 10.0, 'e_pre': 0.0021138216834515333, 'e_post': 0.000539696093397017, 'dth_deg': 166.11446966666495, 'dw_deg': 166.11447287352786}
+      val=6.9753e+01  ctx={'i': 64, 'act': 14, 'dv': 2.0, 'e_pre': 0.000539640721399337, 'e_post': 0.0003389190197207394, 'dth_deg': 69.75308444421599, 'dw_deg': 69.75308592904094}
+      val=1.2537e+02  ctx={'i': 95, 'act': 4, 'dv': 5.0, 'e_pre': 0.00033889469341374934, 'e_post': 0.0010958189357247747, 'dth_deg': 125.37079842172678, 'dw_deg': 125.37079905716263}
+  N  ...for e_pre < 0.005 (deg): 2718/2718 over 1.00e-03
+      val=4.7530e+01  ctx={'i': 1, 'act': 14, 'dv': 2.0, 'e_pre': 0.0, 'e_post': 0.000528395980647789, 'dth_deg': 47.53036104410129, 'dw_deg': 47.53035422957399}
+      val=1.7532e+02  ctx={'i': 2, 'act': 5, 'dv': 10.0, 'e_pre': 0.0005284526851028204, 'e_post': 0.0021138167662564703, 'dth_deg': 175.3245611458083, 'dw_deg': 175.3245596430854}
+      val=1.6611e+02  ctx={'i': 3, 'act': 2, 'dv': 10.0, 'e_pre': 0.0021138216834515333, 'e_post': 0.000539696093397017, 'dth_deg': 166.11446966666495, 'dw_deg': 166.11447287352786}
+      val=6.9753e+01  ctx={'i': 64, 'act': 14, 'dv': 2.0, 'e_pre': 0.000539640721399337, 'e_post': 0.0003389190197207394, 'dth_deg': 69.75308444421599, 'dw_deg': 69.75308592904094}
+      val=1.2537e+02  ctx={'i': 95, 'act': 4, 'dv': 5.0, 'e_pre': 0.00033889469341374934, 'e_post': 0.0010958189357247747, 'dth_deg': 125.37079842172678, 'dw_deg': 125.37079905716263}
+  Q undetected sub-keepout arc [1=bad]: 2/617999 over 0.00e+00
+      val=1.0000e+00  ctx={'i': 453, 'act': 10, 'r_min': 6570986.304750558, 'r0': 6571035.153872243, 'r1': 6571673.987404945, 'a': 7037310.5, 'e': 0.0662645474076271, 'adv_deg': 4.207301560337384}
+      val=1.0000e+00  ctx={'i': 551, 'act': 11, 'r_min': 6570986.304750558, 'r0': 6571004.850673074, 'r1': 6571820.785624217, 'a': 7037310.5, 'e': 0.0662645474076271, 'adv_deg': 4.207233685332507}
+  Q debris closest approach, -km (>-5 = keepout): 1/99219 over -5.00e+00
+      val=-3.0710e+00  ctx={'i': 596, 'd_km': 3.0709865780397023}
+
+== worst-case context per check ==
+  A chaser step-local |dpos| (m)                       max=6.779e-01  ctx={'i': 1625, 'act': 11, 'dv': 0.0, 'e_prev': 0.0033918453846126795, 'th_prev': 3.199402332305908, 'a_prev': 7159637.0}
+  A chaser step-local |dvel| (m/s)                     max=9.455e-04  ctx={'i': 331, 'act': 10, 'dv': 0.0, 'e_prev': 0.10000000149011612, 'th_prev': 6.227809429168701, 'a_prev': 7136661.5}
+  A  ...on burn sub-steps (m)                          max=6.569e-01  ctx={'i': 29, 'act': 2, 'dv': 10.0, 'e_prev': 0.025173569098114967, 'th_prev': 5.178817272186279, 'a_prev': 6784012.0}
+  A  ...on coast sub-steps (m)                         max=6.779e-01  ctx={'i': 1625, 'act': 11, 'dv': 0.0, 'e_prev': 0.0033918453846126795, 'th_prev': 3.199402332305908, 'a_prev': 7159637.0}
+  A  ...burn @|sin th|>0.7, e in [.02,.12] (m)         max=6.569e-01  ctx={'i': 29, 'act': 2, 'dv': 10.0, 'e_prev': 0.025173569098114967, 'th_prev': 5.178817272186279, 'a_prev': 6784012.0}
+  G target step-local |dpos| (m)                       max=6.674e-01  ctx={'i': 1899, 'e': 0.055313389748334885, 'a': 7034615.0}
+  G target step-local |dvel| (m/s)                     max=9.168e-04  ctx={'i': 402, 'e': 0.10000000149011612, 'a': 6960261.0}
+  B coast dE / sigma_E (z)                             max=1.277e+00  ctx={'i': 954, 'a': 6969009.0, 'e': 0.03446875512599945}
+  B coast dh / sigma_h (z)                             max=6.373e-01  ctx={'i': 954, 'a': 6969009.0, 'e': 0.03446875512599945}
+  C burn dE residual / sigma_E (z)                     max=1.245e+00  ctx={'i': 209, 'act': 13, 'dv': 1.0, 'e': 0.10082711279392242, 'th': 6.004636287689209}
+  C burn dh residual / sigma_h (z)                     max=6.116e-01  ctx={'i': 209, 'act': 13, 'dv': 1.0, 'e': 0.10082711279392242}
+  D Tsiolkovsky dm residual (kg)                       max=1.660e-05  ctx={'i': 39, 'dv': 1.0, 'f0': 0.14826470613479614}
+  E |dv - table| unclamped (m/s)                       max=0.000e+00  ctx={'i': 1, 'act': 14, 'dv': 2.0}
+  E clamped dv overshoot (m/s)                         max=0.000e+00  ctx={'i': 632, 'act': 2, 'dv': 1.129878044128418}
+  F sub-steps per decision - ACTION_TAU                max=0.000e+00  ctx={'i': 1, 'act': 14}
+  F dv on warp/coast actions (m/s)                     max=0.000e+00  ctx={'i': 63, 'act': 11}
+  J |a_cart - a_log| (m)                               max=1.561e+00  ctx=(1630, 7136661.5, 0.10000000149011612)
+  J |e_cart - e_log|                                   max=1.681e-07  ctx=(331, 7136661.5, 0.10000000149011612)
+  J |(th+w)_cart - (th+w)_log| (rad)                   max=4.840e-07  ctx=(45, 6711676.5, 0.011152858845889568)
+  I sign(phys gap) == sign(LVLH dy) [1=bad]            max=0.000e+00  ctx={'i': 1, 'phys': 2.0113685833764343, 'dy_l': 6291121.406341936}
+  I sign(obs13) wrong, w_sat==w_tgt [1=bad]            max=0.000e+00  ctx={'i': 60, 'phys': 2.328274163042801, 'dth_true': 2.328274163042801, 'dw': 0.0}
+  I sign(obs13) wrong, w_sat!=w_tgt [1=bad]            max=1.000e+00  ctx={'i': 2, 'phys': 2.008110596064636, 'dth_true': -0.3855895267686158, 'dw': 2.393700122833252}
+  I |true-anom - physical| gap, same w (deg)           max=5.089e-14  ctx={'i': 150, 'phys': 0.48068760717041314, 'dth_true': 0.48068760717041403, 'dw': 0.0}
+  I |true-anom - physical| gap, diff w (deg)           max=1.800e+02  ctx={'i': 100, 'phys': 0.3228637401892964, 'dth_true': -2.8186605746910747, 'dw': 3.141524314880371}
+  N |d(theta+omega)| across impulse (deg)              max=2.624e-05  ctx={'i': 3, 'act': 1, 'dv': 5.0, 'e_pre': 0.06525644659996033, 'e_post': 0.06625349896359842, 'dth_deg': 0.7784868641542343, 'dw_deg': 0.7784606269108073}
+  N |d theta| across impulse (deg)                     max=1.799e+02  ctx={'i': 502, 'act': 3, 'dv': 25.0, 'e_pre': 0.001083421055227518, 'e_post': 0.0055014119651558115, 'dth_deg': 179.92026242012184, 'dw_deg': 179.92026603518772}
+  N  ...for e_pre < 0.005 (deg)                        max=1.799e+02  ctx={'i': 502, 'act': 3, 'dv': 25.0, 'e_pre': 0.001083421055227518, 'e_post': 0.0055014119651558115, 'dth_deg': 179.92026242012184, 'dw_deg': 179.92026603518772}
+  O cumulative re-sim |dpos| / ULP envelope            max=7.559e-01  ctx={'n': 413, 'err_m': 34.45597759628424, 'envelope_m': 45.58471237992519}
+  P sigma2 gate open rate [audit, 1=open]              max=1.000e+00  ctx={'i': 47, 'phi_orbit': 0.774510736566782}
+  P |shaping_true - shaping_inertial| (reward)         max=1.969e-02  ctx={'i': 60, 'act': 6, 's2': 0.9999221034345989, 'dth_true': -2.9455124900243597, 'dth_inert': 0.05430995170722852}
+  P  ...gate-open decisions only                       max=1.969e-02  ctx={'i': 60, 'act': 6, 's2': 0.9999221034345989}
+  P |phase shaping paid|, gate open                    max=1.990e-02  ctx={'i': 281, 'act': 6}
+  Q undetected sub-surface arc [1=bad]                 max=0.000e+00  ctx={'i': 1, 'act': 14, 'r_min': 6955290.260993516, 'r0': 6955290.260993516, 'r1': 6955298.454837183, 'a': 6958968.0, 'e': 0.0005284526851028204, 'adv_deg': 3.7386911453909923}
+  Q undetected sub-keepout arc [1=bad]                 max=1.000e+00  ctx={'i': 453, 'act': 10, 'r_min': 6570986.304750558, 'r0': 6571035.153872243, 'r1': 6571673.987404945, 'a': 7037310.5, 'e': 0.0662645474076271, 'adv_deg': 4.207301560337384}
+  Q true-anomaly arc per 60 s sub-step (deg)           max=4.895e+00  ctx={'i': 1, 'act': 3, 'r_min': 6011507.347038055, 'r0': 6011507.347038055, 'r1': 6015737.347567503, 'a': 6727025.0, 'e': 0.10644400119781494, 'adv_deg': 4.895062989215929}
+  Q unsampled dip below sampled r_min (m)              max=4.303e+02  ctx={'i': 280, 'act': 11, 'r_min': 6385747.489427216, 'r0': 6386196.700446069, 'r1': 6386177.819400018, 'a': 7095275.0, 'e': 0.10000000149011612, 'adv_deg': 4.460678099769584}
+  P artifact / |phase shaping paid|, gate open         max=6.658e+04  ctx={'i': 4, 'act': 6, 'd_true': 2.6018665492860676e-07, 'd_inert': 0.017323672489987955}
+  M |reward - shaping delta|                           max=8.579e-06  ctx={'i': 39, 'act': 4, 'pred': -0.06101744919999237, 'got': -0.06100887060165405}
+  K terminal cause inconsistent [1=bad]                max=0.000e+00  ctx={'cause': 5, 'd': 5230112.232225358, 'rv': 5890.019934536089, 'r': 7023857.499608068, 'E': -27910350.665446743, 'fuel': 0.0, 'j': 632}
+  H obs[0]                                             max=1.841e-07  ctx={'i': 145, 'k': 0}
+  H obs[1]                                             max=0.000e+00  ctx={'i': 1, 'k': 1}
+  H obs[2]                                             max=2.435e-07  ctx={'i': 46, 'k': 2}
+  H obs[3]                                             max=2.423e-07  ctx={'i': 73, 'k': 3}
+  H obs[4]                                             max=8.678e-08  ctx={'i': 358, 'k': 4}
+  H obs[5]                                             max=1.224e-07  ctx={'i': 187, 'k': 5}
+  H obs[6]                                             max=0.000e+00  ctx={'i': 1, 'k': 6}
+  H obs[7]                                             max=1.690e-07  ctx={'i': 1, 'k': 7}
+  H obs[8]                                             max=0.000e+00  ctx={'i': 1, 'k': 8}
+  H obs[9]                                             max=2.096e-07  ctx={'i': 1, 'k': 9}
+  H obs[10]                                            max=2.368e-07  ctx={'i': 60, 'k': 10}
+  H obs[11]                                            max=2.236e-07  ctx={'i': 1, 'k': 11}
+  H obs[12]                                            max=2.403e-07  ctx={'i': 1, 'k': 12}
+  H obs[13]                                            max=4.780e-07  ctx={'i': 240, 'k': 13}
+  H obs[14]                                            max=4.814e-07  ctx={'i': 225, 'k': 14}
+  H obs[15]                                            max=2.734e-07  ctx={'i': 90, 'k': 15}
+  H obs[16]                                            max=2.722e-07  ctx={'i': 122, 'k': 16}
+  H obs[17]                                            max=8.811e-08  ctx={'i': 58, 'k': 17}
+  H obs[18]                                            max=4.360e-08  ctx={'i': 9, 'k': 18}
+  H obs[19]                                            max=8.678e-08  ctx={'i': 358, 'k': 19}
+  H obs[20]                                            max=2.576e-08  ctx={'i': 1, 'k': 20}
+  H obs[33]                                            max=1.900e-07  ctx={'i': 140, 'k': 33}
+  H obs[34]                                            max=1.078e-07  ctx={'i': 37, 'k': 34}
+  H obs[35]                                            max=1.565e-07  ctx={'i': 627, 'k': 35}
+  H obs[36]                                            max=1.986e-07  ctx={'i': 31, 'k': 36}
+  H obs[37]                                            max=1.153e-07  ctx={'i': 1, 'k': 37}
+  H empty body slots == 0                              max=0.000e+00  ctx={'i': 1, 'k': 21}
+
+wrote /Users/pete/space_training/web_data/results/t3_fuzz_dynamics.csv
+wrote /Users/pete/space_training/web_data/results/t3_fuzz_coverage.csv

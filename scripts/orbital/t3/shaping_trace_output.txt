@@ -1,0 +1,351 @@
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+==============================================================================
+SIGN CHECK — which burn direction closes a 'chaser behind' gap
+==============================================================================
+  retrograde-25 (lower a)    da=  -184.2 km  gdot= +8.689 deg/hr  g:  -90.00 ->  -89.64 ->  -37.50 deg  (6h later)
+  prograde-25 (raise a)      da=  +196.9 km  gdot= -8.688 deg/hr  g:  -90.00 ->  -90.36 -> -142.49 deg  (6h later)
+
+==============================================================================
+Q1 — scripted-expert Phi trace
+==============================================================================
+
+=== expert @ gap 90 deg, e=0.0 ===
+  [plan] g0= -90.00deg k=0 N=18 da=  -66.2km dv= -35.10m/s x2  rp=630km alt drift=1774 steps  burns=2
+  [done] 41 decisions / 1772 sim steps  terminal=1 r=+9.672 miss=23.9 km vrel=35.02 m/s fuel_left=0.1398 fine_rounds=0
+
+=== expert @ gap 150 deg, e=0.0 ===
+  [plan] g0=-150.00deg k=0 N=18 da= -110.5km dv= -59.05m/s x2  rp=541km alt drift=1757 steps  burns=5
+  [done] 41 decisions / 1756 sim steps  terminal=1 r=+9.172 miss=5.1 km vrel=58.69 m/s fuel_left=0.1328 fine_rounds=0
+
+=== expert @ gap 180 deg, e=0.0 ===
+  [plan] g0=-180.00deg k=0 N=18 da= -132.7km dv= -71.20m/s x2  rp=497km alt drift=1749 steps  burns=5
+  [done] 50 decisions / 1873 sim steps  terminal=1 r=+8.423 miss=78.9 km vrel=38.46 m/s fuel_left=0.1074 fine_rounds=1
+
+=== expert transfer+phasing (da0 != 0, gap 120 deg) ===
+  [xfer] da0=  -68.7 km  dv1=-18.87 dv2=-18.91 m/s
+  [plan] g0=-121.41deg k=0 N=18 da=  -87.6km dv= -49.25m/s x2  rp=330km alt drift=1670 steps  burns=5
+  [done] 62 decisions / 1906 sim steps  cause=1 r=+8.495 fuel_left=0.1092
+
+[validation] max |realised C reward - python legacy shaping| over 2261 non-terminal steps = 5.531e-08
+[csv] /Users/pete/space_training/web_data/results/t3_shaping_trace.csv  (2268 rows)
+
+------------------------------------------------------------------------------
+PER-LEG SHAPING RETURN — AS IMPLEMENTED: gamma^tau per sub-step
+------------------------------------------------------------------------------
+
+### expert_g90   (41 decisions, 1772 sim steps, terminal_reward=+9.672)
+    plan: N=18 da*=-66.2 km dv=-35.1 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    A_open        2      2     -0.0555     +0.0011     +0.1203     -0.0532     +0.0031     -0.0514
+    B_drift      38   1769     +0.5075     +0.1108     +4.2084     +2.1395     +2.4056     +2.7950
+    TERMINAL      1      1     +0.0661     +0.0199     +0.0046     +0.3759     +0.0028     +0.0595
+    TOTAL        41   1772     +0.5181     +0.1319     +4.3333     +2.4623     +2.4116     +2.8032
+    worst step                 -0.0371     +0.0001     +0.0005     -0.0374     -0.0001     -0.0381
+
+### expert_g150   (41 decisions, 1756 sim steps, terminal_reward=+9.172)
+    plan: N=18 da*=-110.5 km dv=-59.0 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    A_open        5      5     -0.0896     -0.0903     +0.1453     +0.1239     +0.0173     -0.0713
+    B_drift      35   1750     +0.8384     +0.2928     +4.1253     +1.9156     +3.9647     +4.6078
+    TERMINAL      1      1     +0.1106     +0.0199     +0.0033     +0.4173     +0.0032     +0.0982
+    TOTAL        41   1756     +0.8594     +0.2225     +4.2740     +2.4568     +3.9852     +4.6346
+    worst step                 -0.0461     -0.0460     +0.0005     -0.0428     -0.0001     -0.0365
+
+### expert_g180   (50 decisions, 1873 sim steps, terminal_reward=+8.423)
+    plan: N=18 da*=-132.7 km dv=-71.2 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    A_open        5      5     -0.1100     -0.1101     +0.1476     +0.2046     +0.0222     -0.0859
+    B_drift      37   1742     +1.0035     +0.4651     +4.1145     +1.8193     +4.7501     +5.5202
+    C_close       5      5     +0.1244     +0.0113     -0.9884     +0.2942     +0.0026     +0.1072
+    F_open        1      1     -0.0059     -0.0022     +0.8844     -0.0265     -0.0001     -0.0009
+    F_drift       1     60     +0.0039     +0.0029     +0.0521     +0.0461     -0.0007     +0.0044
+    TERMINAL      1     60     +0.0150     +0.0112     +0.0866     +0.1761     +0.0054     +0.0133
+    TOTAL        50   1873     +1.0309     +0.3783     +4.2968     +2.5139     +4.7794     +5.5584
+    worst step                 -0.0461     -0.0462     -0.7610     -0.0432     -0.0007     -0.0356
+
+### expert_xfer_g120   (62 decisions, 1906 sim steps, terminal_reward=+8.495)
+    plan: N=18 da*=-87.6 km dv=-49.3 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    T_xfer       14     51     +0.0563     -0.0023     +0.2441     +0.0389     +0.1629     +0.2052
+    A_open        5      5     -0.0631     +0.0104     +0.1847     +0.0568     +0.0138     -0.0570
+    B_drift      33   1663     +0.6194     +0.1141     +3.7877     +2.2045     +3.0967     +3.5973
+    C_close       5      5     +0.0693     +0.0035     -0.9863     -0.0294     +0.0021     +0.0743
+    F_open        2      2     -0.0052     -0.0027     +0.8820     -0.0464     -0.0002     -0.0020
+    F_drift       2    120     +0.0118     +0.0097     +0.0989     +0.1413     +0.0030     +0.0080
+    TERMINAL      1     60     +0.0227     +0.0186     +0.0596     +0.2724     +0.0039     +0.0106
+    TOTAL        62   1906     +0.7111     +0.1514     +4.2707     +2.6381     +3.2821     +3.8364
+    worst step                 -0.0222     -0.0038     -0.7763     -0.0595     -0.0001     -0.0346
+
+### coast   (2000 decisions, 2000 sim steps, terminal_reward=-10.000)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    null       1999   1999     +0.1999     +0.1999     +9.9950     +3.1984     +9.9950     +9.9950
+    TERMINAL      1      1     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TOTAL      2000   2000     +0.1999     +0.1999     +9.9950     +3.1984     +9.9950     +9.9950
+    worst step                 +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+
+### warp60   (34 decisions, 2040 sim steps, terminal_reward=-10.000)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    null         33   1980     +0.1714     +0.1714     +8.5714     +2.7428     +8.5714     +8.5714
+    TERMINAL      1     60     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TOTAL        34   2040     +0.1714     +0.1714     +8.5714     +2.7428     +8.5714     +8.5714
+    worst step                 +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+
+### parkfarm   (40 decisions, 2046 sim steps, terminal_reward=-10.000)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    farm_open     6      6     -0.2765     +0.0009     +0.6055     +0.2801     +0.0240     -0.2160
+    farm_warp    33   1980     +2.5859     +0.6454     +3.7336     +2.2707     +5.2770     +7.2206
+    TERMINAL      1     60     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TOTAL        40   2046     +2.3094     +0.6463     +4.3391     +2.5509     +5.3010     +7.0046
+    worst step                 -0.0509     -0.1979     -0.5703     -0.0200     -0.0704     -0.0360
+
+------------------------------------------------------------------------------
+PER-LEG SHAPING RETURN — gamma^1 per agent decision (PPO-consistent)
+------------------------------------------------------------------------------
+
+### expert_g90   (41 decisions, 1772 sim steps, terminal_reward=+9.672)
+    plan: N=18 da*=-66.2 km dv=-35.1 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    A_open        2      2     -0.0555     +0.0011     +0.1203     -0.0532     +0.0031     -0.0514
+    B_drift      38   1769     +0.0126     -0.0078     +0.9489     -0.1005     +0.5360     +0.5442
+    TERMINAL      1      1     +0.0661     +0.0199     +0.0046     +0.3759     +0.0028     +0.0595
+    TOTAL        41   1772     +0.0231     +0.0133     +1.0738     +0.2222     +0.5419     +0.5523
+    worst step                 -0.0371     -0.0008     +0.0005     -0.0374     -0.0001     -0.0381
+
+### expert_g150   (41 decisions, 1756 sim steps, terminal_reward=+9.172)
+    plan: N=18 da*=-110.5 km dv=-59.0 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    A_open        5      5     -0.0896     -0.0903     +0.1453     +0.1239     +0.0173     -0.0713
+    B_drift      35   1750     +0.0194     +0.0958     +0.9377     -0.2151     +0.8941     +0.9050
+    TERMINAL      1      1     +0.1106     +0.0199     +0.0033     +0.4173     +0.0032     +0.0982
+    TOTAL        41   1756     +0.0403     +0.0254     +1.0864     +0.3261     +0.9146     +0.9318
+    worst step                 -0.0461     -0.0460     +0.0005     -0.0428     -0.0001     -0.0365
+
+### expert_g180   (50 decisions, 1873 sim steps, terminal_reward=+8.423)
+    plan: N=18 da*=-132.7 km dv=-71.2 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    A_open        5      5     -0.1100     -0.1101     +0.1476     +0.2046     +0.0222     -0.0859
+    B_drift      37   1742     +0.0245     +0.1204     +0.9340     -0.2610     +1.0699     +1.0856
+    C_close       5      5     +0.1244     +0.0113     -0.9884     +0.2942     +0.0026     +0.1072
+    F_open        1      1     -0.0059     -0.0022     +0.8844     -0.0265     -0.0001     -0.0009
+    F_drift       1     60     +0.0001     +0.0001     +0.0300     +0.0012     -0.0020     +0.0010
+    TERMINAL      1     60     +0.0150     +0.0112     +0.0866     +0.1761     +0.0054     +0.0133
+    TOTAL        50   1873     +0.0481     +0.0306     +1.0942     +0.3887     +1.0979     +1.1203
+    worst step                 -0.0461     -0.0462     -0.7610     -0.0432     -0.0020     -0.0356
+
+### expert_xfer_g120   (62 decisions, 1906 sim steps, terminal_reward=+8.495)
+    plan: N=18 da*=-87.6 km dv=-49.3 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    T_xfer       14     51     +0.0500     -0.0038     +0.0700     +0.0073     +0.0451     +0.0827
+    A_open        5      5     -0.0631     +0.0104     +0.1847     +0.0568     +0.0138     -0.0570
+    B_drift      33   1663     +0.0142     -0.0066     +0.8886     +0.0988     +0.7189     +0.7267
+    C_close       5      5     +0.0693     +0.0035     -0.9863     -0.0294     +0.0021     +0.0743
+    F_open        2      2     -0.0052     -0.0027     +0.8820     -0.0464     -0.0002     -0.0020
+    F_drift       2    120     +0.0002     +0.0002     +0.0608     +0.0026     +0.0007     +0.0023
+    TERMINAL      1     60     +0.0227     +0.0186     +0.0596     +0.2724     +0.0039     +0.0106
+    TOTAL        62   1906     +0.0880     +0.0197     +1.1594     +0.3620     +0.7842     +0.8376
+    worst step                 -0.0222     -0.0038     -0.7763     -0.0595     -0.0004     -0.0346
+
+### coast   (2000 decisions, 2000 sim steps, terminal_reward=-10.000)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    null       1999   1999     +0.1999     +0.1999     +9.9950     +3.1984     +9.9950     +9.9950
+    TERMINAL      1      1     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TOTAL      2000   2000     +0.1999     +0.1999     +9.9950     +3.1984     +9.9950     +9.9950
+    worst step                 +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+
+### warp60   (34 decisions, 2040 sim steps, terminal_reward=-10.000)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    null         33   1980     +0.0033     +0.0033     +0.1650     +0.0528     +0.1650     +0.1650
+    TERMINAL      1     60     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TOTAL        34   2040     +0.0033     +0.0033     +0.1650     +0.0528     +0.1650     +0.1650
+    worst step                 +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+
+### parkfarm   (40 decisions, 2046 sim steps, terminal_reward=-10.000)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    farm_open     6      6     -0.2765     +0.0009     +0.6055     +0.2801     +0.0240     -0.2160
+    farm_warp    33   1980     +0.0498     +0.0215     +0.2144     -0.0680     +0.4664     +0.5160
+    TERMINAL      1     60     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TOTAL        40   2046     -0.2267     +0.0224     +0.8199     +0.2121     +0.4904     +0.3000
+    worst step                 -0.0509     -0.2746     -0.7810     -0.0381     -0.1378     -0.0705
+
+------------------------------------------------------------------------------
+PER-LEG SHAPING RETURN — gamma_shape = 1 (pure telescoping)
+------------------------------------------------------------------------------
+
+### expert_g90   (41 decisions, 1772 sim steps, terminal_reward=+9.672)
+    plan: N=18 da*=-66.2 km dv=-35.1 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    A_open        2      2     -0.0561     +0.0010     +0.1109     -0.0552     -0.0019     -0.0569
+    B_drift      38   1769     -0.0000     -0.0110     +0.8845     -0.1607     +0.4991     +0.4973
+    TERMINAL      1      1     +0.0661     +0.0199     +0.0046     +0.3759     +0.0028     +0.0595
+    TOTAL        41   1772     +0.0100     +0.0100     +1.0000     +0.1600     +0.5000     +0.5000
+    worst step                 -0.0374     -0.0009     +0.0000     -0.0384     -0.0013     -0.0408
+
+### expert_g150   (41 decisions, 1756 sim steps, terminal_reward=+9.172)
+    plan: N=18 da*=-110.5 km dv=-59.0 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    A_open        5      5     -0.0919     -0.0926     +0.1217     +0.1206     -0.0036     -0.0942
+    B_drift      35   1750     +0.0000     +0.0913     +0.8750     -0.2693     +0.8338     +0.8293
+    TERMINAL      1      1     +0.1106     +0.0199     +0.0033     +0.4173     +0.0032     +0.0982
+    TOTAL        41   1756     +0.0187     +0.0187     +1.0000     +0.2687     +0.8333     +0.8333
+    worst step                 -0.0466     -0.0465     +0.0000     -0.0434     -0.0014     -0.0408
+
+### expert_g180   (50 decisions, 1873 sim steps, terminal_reward=+8.423)
+    plan: N=18 da*=-132.7 km dv=-71.2 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    A_open        5      5     -0.1125     -0.1127     +0.1238     +0.2023     -0.0029     -0.1132
+    B_drift      37   1742     +0.0000     +0.1128     +0.8710     -0.3193     +0.9972     +0.9934
+    C_close       5      5     +0.1235     +0.0109     -0.9948     +0.2879     +0.0025     +0.1064
+    F_open        1      1     -0.0060     -0.0022     +0.8838     -0.0274     -0.0001     -0.0009
+    F_drift       1     60     +0.0000     +0.0000     +0.0296     +0.0004     -0.0021     +0.0010
+    TERMINAL      1     60     +0.0150     +0.0112     +0.0866     +0.1761     +0.0054     +0.0133
+    TOTAL        50   1873     +0.0200     +0.0200     +1.0000     +0.3200     +1.0000     +1.0000
+    worst step                 -0.0466     -0.0466     -0.7660     -0.0436     -0.0021     -0.0408
+
+### expert_xfer_g120   (62 decisions, 1906 sim steps, terminal_reward=+8.495)
+    plan: N=18 da*=-87.6 km dv=-49.3 m/s (x2)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    T_xfer       14     51     +0.0477     -0.0046     +0.0000     -0.0071     -0.0022     +0.0340
+    A_open        5      5     -0.0648     +0.0102     +0.1615     +0.0511     -0.0032     -0.0755
+    B_drift      33   1663     -0.0000     -0.0094     +0.8315     +0.0524     +0.6720     +0.6681
+    C_close       5      5     +0.0686     +0.0031     -0.9930     -0.0359     +0.0020     +0.0738
+    F_open        2      2     -0.0054     -0.0029     +0.8803     -0.0491     -0.0003     -0.0021
+    F_drift       2    120     -0.0000     -0.0000     +0.0600     -0.0002     +0.0006     +0.0022
+    TERMINAL      1     60     +0.0227     +0.0186     +0.0596     +0.2724     +0.0039     +0.0106
+    TOTAL        62   1906     +0.0687     +0.0150     +1.0000     +0.2837     +0.6730     +0.7111
+    worst step                 -0.0224     -0.0038     -0.7813     -0.0607     -0.0014     -0.0382
+
+### coast   (2000 decisions, 2000 sim steps, terminal_reward=-10.000)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    null       1999   1999     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TERMINAL      1      1     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TOTAL      2000   2000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    worst step                 +0.0000     +0.0000     +0.0000     +0.0000     -0.0000     -0.0000
+
+### warp60   (34 decisions, 2040 sim steps, terminal_reward=-10.000)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    null         33   1980     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TERMINAL      1     60     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TOTAL        34   2040     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    worst step                 +0.0000     +0.0000     +0.0000     +0.0000     -0.0000     +0.0000
+
+### parkfarm   (40 decisions, 2046 sim steps, terminal_reward=-10.000)
+    leg           n  steps      legacy         S_A         S_B         S_C         S_R        S_R3
+    farm_open     6      6     -0.2817     +0.0003     +0.5836     +0.2760     -0.0061     -0.2504
+    farm_warp    33   1980     +0.0000     +0.0093     +0.1454     -0.1139     +0.3720     +0.3844
+    TERMINAL      1     60     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000     +0.0000
+    TOTAL        40   2046     -0.2817     +0.0096     +0.7290     +0.1620     +0.3659     +0.1341
+    worst step                 -0.0524     -0.2761     -0.7851     -0.0404     -0.1403     -0.0723
+
+------------------------------------------------------------------------------
+TERMINAL ACCOUNTING (legacy)
+------------------------------------------------------------------------------
+  expert_g90       terminal=1  reward_last=+9.6719 Phi_prev=-0.06612  dist=     23.9 km vrel=   35.02 m/s  fuel_left=0.1398
+  expert_g150      terminal=1  reward_last=+9.1723 Phi_prev=-0.11058  dist=      5.1 km vrel=   58.69 m/s  fuel_left=0.1328
+  expert_g180      terminal=1  reward_last=+8.4227 Phi_prev=-0.01498  dist=     78.9 km vrel=   38.46 m/s  fuel_left=0.1074
+  expert_xfer_g120 terminal=1  reward_last=+8.4952 Phi_prev=-0.02266  dist=     68.0 km vrel=   14.29 m/s  fuel_left=0.1092
+  coast            terminal=1  reward_last=-10.0000 Phi_prev=-0.02000  dist=  14266.3 km vrel=    0.00 m/s  fuel_left=0.1500
+  warp60           terminal=1  reward_last=-10.0000 Phi_prev=-0.02000  dist=  14266.3 km vrel=    0.00 m/s  fuel_left=0.1500
+  parkfarm         terminal=1  reward_last=-10.0000 Phi_prev=-0.30169  dist=  11803.1 km vrel=  860.29 m/s  fuel_left=0.1055
+[csv] /Users/pete/space_training/web_data/results/t3_shaping_design_comparison.csv
+
+------------------------------------------------------------------------------
+GATE ACTIVATION + gamma^tau LEAK (legacy design, expert paths)
+------------------------------------------------------------------------------
+  expert_g90         sigma2>0.01 on    1/41   decisions (  2.4%)   gamma^tau leak: legacy +0.5081   S_R +1.9116   warp sim-steps 1765
+  expert_g150        sigma2>0.01 on    1/41   decisions (  2.4%)   gamma^tau leak: legacy +0.8407   S_R +3.1519   warp sim-steps 1745
+  expert_g180        sigma2>0.01 on    6/50   decisions ( 12.0%)   gamma^tau leak: legacy +1.0109   S_R +3.7794   warp sim-steps 1860
+  expert_xfer_g120   sigma2>0.01 on   13/62   decisions ( 21.0%)   gamma^tau leak: legacy +0.6424   S_R +2.6092   warp sim-steps 1880
+  coast              sigma2>0.01 on 2000/2000 decisions (100.0%)   gamma^tau leak: legacy +0.1999   S_R +9.9950   warp sim-steps 0
+  warp60             sigma2>0.01 on   34/34   decisions (100.0%)   gamma^tau leak: legacy +0.1714   S_R +8.5714   warp sim-steps 2040
+  parkfarm           sigma2>0.01 on    1/40   decisions (  2.5%)   gamma^tau leak: legacy +2.5911   S_R +4.9351   warp sim-steps 2040
+
+------------------------------------------------------------------------------
+FEASIBILITY OF THE 2-BURN PHASING MANEUVER (200 km perigee floor, 1450 steps, 460 m/s)
+------------------------------------------------------------------------------
+    alt\gap      -180     -135      -90      -45      -15       15       45       90      135      180
+        300     166u    206u    245u     41d     13d     13u     43u     84u    126u    166u
+        400     165u    205u     87d     43d     14d     14u     42u     84u    125u    165u
+        500     175u    130d     86d     43d     14d     14u     42u     83u    132u    175u
+        600     174d    129d     85d     42d     14d     15u     45u     88u    132u    174d
+        700     173d    128d     91d     45d     15d     15u     44u     88u    131u    173d
+        800     184d    137d     90d     45d     15d     15u     44u     87u    130u    184d
+    (cell = total two-burn dv in m/s; d = lower/catch-up, u = raise/lap-around; ---- = infeasible)
+
+==============================================================================
+Q2 — the omega question
+==============================================================================
+
+  headline(e=0.05,soi=0)
+    |omega_s - omega_t| (rad): mean 1.5686  median 1.5508  p90 2.8360  max 3.1414
+    |omega_s - omega_t| (deg): mean 89.87  median 88.86  max 179.99
+    |theta_s - theta_t (what Phi_phase uses) | mean   90.03 deg  sd  51.53  max  179.88
+    |true longitude gap (physical)           | mean   89.25 deg  sd  51.73  max  179.96
+    |mean  longitude gap (drift-relevant)    | mean   89.26 deg  sd  51.67  max  179.86
+    if Phi_phase driven to 0 (theta_s = theta_t): residual true-longitude error = |dw| -> chord miss ~ 2a sin(|dw|/2):
+        mean   8893.5 km   median   9800.2 km   min      0.4 km (success box = 30 km)
+        fraction of episodes where Phi_phase=0 is within the 30 km box: 0.17%
+
+  phase4(e=0,soi=0)
+    |omega_s - omega_t| (rad): mean 0.0000  median 0.0000  p90 0.0000  max 0.0000
+    |omega_s - omega_t| (deg): mean 0.00  median 0.00  max 0.00
+    |theta_s - theta_t (what Phi_phase uses) | mean   89.86 deg  sd  51.74  max  179.96
+    |true longitude gap (physical)           | mean   89.86 deg  sd  51.74  max  179.96
+    |mean  longitude gap (drift-relevant)    | mean   89.86 deg  sd  51.74  max  179.96
+    if Phi_phase driven to 0 (theta_s = theta_t): residual true-longitude error = |dw| -> chord miss ~ 2a sin(|dw|/2):
+        mean      0.0 km   median      0.0 km   min      0.0 km (success box = 30 km)
+        fraction of episodes where Phi_phase=0 is within the 30 km box: 100.00%
+
+  stage1(e=0.05,soi=1)
+    |omega_s - omega_t| (rad): mean 0.0000  median 0.0000  p90 0.0000  max 0.0000
+    |omega_s - omega_t| (deg): mean 0.00  median 0.00  max 0.00
+    |theta_s - theta_t (what Phi_phase uses) | mean   90.56 deg  sd  51.37  max  179.80
+    |true longitude gap (physical)           | mean   90.56 deg  sd  51.37  max  179.80
+    |mean  longitude gap (drift-relevant)    | mean   90.77 deg  sd  51.52  max  179.97
+    if Phi_phase driven to 0 (theta_s = theta_t): residual true-longitude error = |dw| -> chord miss ~ 2a sin(|dw|/2):
+        mean      0.0 km   median      0.0 km   min      0.0 km (success box = 30 km)
+        fraction of episodes where Phi_phase=0 is within the 30 km box: 100.00%
+
+  init_phase_gap_max sweep (e_max=0.05, soi=0): does it control the PHYSICAL gap?
+    gap_max=  10.0 deg -> |true-lon gap| mean   89.88 max  179.96 | |mean-lon gap| mean   89.83 | |dtheta| (Phi_phase) mean    5.18
+    gap_max=  30.0 deg -> |true-lon gap| mean   90.02 max  179.88 | |mean-lon gap| mean   89.94 | |dtheta| (Phi_phase) mean   15.24
+    gap_max=  90.0 deg -> |true-lon gap| mean   90.40 max  179.96 | |mean-lon gap| mean   90.37 | |dtheta| (Phi_phase) mean   45.58
+    gap_max= 180.0 deg -> |true-lon gap| mean   91.05 max  179.71 | |mean-lon gap| mean   91.06 | |dtheta| (Phi_phase) mean   91.12
+    [e=0]    gap_max=  30.0 deg -> |true-lon gap| mean   15.12 max   29.89
+    [e=0]    gap_max= 180.0 deg -> |true-lon gap| mean   90.70 max  179.33
+
+  omega drift across a scripted episode (same_orbit_init=1, e=0):
+    e_init=0.0:  omega_s-omega_t  start   +0.000 deg -> end   +9.214 deg | range [+0.00,+9.21] | largest single-decision d(omega_s) = 4.85 deg (after action 3)
+              burn-induced jump in (theta_s - theta_t): median 0.79 deg  max 4.84 deg
+    e_init=0.03:  omega_s-omega_t  start   +0.000 deg -> end -159.958 deg | range [-162.29,+103.94] | largest single-decision d(omega_s) = 97.66 deg (after action 6)
+              burn-induced jump in (theta_s - theta_t): median 9.00 deg  max 97.80 deg
+
+  BURN-INDUCED DISCONTINUITY IN (theta_s - theta_t)  [the quantity Phi_phase and obs[13-14] are built from]
+     act    dv     e0 |d(dtheta)| med     max |dPhi_ph| med     max |d omega| med  phys disp med km
+       3    25   0.00           86.51  175.99        0.6685  0.9998         86.51            0.9904
+       3    25   0.02           14.19   19.51        0.2461  0.3359         14.20            0.9893
+       3    25   0.05            5.17    7.65        0.0897  0.1333          5.16            0.9886
+       6   -25   0.00           93.49  172.05        0.6682  0.9999         93.49            0.9905
+       6   -25   0.02           14.34   19.43        0.2472  0.3291         14.35            0.9891
+       6   -25   0.05            5.60    7.63        0.0968  0.1315          5.60            0.9885
+       2    10   0.00           86.51  175.98        0.6684  0.9999         86.51            0.3962
+       2    10   0.02            5.04    7.63        0.0880  0.1331          5.04            0.3958
+       2    10   0.05            2.18    3.06        0.0377  0.0532          2.17            0.3953
+       5   -10   0.00           93.49  172.05        0.6683  0.9999         93.49            0.3962
+       5   -10   0.02            5.50    7.65        0.0956  0.1326          5.50            0.3958
+       5   -10   0.05            2.22    3.06        0.0385  0.0528          2.22            0.3955
+      12     1   0.00           86.51  175.98        0.6684  0.9999         86.51            0.0396
+      12     1   0.02            0.55    0.76        0.0095  0.0133          0.55            0.0395
+      12     1   0.05            0.22    0.31        0.0039  0.0053          0.22            0.0396
+      13    -1   0.00           93.49  172.06        0.6684  0.9999         93.49            0.0396
+      13    -1   0.02            0.56    0.76        0.0097  0.0133          0.56            0.0396
+      13    -1   0.05            0.22    0.31        0.0039  0.0053          0.22            0.0396
+       7    10   0.00           88.04  179.02        0.7436  0.9975         88.04            0.4509
+       7    10   0.02            2.70    3.82        0.0470  0.0667          2.70            0.4521
+       7    10   0.05            1.05    1.53        0.0182  0.0265          1.05            0.4533
+       8   -10   0.00           91.96  175.10        0.7436  0.9975         91.96            0.4509
+       8   -10   0.02            2.56    3.82        0.0446  0.0664          2.56            0.4521
+       8   -10   0.05            1.04    1.53        0.0181  0.0265          1.04            0.4533
+
+Done.

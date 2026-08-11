@@ -1,0 +1,10 @@
+scenario,n,success,success_rate,med_steps,med_decisions,med_dv_ms,med_final_dist_km,med_final_relv_ms,outcomes
+same-orbit gap=30 [legacy w5],8,0,0.0,1036.0,216.0,200.0,335.7135747096224,467.02023707346956,terminal_other
+same-orbit gap=30 [D16 w5/30/60],8,0,0.0,1779.0,64.0,500.0,374.8024971675627,455.86762380474585,dv_exhausted
+same-orbit gap=90 [legacy w5],8,0,0.0,1457.0,301.0,250.0,308.76272538755353,434.8445712430165,terminal_other
+same-orbit gap=90 [D16 w5/30/60],8,0,0.0,1410.0,43.0,225.0,538.8189359586215,323.3529713838701,terminal_other
+same-orbit gap=180 [legacy w5],8,0,0.0,20.0,20.0,500.0,13347.475497402756,15432.991803385252,dv_exhausted
+same-orbit gap=180 [D16 w5/30/60],8,0,0.0,20.0,20.0,500.0,13347.475497402756,15432.991803385252,dv_exhausted
+headline gap=30 [D16 w5/30/60],8,0,0.0,851.0,38.5,500.0,467.65135482457737,317.23546937241,dv_exhausted;terminal_other
+headline gap=90 [D16 w5/30/60],8,0,0.0,1097.0,43.5,500.0,472.4445280379225,390.1594691045343,dv_exhausted;terminal_other
+headline gap=180 [D16 w5/30/60],8,0,0.0,1475.5,51.0,500.0,342.2507106614527,290.6597820935306,dv_exhausted;timeout
