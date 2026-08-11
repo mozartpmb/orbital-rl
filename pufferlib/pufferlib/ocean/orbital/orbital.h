@@ -136,6 +136,30 @@ static const double ACTION_DV[NUM_ACTIONS][3] = {
     { -25.0,   0.0, -25.0 },  /* 29: combined −25 / −25   */
 };
 
+/* ── ext-3d: two things deliberately NOT implemented ─────────────────────────
+ *
+ * (1) The "coast to next relative-node crossing" macro-action (3d_C §4.5) is
+ *     DEFERRED, and no kwarg is reserved for it. The barrier it was meant to
+ *     remove is not there: measured realized Δv / ideal 2v sin(Δi/2) at LEO is
+ *     1.00× at τ = 5 (warp-5min, action 9, already in the table) and only
+ *     degrades at τ ≥ 30 — 2-20 m/s on a 478 m/s budget. Against that, the
+ *     macro's one-period clamp is τ = 718 sub-steps at MEO versus the warp
+ *     set's 360, i.e. a new discount extreme that would confound "3D plane
+ *     skill" with "a longer warp"; and its Δi → 0 clamp to τ = 1 is a 48×
+ *     (LEO) / 359× (MEO) discontinuity in sim-seconds-per-decision sited
+ *     exactly in the endgame. If longer warps are wanted at MEO, add a plain
+ *     warp-12hr so the ablation stays separable (3d_REDTEAM m1).
+ *
+ * (2) J2 is DEFERRED and `j2_mode` is NOT accepted as a kwarg — a dead kwarg
+ *     that every caller in the plumbing chain must thread (unpack() hard-fails
+ *     on a missing key) is a maintenance cost with no offsetting benefit, and
+ *     obs[29-32] are already reserved for it. J2 is a fidelity upgrade, not a
+ *     task-enrichment one: at i = 51.6° a 200 km δa buys ΔΩ̇ = 0.485°/day, so
+ *     1° of ΔΩ costs 49.5 h and 222 m/s versus 104 m/s and ~0 h for a direct
+ *     plane change; it only wins above ~2° of ΔΩ, past the episode cap. It
+ *     also breaks the plane term's exact invariance under coasting (V5 L0),
+ *     so it needs its own shaping re-audit (3d_C §4.6). */
+
 /* M2 (phase5-5-env-mods): per-action sub-step count. τ=1 → single-step burn or
  * coast; τ>1 → warp action (no burn). Replaces the single WARP_TAU constant for
  * runtime dispatch in c_step. */
