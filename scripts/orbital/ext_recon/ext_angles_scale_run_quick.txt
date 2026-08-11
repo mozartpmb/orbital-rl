@@ -1,0 +1,169 @@
+geom                     rho0_km    rho/r  arc_min     dv     k arm                         t_1sig     t_D3  db_1h_mrad  db_50h_mrad
+A1_leo_5km_box               5.0   0.0007      360    0.0  0.50 nonlinear                      nan     53.0      0.2155          nan
+A1_leo_5km_box               5.0   0.0007      360    0.0  0.50 linear_classical               nan      nan           0          nan
+A1_leo_5km_box               5.0   0.0007      360    0.0  0.50 nonlinear_minus_linear         nan     53.0      0.2155          nan
+A1_leo_5km_box               5.0   0.0007      360    0.0  2.00 nonlinear                     29.0     29.0      0.4477          nan
+A1_leo_5km_box               5.0   0.0007      360    0.0  2.00 linear_classical               nan      nan           0          nan
+A1_leo_5km_box               5.0   0.0007      360    0.0  2.00 nonlinear_minus_linear        29.0     29.0      0.4477          nan
+A1_leo_5km_box               5.0   0.0007      360    1.0  0.50 nonlinear                     37.0     37.0       54.06          nan
+A1_leo_5km_box               5.0   0.0007      360    1.0  0.50 linear_classical              37.0     37.0       54.02          nan
+A1_leo_5km_box               5.0   0.0007      360    1.0  0.50 nonlinear_minus_linear         nan     75.0      0.0342          nan
+A1_leo_5km_box               5.0   0.0007      360    1.0  2.00 nonlinear                     29.0     29.0       36.79          nan
+A1_leo_5km_box               5.0   0.0007      360    1.0  2.00 linear_classical              37.0     37.0       36.49          nan
+A1_leo_5km_box               5.0   0.0007      360    1.0  2.00 nonlinear_minus_linear        29.0     29.0      0.3048          nan
+A1_leo_5km_box               5.0   0.0007      360   10.0  0.50 nonlinear                     37.0     37.0       124.7          nan
+A1_leo_5km_box               5.0   0.0007      360   10.0  0.50 linear_classical              37.0     37.0       125.7          nan
+A1_leo_5km_box               5.0   0.0007      360   10.0  0.50 nonlinear_minus_linear        39.0     40.0       1.035          nan
+A1_leo_5km_box               5.0   0.0007      360   10.0  2.00 nonlinear                     29.0     29.0       183.7          nan
+A1_leo_5km_box               5.0   0.0007      360   10.0  2.00 linear_classical              37.0     37.0       186.2          nan
+A1_leo_5km_box               5.0   0.0007      360   10.0  2.00 nonlinear_minus_linear        29.0     29.0       2.491          nan
+
+A2_leo_10km_drift           10.2   0.0015      360    0.0  0.50 nonlinear                     75.0     68.0       0.408          nan
+A2_leo_10km_drift           10.2   0.0015      360    0.0  0.50 linear_classical               nan      nan           0          nan
+A2_leo_10km_drift           10.2   0.0015      360    0.0  0.50 nonlinear_minus_linear        75.0     68.0       0.408          nan
+A2_leo_10km_drift           10.2   0.0015      360    0.0  2.00 nonlinear                     63.0     27.0      0.7823          nan
+A2_leo_10km_drift           10.2   0.0015      360    0.0  2.00 linear_classical               nan      nan           0          nan
+A2_leo_10km_drift           10.2   0.0015      360    0.0  2.00 nonlinear_minus_linear        63.0     27.0      0.7823          nan
+A2_leo_10km_drift           10.2   0.0015      360    1.0  0.50 nonlinear                     37.0     37.0       24.24          nan
+A2_leo_10km_drift           10.2   0.0015      360    1.0  0.50 linear_classical              37.0     37.0       24.68          nan
+A2_leo_10km_drift           10.2   0.0015      360    1.0  0.50 nonlinear_minus_linear        75.0     68.0      0.4486          nan
+A2_leo_10km_drift           10.2   0.0015      360    1.0  2.00 nonlinear                     37.0     27.0       13.08          nan
+A2_leo_10km_drift           10.2   0.0015      360    1.0  2.00 linear_classical              37.0     38.0       13.89          nan
+A2_leo_10km_drift           10.2   0.0015      360    1.0  2.00 nonlinear_minus_linear        63.0     27.0      0.8096          nan
+A2_leo_10km_drift           10.2   0.0015      360   10.0  0.50 nonlinear                     37.0     37.0       199.2          nan
+A2_leo_10km_drift           10.2   0.0015      360   10.0  0.50 linear_classical              37.0     37.0       201.1          nan
+A2_leo_10km_drift           10.2   0.0015      360   10.0  0.50 nonlinear_minus_linear        52.0     46.0       1.923          nan
+A2_leo_10km_drift           10.2   0.0015      360   10.0  2.00 nonlinear                     37.0     27.0       189.4          nan
+A2_leo_10km_drift           10.2   0.0015      360   10.0  2.00 linear_classical              37.0     37.0       192.1          nan
+A2_leo_10km_drift           10.2   0.0015      360   10.0  2.00 nonlinear_minus_linear        54.0     27.0       2.709          nan
+
+A3_leo_100km               101.6   0.0150      360    0.0  0.50 nonlinear                      8.0     11.0       3.755          nan
+A3_leo_100km               101.6   0.0150      360    0.0  0.50 linear_classical               nan      nan           0          nan
+A3_leo_100km               101.6   0.0150      360    0.0  0.50 nonlinear_minus_linear         8.0     11.0       3.755          nan
+A3_leo_100km               101.6   0.0150      360    0.0  2.00 nonlinear                      6.0      8.0       3.985          nan
+A3_leo_100km               101.6   0.0150      360    0.0  2.00 linear_classical               nan      nan           0          nan
+A3_leo_100km               101.6   0.0150      360    0.0  2.00 nonlinear_minus_linear         6.0      8.0       3.985          nan
+A3_leo_100km               101.6   0.0150      360    1.0  0.50 nonlinear                      8.0     11.0      0.9629          nan
+A3_leo_100km               101.6   0.0150      360    1.0  0.50 linear_classical              40.0     43.0       2.816          nan
+A3_leo_100km               101.6   0.0150      360    1.0  0.50 nonlinear_minus_linear         8.0     11.0       3.779          nan
+A3_leo_100km               101.6   0.0150      360    1.0  2.00 nonlinear                      6.0      8.0        2.61          nan
+A3_leo_100km               101.6   0.0150      360    1.0  2.00 linear_classical              44.0     48.0       1.425          nan
+A3_leo_100km               101.6   0.0150      360    1.0  2.00 nonlinear_minus_linear         6.0      8.0       4.034          nan
+A3_leo_100km               101.6   0.0150      360   10.0  0.50 nonlinear                      8.0     11.0       59.71          nan
+A3_leo_100km               101.6   0.0150      360   10.0  0.50 linear_classical              38.0     39.0        64.4          nan
+A3_leo_100km               101.6   0.0150      360   10.0  0.50 nonlinear_minus_linear         8.0     11.0       4.697          nan
+A3_leo_100km               101.6   0.0150      360   10.0  2.00 nonlinear                      6.0      8.0       29.12          nan
+A3_leo_100km               101.6   0.0150      360   10.0  2.00 linear_classical              39.0     40.0        34.3          nan
+A3_leo_100km               101.6   0.0150      360   10.0  2.00 nonlinear_minus_linear         6.0      8.0       5.183          nan
+
+A4_leo_300km_drift         301.5   0.0447      360    0.0  0.50 nonlinear                      5.0      7.0       10.19          nan
+A4_leo_300km_drift         301.5   0.0447      360    0.0  0.50 linear_classical               nan      nan           0          nan
+A4_leo_300km_drift         301.5   0.0447      360    0.0  0.50 nonlinear_minus_linear         5.0      7.0       10.19          nan
+A4_leo_300km_drift         301.5   0.0447      360    0.0  2.00 nonlinear                      3.0      5.0       13.11          nan
+A4_leo_300km_drift         301.5   0.0447      360    0.0  2.00 linear_classical               nan      nan           0          nan
+A4_leo_300km_drift         301.5   0.0447      360    0.0  2.00 nonlinear_minus_linear         3.0      5.0       13.11          nan
+A4_leo_300km_drift         301.5   0.0447      360    1.0  0.50 nonlinear                      5.0      7.0       9.464          nan
+A4_leo_300km_drift         301.5   0.0447      360    1.0  0.50 linear_classical               nan     57.0      0.7657          nan
+A4_leo_300km_drift         301.5   0.0447      360    1.0  0.50 nonlinear_minus_linear         5.0      7.0       10.23          nan
+A4_leo_300km_drift         301.5   0.0447      360    1.0  2.00 nonlinear                      3.0      5.0       13.35          nan
+A4_leo_300km_drift         301.5   0.0447      360    1.0  2.00 linear_classical               nan    155.0      0.3841          nan
+A4_leo_300km_drift         301.5   0.0447      360    1.0  2.00 nonlinear_minus_linear         3.0      5.0       12.96          nan
+A4_leo_300km_drift         301.5   0.0447      360   10.0  0.50 nonlinear                      5.0      7.0       8.104          nan
+A4_leo_300km_drift         301.5   0.0447      360   10.0  0.50 linear_classical              39.0     41.0       19.22          nan
+A4_leo_300km_drift         301.5   0.0447      360   10.0  0.50 nonlinear_minus_linear         5.0      7.0       11.11          nan
+A4_leo_300km_drift         301.5   0.0447      360   10.0  2.00 nonlinear                      3.0      5.0        20.1          nan
+A4_leo_300km_drift         301.5   0.0447      360   10.0  2.00 linear_classical              41.0     44.0       9.765          nan
+A4_leo_300km_drift         301.5   0.0447      360   10.0  2.00 nonlinear_minus_linear         3.0      5.0       10.33          nan
+
+A5_leo_180deg            13572.6   1.9565      360    0.0  0.50 nonlinear                      1.0      3.0      0.8864          nan
+A5_leo_180deg            13572.6   1.9565      360    0.0  0.50 linear_classical               nan      nan           0          nan
+A5_leo_180deg            13572.6   1.9565      360    0.0  0.50 nonlinear_minus_linear         1.0      3.0      0.8864          nan
+A5_leo_180deg            13572.6   1.9565      360    0.0  2.00 nonlinear                      3.0      4.0        2674          nan
+A5_leo_180deg            13572.6   1.9565      360    0.0  2.00 linear_classical               nan      nan           0          nan
+A5_leo_180deg            13572.6   1.9565      360    0.0  2.00 nonlinear_minus_linear         3.0      4.0        2674          nan
+A5_leo_180deg            13572.6   1.9565      360    1.0  0.50 nonlinear                      1.0      3.0      0.7491          nan
+A5_leo_180deg            13572.6   1.9565      360    1.0  0.50 linear_classical               nan      nan    0.001216          nan
+A5_leo_180deg            13572.6   1.9565      360    1.0  0.50 nonlinear_minus_linear         1.0      3.0      0.7479          nan
+A5_leo_180deg            13572.6   1.9565      360    1.0  2.00 nonlinear                      3.0      4.0        2674          nan
+A5_leo_180deg            13572.6   1.9565      360    1.0  2.00 linear_classical               nan      nan   0.0006078          nan
+A5_leo_180deg            13572.6   1.9565      360    1.0  2.00 nonlinear_minus_linear         3.0      4.0        2674          nan
+A5_leo_180deg            13572.6   1.9565      360   10.0  0.50 nonlinear                      1.0      3.0      0.2724          nan
+A5_leo_180deg            13572.6   1.9565      360   10.0  0.50 linear_classical               nan      nan      0.0428          nan
+A5_leo_180deg            13572.6   1.9565      360   10.0  0.50 nonlinear_minus_linear         1.0      3.0      0.2296          nan
+A5_leo_180deg            13572.6   1.9565      360   10.0  2.00 nonlinear                      3.0      4.0        2673          nan
+A5_leo_180deg            13572.6   1.9565      360   10.0  2.00 linear_classical               nan      nan      0.0214          nan
+A5_leo_180deg            13572.6   1.9565      360   10.0  2.00 nonlinear_minus_linear         3.0      4.0        2673          nan
+
+A6_wide_e30_90deg        14215.7   1.2395      360    0.0  0.50 nonlinear                      1.0      2.0       667.1          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    0.0  0.50 linear_classical               nan      nan           0          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    0.0  0.50 nonlinear_minus_linear         1.0      2.0       667.1          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    0.0  2.00 nonlinear                      2.0      3.0       174.7          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    0.0  2.00 linear_classical               nan      nan           0          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    0.0  2.00 nonlinear_minus_linear         2.0      3.0       174.7          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    1.0  0.50 nonlinear                      1.0      2.0         667          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    1.0  0.50 linear_classical               nan      nan    0.006207          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    1.0  0.50 nonlinear_minus_linear         1.0      2.0         667          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    1.0  2.00 nonlinear                      2.0      3.0       174.6          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    1.0  2.00 linear_classical               nan      nan    0.003104          nan
+A6_wide_e30_90deg        14215.7   1.2395      360    1.0  2.00 nonlinear_minus_linear         2.0      3.0       174.6          nan
+A6_wide_e30_90deg        14215.7   1.2395      360   10.0  0.50 nonlinear                      1.0      2.0       666.4          nan
+A6_wide_e30_90deg        14215.7   1.2395      360   10.0  0.50 linear_classical               nan      nan      0.2904          nan
+A6_wide_e30_90deg        14215.7   1.2395      360   10.0  0.50 nonlinear_minus_linear         1.0      2.0       666.7          nan
+A6_wide_e30_90deg        14215.7   1.2395      360   10.0  2.00 nonlinear                      2.0      3.0       174.4          nan
+A6_wide_e30_90deg        14215.7   1.2395      360   10.0  2.00 linear_classical               nan      nan      0.1452          nan
+A6_wide_e30_90deg        14215.7   1.2395      360   10.0  2.00 nonlinear_minus_linear         2.0      3.0       174.3          nan
+
+wrote /Users/pete/space_training/web_data/results/ext_angles_scale_ambiguity.csv (108 rows)
+wrote /Users/pete/space_training/web_data/results/ext_angles_dbeta_trace.csv (4332 rows)
+wrote /Users/pete/space_training/web_data/results/ext_angles_burn_threshold.csv (432 rows)
+
+== burn sizing: smallest dv reaching D>=3 within the window ==
+geom                    window dir           k  dv_needed_ms
+A1_leo_5km_box              90 radial     0.50             0
+A1_leo_5km_box              90 radial     2.00             0
+A1_leo_5km_box              90 prograde   0.50             0
+A1_leo_5km_box              90 prograde   2.00             0
+A1_leo_5km_box             360 radial     0.50             0
+A1_leo_5km_box             360 radial     2.00             0
+A1_leo_5km_box             360 prograde   0.50             0
+A1_leo_5km_box             360 prograde   2.00             0
+A2_leo_10km_drift           90 radial     0.50             0
+A2_leo_10km_drift           90 radial     2.00             0
+A2_leo_10km_drift           90 prograde   0.50             0
+A2_leo_10km_drift           90 prograde   2.00             0
+A2_leo_10km_drift          360 radial     0.50             0
+A2_leo_10km_drift          360 radial     2.00             0
+A2_leo_10km_drift          360 prograde   0.50             0
+A2_leo_10km_drift          360 prograde   2.00             0
+A3_leo_100km                90 radial     0.50             0
+A3_leo_100km                90 radial     2.00             0
+A3_leo_100km                90 prograde   0.50             0
+A3_leo_100km                90 prograde   2.00             0
+A3_leo_100km               360 radial     0.50             0
+A3_leo_100km               360 radial     2.00             0
+A3_leo_100km               360 prograde   0.50             0
+A3_leo_100km               360 prograde   2.00             0
+A4_leo_300km_drift          90 radial     0.50             0
+A4_leo_300km_drift          90 radial     2.00             0
+A4_leo_300km_drift          90 prograde   0.50             0
+A4_leo_300km_drift          90 prograde   2.00             0
+A4_leo_300km_drift         360 radial     0.50             0
+A4_leo_300km_drift         360 radial     2.00             0
+A4_leo_300km_drift         360 prograde   0.50             0
+A4_leo_300km_drift         360 prograde   2.00             0
+A5_leo_180deg               90 radial     0.50             0
+A5_leo_180deg               90 radial     2.00             0
+A5_leo_180deg               90 prograde   0.50             0
+A5_leo_180deg               90 prograde   2.00             0
+A5_leo_180deg              360 radial     0.50             0
+A5_leo_180deg              360 radial     2.00             0
+A5_leo_180deg              360 prograde   0.50             0
+A5_leo_180deg              360 prograde   2.00             0
+A6_wide_e30_90deg           90 radial     0.50             0
+A6_wide_e30_90deg           90 radial     2.00             0
+A6_wide_e30_90deg           90 prograde   0.50             0
+A6_wide_e30_90deg           90 prograde   2.00             0
+A6_wide_e30_90deg          360 radial     0.50             0
+A6_wide_e30_90deg          360 radial     2.00             0
+A6_wide_e30_90deg          360 prograde   0.50             0
+A6_wide_e30_90deg          360 prograde   2.00             0
