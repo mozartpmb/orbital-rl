@@ -1,0 +1,518 @@
+<title>Orbital RL — Ground Truth & Draper Briefing</title>
+<style>
+  :root {
+    --bg: #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink: #1a2332;
+    --ink-2: #4a5568;
+    --ink-3: #8a94a6;
+    --line: #d8dee8;
+    --accent: #0e7490;
+    --accent-ink: #0c5f78;
+    --good: #15803d;
+    --good-bg: #e8f5ec;
+    --warn: #b45309;
+    --warn-bg: #fdf3e3;
+    --bad: #b42318;
+    --bad-bg: #fdecea;
+    --note-bg: #e7f2f5;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10151d;
+      --surface: #171e29;
+      --surface-2: #1e2735;
+      --ink: #e4e9f1;
+      --ink-2: #a8b2c2;
+      --ink-3: #6b7688;
+      --line: #2c3648;
+      --accent: #38bdd8;
+      --accent-ink: #5ecbe2;
+      --good: #4ade80;
+      --good-bg: #14291c;
+      --warn: #fbbf24;
+      --warn-bg: #2d2413;
+      --bad: #f87171;
+      --bad-bg: #301a18;
+      --note-bg: #14242b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10151d;
+    --surface: #171e29;
+    --surface-2: #1e2735;
+    --ink: #e4e9f1;
+    --ink-2: #a8b2c2;
+    --ink-3: #6b7688;
+    --line: #2c3648;
+    --accent: #38bdd8;
+    --accent-ink: #5ecbe2;
+    --good: #4ade80;
+    --good-bg: #14291c;
+    --warn: #fbbf24;
+    --warn-bg: #2d2413;
+    --bad: #f87171;
+    --bad-bg: #301a18;
+    --note-bg: #14242b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 48px 24px 96px; }
+  header.doc { border-bottom: 2px solid var(--ink); padding-bottom: 24px; margin-bottom: 8px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-size: clamp(28px, 4.5vw, 40px);
+    line-height: 1.15;
+    margin: 0 0 10px;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  .sub { color: var(--ink-2); max-width: 68ch; margin: 0; }
+  nav.toc {
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    padding: 16px 0 8px;
+    font-family: var(--mono); font-size: 12.5px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 40px;
+  }
+  nav.toc a { color: var(--ink-2); text-decoration: none; }
+  nav.toc a:hover, nav.toc a:focus { color: var(--accent-ink); text-decoration: underline; }
+  section { margin-bottom: 56px; }
+  h2 {
+    font-size: 23px; letter-spacing: -0.01em; margin: 0 0 4px;
+    scroll-margin-top: 24px; text-wrap: balance;
+  }
+  .sec-eyebrow {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 6px;
+  }
+  h3 { font-size: 17px; margin: 28px 0 8px; letter-spacing: -0.005em; }
+  p, ul, ol { max-width: 72ch; }
+  p { margin: 10px 0; }
+  ul, ol { margin: 10px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  li::marker { color: var(--ink-3); }
+  strong { font-weight: 650; }
+  code {
+    font-family: var(--mono); font-size: 0.86em;
+    background: var(--surface-2); border-radius: 4px; padding: 1px 5px;
+    color: var(--ink);
+  }
+  a { color: var(--accent-ink); }
+  .lede { font-size: 17.5px; color: var(--ink); }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: 20px 24px; margin: 18px 0;
+  }
+  .panel.note { background: var(--note-bg); border-color: transparent; }
+  .panel.warn { background: var(--warn-bg); border-color: transparent; }
+  .panel.bad { background: var(--bad-bg); border-color: transparent; }
+  .panel.good { background: var(--good-bg); border-color: transparent; }
+  .panel > :first-child { margin-top: 0; }
+  .panel > :last-child { margin-bottom: 0; }
+  .panel-label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--ink-2); display: block; margin-bottom: 8px;
+  }
+
+  .tablebox { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th {
+    text-align: left; font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2);
+    padding: 10px 14px; border-bottom: 2px solid var(--line);
+    background: var(--surface-2); white-space: nowrap;
+  }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; }
+  td .small, .small { font-size: 13px; color: var(--ink-2); }
+
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
+    padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  }
+  .chip.ok { background: var(--good-bg); color: var(--good); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); }
+  .chip.bad { background: var(--bad-bg); color: var(--bad); }
+  .chip.info { background: var(--note-bg); color: var(--accent-ink); }
+
+  .statgrid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px; margin: 18px 0;
+  }
+  .stat {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .stat .v { font-family: var(--mono); font-size: 22px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .stat .k { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; line-height: 1.4; }
+
+  .timeline { border-left: 2px solid var(--line); margin: 18px 0 18px 6px; padding-left: 22px; }
+  .tl-item { position: relative; margin-bottom: 18px; max-width: 70ch; }
+  .tl-item::before {
+    content: ""; position: absolute; left: -28px; top: 7px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--bg);
+  }
+  .tl-date { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); letter-spacing: 0.06em; }
+  .tl-item p { margin: 3px 0 0; }
+
+  .qa { margin: 20px 0; }
+  .qa dt { font-weight: 650; margin-top: 18px; max-width: 70ch; }
+  .qa dd { margin: 6px 0 0 0; color: var(--ink-2); max-width: 70ch; }
+  .qa dd strong { color: var(--ink); }
+
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 13px; font-family: var(--mono); }
+  @media (max-width: 640px) { .wrap { padding: 32px 16px 64px; } }
+</style>
+
+<div class="wrap">
+<header class="doc">
+  <p class="eyebrow">Ground-truth reconstruction · verified against code &amp; raw data · 2026-08-10</p>
+  <h1>Orbital Rendezvous RL — What's Actually True, and How to Present It</h1>
+  <p class="sub">A six-agent audit of the repo (C source, git history, raw eval CSVs, checkpoint weights, plus three fresh experiments) reconciled every headline claim against evidence. This is the consolidated result: the verified state of the project, verdicts on the resume-review's critiques, the framing for the Draper interview, and a ranked improvement plan.</p>
+</header>
+
+<nav class="toc">
+  <a href="#tldr">0 · TL;DR</a>
+  <a href="#addendum">0b · Aug 10 addendum</a>
+  <a href="#recovery">0c · The recovery</a>
+  <a href="#built">1 · What you built</a>
+  <a href="#envelope">2 · Real capability</a>
+  <a href="#evals">3 · State of the evals</a>
+  <a href="#story">4 · The story arc</a>
+  <a href="#review">5 · Review-doc verdicts</a>
+  <a href="#framing">6 · Draper framing</a>
+  <a href="#plan">7 · Improvement plan</a>
+  <a href="#hygiene">8 · Repo hygiene</a>
+</nav>
+
+<section id="tldr">
+  <p class="sec-eyebrow">00 · Orientation</p>
+  <h2>TL;DR</h2>
+  <div class="panel good">
+    <span class="panel-label">Superseded 2026-08-11 — read §00c first</span>
+    <p>Every performance number in this briefing describes the <strong>pre-fix dynamics era</strong>. Overnight after the bug fix, the learning signal was rebuilt and the task is now solved outright under verified-correct physics: <strong>5/5 seeds at 100.0% held-out</strong> on the ±180° LEO headline; <strong>e ≤ 0.30 across 300–8,000 km at 100.0% (4 seeds)</strong>; <strong>e ≤ 0.50 to 20,200 km at 99.5%</strong>; terminal boxes to <strong>5 km/1 m/s at 95.5%</strong>. See <a href="#recovery">00c · The recovery</a>.</p>
+  </div>
+  <p class="lede">You have a real, defensible deliverable: a PPO+LSTM policy over a custom C environment that solves randomized coplanar LEO rendezvous at <strong>93.7% mean success across 5 training seeds (range 88.0–97.5%)</strong> — a number that reproduces from raw committed data and survived every round of scrutiny. Around it sits a documentation layer where roughly half the headline numbers were later retracted, and the project's most valuable output is arguably the <em>verification discipline that caught them</em>: nine documented instances where a metric measured something different from its name.</p>
+  <p>The "higher altitude / higher eccentricity" difficulty you remember is not one problem — it decomposes into four verified mechanisms (§2), none of which is "the RL doesn't work." The project stopped mid-correction on May 21–22: the final finding (a reward-shaping leak that manufactured fake successes at MEO/GEO) was never propagated into the eval tooling, the docs, or git.</p>
+  <div class="panel note">
+    <span class="panel-label">Numbers to memorize</span>
+    <div class="statgrid" style="margin:6px 0 0">
+      <div class="stat"><div class="v">93.7%</div><div class="k">mean success, 5 seeds × 200 eps, LEO 300–800 km, e ≤ 0.05, ±180° phase gap (range 88.0–97.5%)</div></div>
+      <div class="stat"><div class="v">30 km / 50 m/s</div><div class="k">success box: position &amp; relative velocity vs a propagated target (train = eval, compile-time)</div></div>
+      <div class="stat"><div class="v">6.3%</div><div class="k">only failure mode at LEO: 2000-step timeout. Zero collisions, escapes, strandings in 1,000 episodes</div></div>
+      <div class="stat"><div class="v">2.49×</div><div class="k">median Δv vs Hohmann reference (mean 232 m/s of a 478 m/s budget) — the honest weakness</div></div>
+      <div class="stat"><div class="v">~99M</div><div class="k">env steps, two-stage curriculum; ~13M steps of dead zone before the sparse reward cracks</div></div>
+      <div class="stat"><div class="v">~500k</div><div class="k">env steps/sec, 1,024 parallel instances, C env on CPU</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="addendum">
+  <p class="sec-eyebrow">00b · Execution addendum — evening of 2026-08-10</p>
+  <h2>What changed after this briefing was written</h2>
+  <p class="lede">The improvement plan was executed the same day (11 commits). Tier 0 landed and verified clean — and then the Tier-1/Tier-2 work uncovered a real physics bug that rewrites the headline story. Read this section before quoting anything from §2 below. <em>And then read <a href="#recovery">00c</a> — the recovery landed the following morning.</em></p>
+
+  <h3>The dynamics bug — found twice independently</h3>
+  <div class="panel bad">
+    <p><code>true_to_mean()</code> in the C env had its half-angle factors swapped (forward E→θ map applied instead of its inverse). It's reached only after a burn, so <strong>every burn teleported the spacecraft along-track by ≈ 2e·sin θ</strong> — measured ~707 km one step after a 10 m/s burn at θ=90°, e=0.05, and a <strong>median 24.5° of free phase shift per episode</strong> on logged trajectories. Coast dynamics were always exact; apsidal burns are unaffected to first order, which is why five months of Hohmann-style policies never exposed it. The EKF port audit caught it by inspection; the Lambert baseline caught it independently because the policy was <em>beating the two-impulse optimum</em> — an impossibility. Fixed and verified (0.4 m residual); commit <code>f55d9cb</code>.</p>
+  </div>
+  <p><strong>Consequences, measured:</strong> the canonical checkpoint drops <strong>97.5% → 13.0%</strong> under corrected dynamics. Fresh Stage-1 bootstrap fails at both 40M and 80M steps (the bug had been subsidizing exploration; the Φ_orbit shaping term actively penalizes the drift-orbit strategy that correct physics requires for phasing). Best recovery so far: gentle re-adaptation of the legacy policy → <strong>33.5% greedy</strong> (interim checkpoint committed to the registry). Low-lr crystallization and a curriculum rebuild both failed. Full detail: <code>T1_DYNAMICS_FIX_FINDINGS.md</code>.</p>
+
+  <h3>What landed and stands (committed, verified)</h3>
+  <ul>
+    <li><strong>Tier 0 complete:</strong> Φ-clamp leak fixed (coast-only null: 0/40 fake successes, was ~52%); physical-success classifier everywhere; corrected 120k-episode capability surface committed (GEO/MEO real ≈ 0%); headline regeneration bit-exact pre-fix (93.7% mean, all five seeds); fuel-log and trajectory-export bugs fixed; MODELS.md corrected; the May 21–22 correction layer committed to git.</li>
+    <li><strong>Success-box scan:</strong> at 5 km / 1 m/s the pre-fix policy scores 2.0%; at 1 km / 0.5 m/s, 0.0% — quantifying §5's "conjunction detector" critique. Mass strandings under tight tolerances show the 5 m/s burn quantum is the binding control limit (the never-trained ±1/±2 m/s fine burns are the fix).</li>
+    <li><strong>Failure taxonomy (1,100 episodes):</strong> three named modes, one root cause — the policy's phasing template is a fixed ~±200 km drift orbit; failure rate is 1.2% below |Δa₀| = 340 km and 26.0% above. Zero tolerance near-misses, zero fuel-outs.</li>
+    <li><strong>Lambert baseline:</strong> Izzo solver validated to machine precision (Hohmann 217.02 m/s exact, LEO→GEO 3856.7 m/s exact); three comparators; the tool that exposed the bug.</li>
+    <li><strong>EKF relative navigation (Tier 2):</strong> NEES 0.917 / NIS 0.947 consistency; obs reconstruction to float32 epsilon; closed-loop (pre-fix policy): truth 97.5% = EKF-nominal 97.5%, 96.5% at 10× noise, 74% at 100× — degradation attributable to estimation error alone via a zero-error control. Re-run (~70 s) pending a corrected-dynamics checkpoint.</li>
+  </ul>
+
+  <h3>Revised claim discipline</h3>
+  <div class="panel warn">
+    <ul>
+      <li><strong>Every performance/Δv number must state which dynamics it describes.</strong> Pre-fix numbers (93.7% mean, 2.49× Hohmann, the relnav closed-loop table) are valid statements about the pre-fix environment, reproducible at commit <code>b9f0ef5</code>.</li>
+      <li><strong>Current corrected-dynamics state:</strong> 33.5% interim; recovery blocked on a shaping revision (Φ_orbit fights drift-orbit phasing — three candidate fixes specced in the findings doc, ~7 min smoke each).</li>
+      <li><strong>Resume:</strong> the simulation/systems/GN&C claims all stand. For the success-rate bullet, either quote the pre-fix number with "in the original simulation" phrasing, or lead with the verification story — "classical-baseline cross-checks exposed a two-line dynamics bug that prior results were calibrated to; corrected and retraining" — which for a navigation-engineering audience is arguably the stronger bullet.</li>
+      <li><strong>Interview:</strong> this is now the centerpiece verification story: nine metric-level instances, then a tenth at the <em>physics</em> level, caught by exactly the cross-checking discipline (optimality bounds, independent propagators, filter consistency) the role demands.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="recovery">
+  <p class="sec-eyebrow">00c · The recovery — overnight, 2026-08-10 → 08-11</p>
+  <h2>Recovered — and then some: 100% under corrected physics</h2>
+  <p class="lede">A six-agent recon plus an adversarial red-team rebuilt the learning signal in one night, and the task this project spent five months on is now solved outright under verified-correct dynamics: <strong>5/5 training seeds at 100.0% held-out</strong> on the full ±180° LEO headline (2,900 episodes, zero failures of any kind), then extended in the follow-up campaign to <strong>e ≤ 0.30 across 300–8,000 km at 100.0% (4 seeds, 800/800)</strong>, <strong>e ≤ 0.50 across 300–20,200 km at 99.5%</strong> (200-hour episodes, new 3 h/6 h warp actions), and terminal boxes down to <strong>5 km / 1 m/s at 95.5%</strong> with new ±1 m/s radial burns — captures nulling to a median 0.91 m/s residual against the 1.0 m/s tolerance. Full audit trail: <code>T3_RECOVERY_CAMPAIGN.md</code> (§8 for the follow-ups); agent reports in <code>scripts/orbital/t3/reports/</code>; every run browsable at <a href="https://wandb.ai/mozartpmb_training/orbital-rl">wandb: orbital-rl</a>.</p>
+
+  <div class="panel note">
+    <span class="panel-label">Why nothing trained post-fix — five compounding defects, all measured</span>
+    <p>(1) The shaping gate σ₂ was <em>dead for 100% of viable drift orbits</em> — phase progress earned nothing exactly where the task lives, while Φ_orbit penalized the drift. (2) The γ<sup>τ</sup> shaping form paid a <strong>+1.78/episode do-nothing income</strong>; a "park far away and wait" adversary out-earned the optimal trajectory 2.2×. (3) Phase was represented in <em>true anomaly</em>: the shaping&#39;s target sat a median <strong>9,800 km</strong> from the real rendezvous point at e&gt;0, and a 1 m/s burn teleported the phase coordinate ~86°. (4) <code>init_phase_gap_max</code> was <em>inert</em> at e&gt;0 — every phase curriculum since Phase 5 secretly ran the full ±180° task. (5) The red-team&#39;s blocker: the −10 timeout under per-decision γ priced warp-heavy play at <strong>−7.8 vs −0.0 for coasting</strong>, so PPO suppressed warps — the only route to terminal-reward visibility — before ever sampling a success.</p>
+  </div>
+
+  <div class="panel good">
+    <span class="panel-label">The fix stack — runtime kwargs, legacy defaults bit-preserved</span>
+    <p>Mean-longitude potential Φ = −[|Δλ|/π + 0.35·min(1, Δv<sub>match</sub>/300)] with <em>no gates</em>; exact telescoping (γ<sub>shape</sub>=1); the gap knob now controls the <em>physical</em> gap (0.00° error, was ±90°); sign-correct, burn-continuous phase observations plus an episode-clock channel; timeout reward 0. Feasibility was proven <em>before</em> training: a scripted classical GNC controller (obs-only, same 16 discrete actions) scores <strong>99.2%</strong> — so every remaining failure was learning signal, and it was fixed as such.</p>
+  </div>
+
+  <div class="statgrid">
+    <div class="stat"><div class="v">100.0%</div><div class="k">5/5 seeds × 200 held-out eps at headline (plus stochastic, legacy-clock, and 500-ep replications) — 2,900 episodes, zero failures. Seed 1337, the historical 0% seed, included.</div></div>
+    <div class="stat"><div class="v">e ≤ 0.50</div><div class="k">wide envelopes: e≤0.30 / 300–8,000 km at 100.0% (<strong>4 seeds, 800/800</strong>); e≤0.50 / 300–20,200 km at 99.5% (realized e_t p50 0.216, max 0.500; the one failure is the predicted Δv/time corner)</div></div>
+    <div class="stat"><div class="v">1.14×</div><div class="k">policy / two-impulse Lambert, time-matched — the pre-fix 0.31× "impossible" signature, now lawful</div></div>
+    <div class="stat"><div class="v">100% = 100%</div><div class="k">truth vs EKF-in-the-loop at 60 s nav cadence, at BOTH envelopes (LEO: NEES 0.944, RMSE 7.5 m; wide: NEES 0.934, RMSE 8.0 m — σ_v0 scales with eccentricity, not range; bearing noise at Mm separations is harmless for a Keplerian target)</div></div>
+    <div class="stat"><div class="v">5 km / 1 m/s</div><div class="k">tight-box ladder: 100.0% at 10 km/10 m/s and 5 km/2 m/s; 95.5% at 5 km/1 m/s with ±1 m/s radial burns — capture residual p50 0.91 m/s at the 0.71 m/s actuation floor. The pre-fix policy zero-shot 2.0% here; the scripted expert 18%. (Headline Δv p50 235 m/s = 1.58× shape bound, replacing the old 2.49×-Hohmann weakness.)</div></div>
+    <div class="stat"><div class="v">drift-orbit phasing</div><div class="k">the learned maneuver: drop to a catch-up orbit, warp the drift leg, staged climb to arrive phase-aligned — structure no published end-to-end RL rendezvous result demonstrates</div></div>
+  </div>
+
+  <p><strong>The interview story, upgraded.</strong> Two independent physics cross-checks caught a two-character bug that five months of unit tests missed. The recovery then <em>measured</em> — not guessed — why the reward design had only ever worked in the bug&#39;s presence, ran an adversarial red-team that found the final blocker before a single training run was wasted, proved task feasibility with a classical GNC baseline first, and finished with a policy whose maneuver structure is textbook astrodynamics. Every number above is a held-out greedy eval with terminal-cause classification. Honest scope, stated where it&#39;s earned: the success box is far-field (30 km / 50 m/s; capture at the box edge), the wide family is 4-seed robust while the MEO (e≤0.5) and tight-box results are single-seed so far, and <code>de_max</code> bounds the e-vector <em>mismatch</em> because free e-vector rotations at these eccentricities are physically outside the 478 m/s budget. Standing simplifications unchanged: 2D coplanar, two-body Kepler, impulsive burns, no debris.</p>
+</section>
+
+
+<section id="built">
+  <p class="sec-eyebrow">01 · Verified spec</p>
+  <h2>What you actually built</h2>
+  <p>Everything here was read directly from the working-tree source or measured against the compiled environment (file:line citations available in the full audit reports).</p>
+
+  <h3>Environment (C, PufferLib Ocean pattern)</h3>
+  <ul>
+    <li><strong>Dynamics:</strong> 2D coplanar two-body, analytic Kepler propagation with Newton–Raphson on Kepler's equation. Verified numerically clean at all altitudes: worst drift 2×10⁻⁷ m over 100 GEO periods. No J2, drag, SRP, or attitude.</li>
+    <li><strong>Maneuvering:</strong> impulsive burns with Tsiolkovsky depletion. Isp 300 s, 850 kg dry / 150 kg fuel → <strong>478 m/s Δv budget</strong>.</li>
+    <li><strong>Task:</strong> rendezvous with an independently propagated moving target from randomized initial orbits. Success = simultaneous <code>dist &lt; 30 km</code> AND <code>|v_rel| &lt; 50 m/s</code> (orbital.h:788). Reward on success: +5..+10 scaled by remaining fuel; all failures −10. The <code>|Δa| &lt; 10 km, e &lt; 0.01</code> criterion in CLAUDE.md and RECIPE.md's version are both wrong — those constants survive only inside the shaping potential.</li>
+    <li><strong>Terminations:</strong> success / collision / escape / stranded / 2000-step cap / gave-up-init (reward 0). The escape branch is <strong>dead code</strong>: escaping from 500 km needs 3,155 m/s against a 478 m/s budget (break-even radius ≈ 299,000 km). Zero escapes in 6,000 logged episodes.</li>
+    <li><strong>Observations:</strong> 38 dims — chaser elements (7), target (2), ω sin/cos (4), phase terms (4), nearest-body block (16), LVLH relative state (5). Under the standing no-debris recipe the 16-dim body block carries <strong>zero information</strong>: 12 dims identically 0, one constant, and three that are exact functions of other dims (one is a byte-identical duplicate). Verified numerically over 500 steps.</li>
+    <li><strong>Actions:</strong> env now exposes Discrete(16) — coast; prograde/retrograde ±5/10/25 m/s; radial ±10 m/s; warp 5 min/30 min/1 hr; fine ±1/±2 m/s. <strong>The deliverable checkpoints have 10-logit heads</strong> — they were trained when only Discrete(10) existed. Actions 10–15 aren't masked; they didn't exist. The 30-min/1-hr warps and fine burns have <em>never been exercised by any training or eval run</em>.</li>
+    <li><strong>Reward shaping:</strong> gated potential-based shaping (orbit / phase / velocity components) with a terminal Φ-clamp; correctly ordered after termination checks. Discounting is inconsistent under time-warp: the shaping applies γ<sup>τ</sup> for a τ-substep warp, but GAE applies one flat γ=0.995 per transition. Result: <strong>96.8% of all actions the converged policy takes are warp-5min</strong>; coast goes unused.</li>
+    <li><strong>Trainer:</strong> PPO + LSTM, Muon optimizer, γ=0.995, 1,024 envs, Multiprocessing vec backend (the root cause of the fixed-seed nondeterminism finding).</li>
+  </ul>
+
+  <h3>The deliverable checkpoints — three things are called "canonical"</h3>
+  <div class="tablebox"><table>
+    <tr><th>Family</th><th>What it is</th><th>Evidence status</th></tr>
+    <tr><td><strong>Phase 5e 5-seed set</strong><br><span class="small">models/phase5e/seed{42,A–D}_stage4_best.pt</span></td><td>valid-init retrain, 5/5 seeds working, weights committed, MD5-verified to experiment dirs</td><td><span class="chip ok">Raw data committed</span> — the only family whose multi-seed evals exist on disk. <strong>Use this for all public claims.</strong></td></tr>
+    <tr><td><strong>Phase 5b seed 31415</strong><br><span class="small">…177750405236/model_000350.pt</span></td><td>MODELS.md's "headline deliverable" (claimed 96.4% multi-seed); the warm-start for all Phase 5.5 probes</td><td><span class="chip warn">Unverifiable</span> — no raw eval output anywhere in the repo; the two "collapsed seeds" behind the 3-of-5 story were never preserved. Fresh 60-episode re-eval during this audit: 96.7%.</td></tr>
+    <tr><td><strong>canonical_seed42_stage4_best.pt</strong></td><td>wandb-tracked retrain (weaker, 88.0%)</td><td><span class="chip info">Demo artifact</span> — not the headline; MODELS.md's path entry for seed 42 is wrong (dir and epoch cross-wired; settled by MD5).</td></tr>
+  </table></div>
+</section>
+
+<section id="envelope">
+  <p class="sec-eyebrow">02 · Verified capability</p>
+  <h2>The real capability envelope</h2>
+
+  <h3>Eccentricity — measured at fixed e, altitude pinned to the trained band</h3>
+  <div class="tablebox"><table>
+    <tr><th class="num">e (exact)</th><th class="num">0.000</th><th class="num">0.010</th><th class="num">0.025</th><th class="num">0.050</th><th class="num">0.075</th><th class="num">0.100</th></tr>
+    <tr><td>Success (5-seed mean)</td><td class="num">89.2%</td><td class="num">94.6%</td><td class="num">97.4%</td><td class="num">85.2%</td><td class="num">14.3%</td><td class="num">0.6%</td></tr>
+  </table></div>
+  <p>This is the only real eccentricity curve. Everything else labeled "eccentricity" in the repo is confounded: the <code>e_max</code> scan axis collapses to the same e ≤ 0.084 distribution from 0.10 upward (LEO geometry caps eccentricity — perigee must clear the atmosphere); the published degradation at "e = 0.5/0.7" was doomed-init contamination from a since-fixed 256-attempt sampler cap (pass-only success at "e = 0.70" was 97.1%); and the infamous "cliff at e ≥ 0.075" from the wrap-up was mostly an <em>altitude</em> confound — its eval script rescaled the altitude band by 1/(1−e), silently testing far outside the training band. <strong>In this environment, high eccentricity and high altitude are not separable axes</strong> — you cannot test e &gt; 0.084 without raising the altitude ceiling first. That single fact explains most of the Phase 5 confusion.</p>
+
+  <h3>Altitude — one skill, decaying with orbital period</h3>
+  <div class="tablebox"><table>
+    <tr><th>Band</th><th class="num">Periods within 2000-step cap</th><th class="num">Real success (same-orbit)</th><th class="num">Real success (fully random)</th></tr>
+    <tr><td>LEO (6,671–7,171 km)</td><td class="num">~22</td><td class="num">98–100%</td><td class="num">88–96%</td></tr>
+    <tr><td>MEO-low (→12,000 km)</td><td class="num">~12</td><td class="num">22–36%</td><td class="num">~3%</td></tr>
+    <tr><td>MEO (→26,000 km)</td><td class="num">~5.7</td><td class="num">≤ 8%</td><td class="num">~0.1%</td></tr>
+    <tr><td>GEO (→42,500 km)</td><td class="num">~1.4</td><td class="num">≤ 5%</td><td class="num">~0%</td></tr>
+  </table></div>
+  <p>The policy has <strong>one verified skill: multi-revolution phasing on shared-shape orbits</strong>, and its viability tracks how many orbital periods fit inside the fixed 2000-step episode cap. MEO-low successes show real maneuvering (mean episode ~752 steps ≈ 4.7 periods, real fuel spend). The widely-quoted "49.7% across the LEO–GEO envelope" was about half metric artifact (see §3) — corrected value ≈ 11.9%, nearly all of it the LEO slice of the sample.</p>
+
+  <h3>Why "prepare for higher altitude / higher e" kept failing — four verified blockers</h3>
+  <ol>
+    <li><strong>Period budget vs the 2000-step cap</strong> (physics). At GEO the agent gets 1.4 orbits to solve a multi-revolution phasing problem. The fix (M4: raise MAX_STEPS) was specced and never landed.</li>
+    <li><strong>Reward leak at wide altitude bands</strong> (metrology, and a live training hazard). On a timeout the terminal Φ-clamp adds a positive term proportional to how far the sat is from target; with the eval's <code>reward &gt; 0</code> success classifier, a timeout scores as "success" whenever |Δa| &gt; 10,000 km. The audit reproduced the reported GEO "capability" with a <strong>policy that never acts</strong> (53/100 coast-only "successes" at GEO). Worse: for any training band wider than ~17,000 km, freeze-and-time-out earns ~+300 return versus ~+10 for succeeding — the reward's global optimum is doing nothing. Unfixed.</li>
+    <li><strong>Plasticity lock</strong> (RL). Converged checkpoints cannot be fine-tuned: aggressive hyperparameters destroy the policy globally (LEO → 0%), gentle ones preserve it but learn nothing, mid-training warm-starts trade LEO regression for tiny lift. Twelve runs across four protocols; fifth independent reproduction of this pattern in the project. Caveat: the sweep was narrow — re-bootstrapping per band Stage-1.0-style, KL-constrained updates, and freezing were never tried.</li>
+    <li><strong>Geometric infeasibility at LEO high-e</strong> (physics). e ≥ 0.084 has no valid initial conditions in the trained band. The "wall" Phase 5c/5d spent ~50 compute-hours attacking was 64–94% physically impossible tasks.</li>
+  </ol>
+  <div class="panel warn">
+    <span class="panel-label">The unfalsified conclusion</span>
+    <p>The docs' final verdict — "the recipe is structurally bounded; ship the LEO agent and close" — was reached <strong>without ever using the tools built to test it</strong>: every Phase 5.5 run pinned <code>legacy_action_space=10</code>, so the longer warps (M2) and fine burns (M3) engineered specifically for MEO/GEO were exercised by zero runs, and MAX_STEPS was never raised (M4). "Structurally bounded" is unfalsified, not confirmed. This is simultaneously an honest interview talking point and the highest-value open research thread.</p>
+  </div>
+</section>
+
+<section id="evals">
+  <p class="sec-eyebrow">03 · Metrology</p>
+  <h2>State of the evals — what to trust</h2>
+  <p>The project's recurring failure mode, named in its own retrospective, is "the metric measures something different from its name" — <strong>nine documented instances</strong>, from dashboard rolling-window mirages to a Simpson's paradox in shaping aggregates to the Φ-clamp leak. Every retraction traced back to one. The audit's own null-policy experiment independently confirmed the final and largest one.</p>
+  <div class="tablebox"><table>
+    <tr><th>Claim you may remember</th><th>Verdict</th><th>What's actually true</th></tr>
+    <tr><td>"96.4% multi-seed" (Phase 5b headline; resume says 96–98%)</td><td><span class="chip warn">Unverifiable</span></td><td>No raw data in repo. Best committed evidence: <strong>93.7% mean, 88.0–97.5% range</strong> (Phase 5e, 5×200 eps). LEO numbers are clean of all artifacts.</td></tr>
+    <tr><td>"2 of 5 seeds collapse to 2–16%"</td><td><span class="chip info">Retired recipe</span></td><td>True of Phase 5b's training run (never preserved). The superseding Phase 5e recipe: <strong>5/5 seeds work</strong>. Don't pair the collapse stat with the current headline.</td></tr>
+    <tr><td>"90.2% at e_max = 0.20"</td><td><span class="chip warn">Misleading label</span></td><td>Real measurement of a distribution whose realized mean e was 0.028. Same task as e_max = 0.05.</td></tr>
+    <tr><td>"84.5% / 64.5% at e = 0.5 / 0.7"</td><td><span class="chip bad">Contaminated</span></td><td>Doomed-init artifact (256-cap exhaustion). Pass-only: ~90% / 97.1%.</td></tr>
+    <tr><td>"Cliff at e ≥ 0.075"</td><td><span class="chip bad">Confounded</span></td><td>Mostly altitude OOD via <code>alt_band_for_e</code>. Real curve in §2.</td></tr>
+    <tr><td>"49.7% across LEO→GEO envelope" / "relation×altitude flip"</td><td><span class="chip bad">Retracted</span></td><td>Φ-clamp leak. Corrected: ~11.9% envelope, ~0% at MEO/GEO. Coast-only null policy reproduces the fake numbers.</td></tr>
+    <tr><td>Phase 4 "79.6% at 180°"; curriculum-required (fresh 0% vs warm 61%); determinism finding; 13M-step dead zone; V-curve warm-start</td><td><span class="chip ok">Stands</span></td><td>Survived scrutiny. The Block-B three-arm curriculum test is the cleanest experimental result in the project.</td></tr>
+  </table></div>
+  <div class="panel bad">
+    <span class="panel-label">Still broken in the tooling — nothing after May 21 was executed</span>
+    <ul>
+      <li><code>eval_checkpoint.py:125</code> still classifies success as <code>reward &gt; 0</code> (the leak). The corrected classifier ("terminated before cap AND reward &gt; 0") was recommended, written in /tmp, and lost.</li>
+      <li>The Φ-clamp still fires on safety-cap terminals in <code>orbital.h</code> — a reward-hacking landmine for any future wide-band training.</li>
+      <li>The corrected capability numbers (11.9% / 0%) are currently <strong>unreproducible</strong> — the 8.5 GB of probe trajectories lived in /tmp and are gone (the ~13-min probe script survives).</li>
+      <li>~3 months of findings docs, specs, and the two retraction documents are <strong>uncommitted</strong>. Git history alone ends at "closure confirmed."</li>
+      <li>Two newly-found small bugs: the <code>fuel_used</code> log double-multiplies FUEL_FRAC (range [0.1275, 0.15] instead of [0, 0.15]), and every exported trajectory drops its terminal record (off-by-one), so "last row" analyses read the state 60 s before the end.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="story">
+  <p class="sec-eyebrow">04 · Narrative</p>
+  <h2>The story arc — ten beats to have fluent</h2>
+  <div class="timeline">
+    <div class="tl-item"><span class="tl-date">MAR–APR 2026</span><p><strong>Build.</strong> C env + PufferLib binding; physics validated against textbook Hohmann values; ~500–700k steps/sec. Circular transfers solved to ~100% with clean two-impulse apsidal burns. Debris deliberately shelved — it masked the transfer structure you were trying to learn.</p></div>
+    <div class="tl-item"><span class="tl-date">APR 2026</span><p><strong>The e=0.30 wall and the pivot.</strong> Orbit-shape matching at high eccentricity plateaued (~45%); wider action spaces and finer timesteps all made it worse (bootstrap dilution). You pivoted the task to rendezvous — position + velocity against a propagated target — which is both harder and better-posed. Honest note: the wall was routed around, not solved.</p></div>
+    <div class="tl-item"><span class="tl-date">APR 25</span><p><strong>Phase 4: curriculum cracks 180° phasing.</strong> Of four interventions, only the training <em>schedule</em> (30°→90°→180° curriculum + a time-warp action) worked: 79.6% multi-seed. Ablations showed LVLH observations and the shaping were load-bearing for the curriculum even though they looked inert standalone.</p></div>
+    <div class="tl-item"><span class="tl-date">APR 28</span><p><strong>The determinism finding.</strong> Identical seed, config, and code gave 5% / 40% / 77% — the Multiprocessing vec backend makes minibatch order OS-scheduling-dependent. Consequence: multi-seed minimum for all structural claims. This is a systems-level debugging story interviewers love.</p></div>
+    <div class="tl-item"><span class="tl-date">APR 28–30</span><p><strong>Phase 5b: the working recipe.</strong> Random satellite-eccentricity init + a two-stage curriculum (bootstrap on same-orbit phasing, then randomize). The three-arm test — fresh 0%, warm-from-specialist 1.2%, warm-from-broad 61.2% — proved curriculum is <em>required</em>, not helpful. Emergent behavior: the agent exploits non-uniform angular velocity on eccentric orbits to phase faster.</p></div>
+    <div class="tl-item"><span class="tl-date">APR 30–MAY 1</span><p><strong>50 compute-hours debugging a phantom.</strong> Eight reward-side interventions failed to crack "the e=0.20 wall" — then a Lambert reachability check revealed 64–94% of high-e initial states had sub-surface perigees. One conditional (reject invalid inits) took the same untouched checkpoint from 16% → 93.5%. Lesson: validate the environment at every new regime before touching the reward.</p></div>
+    <div class="tl-item"><span class="tl-date">MAY 2</span><p><strong>Verification catches two more confounds.</strong> You noticed web-frontend trajectories starting inside the Earth and pushed instead of dismissing it. Result: the sampler's 256-attempt cap was silently accepting doomed inits (25pp artifact at e=0.7), and the wrap-up's "eccentricity cliff" was an altitude confound.</p></div>
+    <div class="tl-item"><span class="tl-date">MAY 21</span><p><strong>Phase 5.5 in one day.</strong> Env mods for altitude (LVLH scaling, longer warps, fine burns) landed; the only training attempt collapsed — converged checkpoints have no usable plasticity (four fine-tune protocols, no window without LEO regression). Zero-shot probes suggested ~50% envelope capability.</p></div>
+    <div class="tl-item"><span class="tl-date">MAY 21–22</span><p><strong>The Φ-clamp leak — the ninth and biggest metric bug.</strong> Trajectory inspection showed GEO "successes" burning zero fuel for 2000 steps: the shaping clamp pays out proportionally to how far OOD you are, and the eval counts reward &gt; 0 as success. Real MEO/GEO capability ≈ 0. The honest deliverable: a LEO/MEO-low phasing specialist whose skill decays with orbital period.</p></div>
+    <div class="tl-item"><span class="tl-date">MAY 22 → AUG</span><p><strong>Stopped mid-correction.</strong> The six recommended closure steps (patch classifier, fix clamp, re-audit, update docs, commit) were never executed. That's the state you're returning to — and Tier 0 of the plan below is exactly those steps.</p></div>
+  </div>
+</section>
+
+<section id="review">
+  <p class="sec-eyebrow">05 · Scorecard</p>
+  <h2>Verdicts on the resume-review's critiques</h2>
+  <p>The review was written without reading the code. It holds up remarkably well — and in two places the truth is <em>worse</em> than it claimed, which you want to know before an interviewer finds it.</p>
+  <div class="tablebox"><table>
+    <tr><th>Review claim</th><th>Verdict</th><th>Adjudicated detail</th></tr>
+    <tr><td>3.1 — 30 km / 50 m/s criterion admits "conjunctions, not rendezvous"</td><td><span class="chip bad">Confirmed, understated</span></td><td>Measured terminal geometry of real successes: the box triggers <strong>exactly at the 30 km crossing</strong>, median relative velocity <strong>34.3 m/s</strong> (100% above 10 m/s), median |Δa| 17 km with 29% above 30 km. These are fly-throughs. Some "efficient" successes spend <em>less</em> Δv than Hohmann (ratio 0.71) — i.e., they skip circularization. The review's Δa≈90 km arithmetic is exact.</td></tr>
+    <tr><td>3.2 — no baseline, no "why RL" answer</td><td><span class="chip warn">Confirmed gap, partial data exists</span></td><td>No Lambert comparison table exists, but the raw data already contains a Δv-vs-Hohmann ratio (median 2.49×) and a Lambert solver script exists from the reachability work. Formalizing the baseline is cheap.</td></tr>
+    <tr><td>3.3 — no navigation (full-state feedback)</td><td><span class="chip bad">Confirmed</span></td><td>Truth-state observations, no sensor model, no filter. This is the strategic gap for the Space &amp; Strategic Navigation req specifically.</td></tr>
+    <tr><td>3.4 — seed variance under-reported</td><td><span class="chip info">Right instinct, wrong regime</span></td><td>The 2/5 collapse belongs to the retired Phase 5b recipe; the current 5-seed family has no collapse (88.0–97.5%). The real correction is the headline itself: 96–98% is the max, 93.7% is the mean.</td></tr>
+    <tr><td>3.5 — 16 of 38 obs dims inert</td><td><span class="chip bad">Confirmed in effect</span></td><td>12 hard zeros + 1 constant + 3 exact duplicates of other dims. Zero net information under the no-debris recipe.</td></tr>
+    <tr><td>3.6 — Discrete(16)/Discrete(10) skew</td><td><span class="chip bad">Confirmed, worse</span></td><td>Not masking — the actions didn't exist at training time. And the skew propagated: all Phase 5.5 conclusions were reached with the old 10-action space, so the expansion tools were never tested.</td></tr>
+    <tr><td>3.7 — flat γ biases toward warps</td><td><span class="chip bad">Confirmed, sharper</span></td><td>Shaping uses γ<sup>τ</sup>, GAE uses flat γ — the two halves of the objective disagree about what a warp costs. Realized: 96.8% of actions are warp-5min; effective horizon ≈ 200 decisions vs the 2000-step cap.</td></tr>
+    <tr><td>3.8 — escape branch unreachable</td><td><span class="chip bad">Confirmed exactly</span></td><td>3,155 m/s needed vs 478 available; dead at every supported altitude; 0 escapes in 6,000 episodes. Own it as a deliberate guard, or delete it.</td></tr>
+    <tr><td>3.9 / 3.10 — 2D excludes plane change; J2/drag matter at 300 km</td><td><span class="chip ok">Fair scope critiques</span></td><td>Pre-empt them yourself, with the specific magnitudes (plane change ~hundreds of m/s ≈ your whole budget; J2 apsidal precession perturbs phasing over multi-day horizons).</td></tr>
+  </table></div>
+</section>
+
+<section id="framing">
+  <p class="sec-eyebrow">06 · Presentation</p>
+  <h2>How to frame it for Draper</h2>
+
+  <h3>The headline, stated honestly</h3>
+  <div class="panel good">
+    <p>"I built a two-body orbital rendezvous environment in C — analytic Kepler propagation, Tsiolkovsky fuel, ~500k steps/sec across 1,024 instances — and trained a recurrent PPO policy that solves randomized coplanar LEO rendezvous at <strong>94% mean success across five training seeds (88–97.5%)</strong>, against a deliberately coarse far-field criterion of 30 km and 50 m/s. The only failure mode is timing out: zero collisions, escapes, or fuel-outs in a thousand evaluated episodes. The policy costs about 2.5× Hohmann Δv — it buys robustness with propellant — and the project's hardest lessons weren't in the RL, they were in <strong>verification</strong>: I documented nine separate cases where a metric measured something different from its name, and the discipline that caught them is the part I'm proudest of."</p>
+  </div>
+  <p>That last clause is the differentiator. Draper's interview style is project interrogation, and the req's duties are half verification and documentation. You have a genuinely unusual asset: a paper trail of retractions <em>you caught yourself</em> — the impossible-trajectories catch (you noticed satellites starting inside Earth and refused to write it off as a rendering bug), the doomed-init discovery that turned a "capability wall" into a one-line env fix, the Simpson's-paradox catch, the Φ-clamp leak. Lead with limitations, as the review says — but frame them as <em>findings from your own verification process</em>, not confessions.</p>
+
+  <h3>Structure the talk as the req describes the job</h3>
+  <p>Problem → requirements → design trades → implementation → verification → what I'd do differently. Your project maps beat-for-beat: the trade studies are real (discrete vs continuous actions, timestep resolution, curriculum design, analytic vs numerical propagation — each with data on why the alternative failed), and "what I'd do differently" writes itself (tighten the criterion, γ<sup>τ</sup> discounting, validate the env before debugging the reward, metadata that records outcomes not intent).</p>
+
+  <h3>Five answers to have loaded</h3>
+  <dl class="qa">
+    <dt>1 · "Why RL? Lambert solves this."</dt>
+    <dd>Concede immediately, then differentiate: the action set is quantized and fuel-limited so the continuous two-impulse solution isn't directly executable; the policy is reactive at runtime with no targeting solve; and mainly, <strong>it's a testbed for the regimes where closed-form breaks</strong> — noise, partial observability, keep-out constraints — which is exactly the extension in progress (measurement model + EKF). Then give the number they'd ask for: median 2.49× Hohmann Δv today, Lambert baseline table in progress. Never claim the policy beats classical GNC.</dd>
+    <dt>2 · "What does your success criterion physically mean?"</dt>
+    <dd>Own it precisely: "It's a far-field handover box, and I've measured what it admits — successes cross at 30 km with ~34 m/s median relative velocity, so it certifies conjunction-with-approach, not station-keeping capture. Tightening to 5 km / 1 m/s and retraining is the top of my current work plan; the shaping already has a velocity term, so the machinery is in place." You've turned the project's biggest weakness into evidence you measure your own systems.</dd>
+    <dt>3 · "Why analytic Kepler instead of an integrator?"</dt>
+    <dd>Exactness at any dt (which makes time-warp actions free), no energy drift over 2,000-step episodes, and speed. Trade: it hard-codes two-body, so J2/drag/n-body require switching to RK4 — a deliberate scope decision, and the planned cislunar extension is where the integrator becomes necessary.</dd>
+    <dt>4 · "Walk me through the observation vector."</dt>
+    <dd>38 dims; the LVLH relative-state block is the one doing the work (ablation: removing it drops curriculum bootstrap from 77% to 13%). Sixteen dims are debris-proximity scaffolding that is provably inert in the current no-debris recipe — kept because the architecture targets keep-out constraints next, but you'd mask it in a design review, and you know the exact cost of leaving it in.</dd>
+    <dt>5 · "What are your failure modes?"</dt>
+    <dd>At LEO: one mode — the 2000-step cap (6.3%), i.e., phasing not converged in time; never crashes, never escapes, never strands. Above the trained band: capability decays with orbital period against the fixed episode cap (22 orbits at LEO → 1.4 at GEO). At high e in LEO: no valid geometry exists (perigee constraint) — a physics fact your eval initially mislabeled as a capability cliff, which you caught.</dd>
+  </dl>
+
+  <h3>Resume corrections needed</h3>
+  <div class="panel warn">
+    <ul>
+      <li><strong>"96–98% success across multi-seed"</strong> → not defensible; it's the top two of five seeds. Use: <em>"~94% mean success across five training seeds (88–98%)"</em> — still a strong number, and it survives diligence.</li>
+      <li><strong>"burns from 1 to 25 m/s … variable-duration propagation steps"</strong> → describes the env, not the trained policy (5–25 m/s + one 5-min warp). Either say "environment supports" or align to what the checkpoint uses.</li>
+      <li>Everything else in the bullet checks out against code, including the honest disclosure of the coarse criterion — keep that; it's exactly the right instinct.</li>
+    </ul>
+  </div>
+
+  <h3>Do not claim (will not survive diligence)</h3>
+  <div class="panel bad">
+    <ul>
+      <li>Any capability at MEO/GEO, or "50% of the LEO–GEO envelope" — retracted (reward leak; real ≈ 0%).</li>
+      <li>Any capability at e &gt; 0.084 — geometrically untestable in the trained band; the published high-e numbers are artifacts.</li>
+      <li>"96–98% multi-seed," or the 2/5-collapse stat alongside current numbers (different recipe generations).</li>
+      <li>Fuel-optimality — the policy is fuel-<em>bounded</em>, not fuel-optimal (2.5× Hohmann median).</li>
+    </ul>
+  </div>
+
+  <h3>If asked about AI-assisted development</h3>
+  <p>Be direct: you used coding agents heavily for implementation and experiment execution, and the project's documented history shows why that made <em>verification</em> the core engineering skill — agent-written analyses repeatedly overstated results, and the process that caught them (multi-seed minimums, train-longer nulls, length-binning before aggregating, metric-vs-implementation audits, null-policy controls) is yours. That's an increasingly relevant, honest answer, and this repo is unusually good evidence for it.</p>
+</section>
+
+<section id="plan">
+  <p class="sec-eyebrow">07 · Roadmap</p>
+  <h2>Improvement plan, ranked by value per hour</h2>
+
+  <h3>Tier 0 — make the ground solid (≈1 day, do before anything else)</h3>
+  <p>These are mostly the six closure steps the project specified on May 22 and never ran.</p>
+  <ol>
+    <li><strong>Patch the success classifier</strong> in <code>eval_checkpoint.py</code> (and the C-side <code>perf</code> log): report physical success (terminated before cap AND reward &gt; 0) alongside reward-success. ~15 min; gates the trustworthiness of every future number.</li>
+    <li><strong>Fix the Φ-clamp at safety-cap terminals</strong> in <code>orbital.h</code> (skip or bound the clamp on timeout). Prerequisite for any wide-band training — currently the reward pays ~30× more for freezing than succeeding above a ~17,000 km band.</li>
+    <li><strong>Re-run the capability probe (~13 min) with the corrected classifier and persist outputs</strong> outside /tmp — restores the evidence base for the corrected numbers, which are currently unreproducible.</li>
+    <li><strong>Regenerate the headline multi-seed eval</strong> and commit raw outputs; adopt the defensible statement (93.7%, 88–97.5) everywhere, or reproduce something better and commit the data.</li>
+    <li><strong>Commit the ~3 months of untracked work</strong> (both retraction docs, all Phase 5.5 findings/specs/scripts, the tooling diffs); fix MODELS.md's wrong seed-42 path/epoch; mark SUMMARY.md and PROGRESS.md as archived (they describe an April-era project and are actively misleading).</li>
+    <li>Fix the two small logging bugs (fuel_used units; trajectory-export terminal-record off-by-one).</li>
+  </ol>
+
+  <h3>Tier 1 — interview credibility (≈1 week; matches the review's Tier 1, now with verified costs)</h3>
+  <ol>
+    <li><strong>Tighten the terminal criterion and retrain.</strong> Test 5 km / 1 m/s and 1 km / 0.5 m/s. Training is cheap on your hardware (~99M steps ≈ tens of minutes per seed), so run the honest degradation curve multi-seed. This converts the project's one structural weakness into its best slide.</li>
+    <li><strong>Lambert baseline.</strong> Two-impulse Δv across the test distribution vs policy Δv, reported as a ratio distribution. Half the machinery exists (Hohmann ratios in the bonus stats; a Lambert solver script from the reachability work).</li>
+    <li><strong>Named failure taxonomy.</strong> Decompose the 6.3% timeouts (e.g., phasing-not-converged vs velocity-mismatch-at-boundary vs fuel-depleted-late) from existing trajectory dumps.</li>
+    <li><strong>One-page honest capability statement</strong> (the §2 tables) as the project's canonical README/memo section — this doubles as the technical-memo writing sample the review recommends.</li>
+    <li>Optional cleanups that pre-empt design-review nits: mask or drop the 16 dead obs dims (or re-enable debris to justify them), remove or explicitly annotate the dead escape branch, reconcile γ<sup>τ</sup> vs flat-γ (even just a documented decision).</li>
+  </ol>
+
+  <h3>Tier 2 — the navigation extension (≈2 weeks; the piece this req actually hires for)</h3>
+  <ol>
+    <li>Range/bearing measurement model with noise + bias; noisy Δv execution as an IMU proxy.</li>
+    <li>EKF over LVLH relative state, covariance propagated through Kepler steps.</li>
+    <li><strong>Validate the filter properly</strong>: Monte Carlo RMSE vs truth, NEES/NIS chi-square consistency, ±3σ bound plots. This is what separates "ran a filter" from navigation engineering.</li>
+    <li>Re-run the policy on estimated state and report the truth-vs-filtered degradation — the single best sentence you can put in front of a navigation hiring manager.</li>
+  </ol>
+
+  <h3>Tier 3 — research threads (opportunistic, after the above)</h3>
+  <ul>
+    <li><strong>Altitude expansion done right:</strong> with the clamp fixed, MAX_STEPS raised (M4), and the 16-action space actually exercised (M2/M3), re-test whether the recipe is really "structurally bounded" — re-bootstrap each band from a fresh Stage-1.0-style curriculum instead of fine-tuning converged checkpoints (the one warm-start pattern that ever worked). Cheap to try; falsifies or confirms the project's biggest open claim.</li>
+    <li>Clohessy–Wiltshire + LQR baseline in MATLAB/Simulink (a weekend; buys classical-GNC literacy and an honest Simulink line).</li>
+    <li>Then 3D, J2/drag toggles, debris/keep-out exercising the dormant obs block — in that order.</li>
+  </ul>
+</section>
+
+<section id="hygiene">
+  <p class="sec-eyebrow">08 · Appendix</p>
+  <h2>Doc reliability map</h2>
+  <div class="tablebox"><table>
+    <tr><th>Trust</th><th>Documents</th></tr>
+    <tr><td><span class="chip ok">Most authoritative</span></td><td><code>PHASE5_PRE_CLOSURE_MECHANISM_FINDINGS.md</code> (final word on capability; its numbers were independently re-verified), <code>phase5-retrospective.md</code> (best narrative through Phase 5, silent on 5.5), <code>PHASE5_VERIFICATION_FINDINGS.md</code>, <code>PHASE5c_CORRECTIONS.md</code>, <code>PHASE5b_CLARIFY.md</code>, the determinism findings, <code>models/README.md</code> (beats MODELS.md where they conflict — MD5-verified).</td></tr>
+    <tr><td><span class="chip warn">Use with corrections</span></td><td><code>MODELS.md</code> (wrong seed-42 path/epoch; headline 96.4% has no raw data; silent on the Φ-clamp retraction), <code>RECIPE.md</code> (wrong success-criterion description; capability section predates retractions), Phase 5e findings and <code>PHASE5_BLOG_DATA.md</code> (contaminated/mislabeled headline tables).</td></tr>
+    <tr><td><span class="chip bad">Do not use as current state</span></td><td><code>SUMMARY.md</code>, <code>PROGRESS.md</code> (describe an April-era Discrete(7), pre-rendezvous project), the three Phase 5.5 probe docs' headline mechanisms ("49.7%", "MEO valley", "relation×altitude flip" — all superseded within 24 hours), <code>PHASE6_TRANSITION.md</code> (cislunar next-step is 4,300–7,200 steps of transfer against an unmoved 2,000-step cap — it inherits the exact blocker Phase 5.5 hit).</td></tr>
+  </table></div>
+  <p class="small" style="margin-top:16px">Sources: six-agent audit (code ground-truth, history, eval-data forensics, Phase 5.5 frontier, doc errata, adjudication) run 2026-08-10; ~660k tokens of verification including three original experiments (coast-only null policy, instrumented rejection sampler at both cap eras, terminal-geometry measurement of 60 fresh episodes). Full reports in the session workspace.</p>
+</section>
+
+<footer>
+  ORBITAL RL · GROUND TRUTH BRIEFING · GENERATED 2026-08-10 · VERIFIED AGAINST WORKING TREE @ 40c53d2
+</footer>
+</div>
