@@ -1,11 +1,19 @@
 # T1 — Corrected-Dynamics Findings: the true_to_mean() Fix and What Survives It
 
-> **Status:** 2026-08-10. The inverted `true_to_mean()` anomaly conversion (commit `f55d9cb`)
-> is fixed and verified. Under corrected dynamics the canonical policy drops 97.5% → 13.0%,
-> fresh bootstrap fails at 2× budget, and the best recovery achieved today is **33.5% greedy**
-> (gentle re-adaptation of the legacy policy, epoch-25 peak). The recipe's published
-> learnability and fuel-efficiency were both partly artifacts of the bug. The next lever is a
-> shaping redesign; every quick recovery protocol is exhausted and documented below.
+> **STATUS UPDATE 2026-08-11 — RECOVERY COMPLETE. See `T3_RECOVERY_CAMPAIGN.md`.**
+> The shaping redesign proposed in §6 was superseded by a deeper diagnosis (five
+> compounding signal defects, incl. a reward-side warp barrier the §6 options would not
+> have touched). Under the T3 fix stack the headline task is solved at **100.0% held-out
+> by 5/5 seeds** (2,900 episodes, zero failures), extended to e ≤ 0.15 (L3, 100%), with
+> Lambert/EKF validation lawful. The §3 recovery-attempt table below remains the accurate
+> record of what did NOT work and why.
+>
+> **Original status (2026-08-10):** The inverted `true_to_mean()` anomaly conversion
+> (commit `f55d9cb`) is fixed and verified. Under corrected dynamics the canonical policy
+> drops 97.5% → 13.0%, fresh bootstrap fails at 2× budget, and the best recovery achieved
+> today is **33.5% greedy** (gentle re-adaptation of the legacy policy, epoch-25 peak).
+> The recipe's published learnability and fuel-efficiency were both partly artifacts of
+> the bug.
 
 ---
 
