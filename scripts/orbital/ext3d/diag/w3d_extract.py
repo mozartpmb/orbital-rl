@@ -84,9 +84,15 @@ def true_to_mean(nu, e):
 
 
 def decisions(actions):
-    """Walk the per-sub-step action log, grouping warps by their tau."""
+    """Walk the per-sub-step action log, grouping warps by their tau.
+
+    NOTE the off-by-one: orbital.h writes traj_log[0] BEFORE the first action is
+    read (`if (env->step == 0) write_traj_record(...)`), so index 0 carries a
+    stale action and the decision stream starts at index 1. Walking from 0
+    de-synchronises the whole episode and silently loses burn decisions.
+    """
     out = []
-    i, n = 0, len(actions)
+    i, n = 1, len(actions)
     while i < n:
         a = int(actions[i])
         if a < 0 or a >= 30:
@@ -129,17 +135,23 @@ def analyze(path, rung):
 
     acts = decisions(np.asarray(d["action"][sl]))
     nd = max(len(acts), 1)
-    n_norm = sum(1 for a in acts if a in NORMAL_ACTIONS)
-    n_comb = sum(1 for a in acts if a in COMBINED_ACTIONS)
     n_warp = sum(1 for a in acts if a in WARP_ACTIONS)
-    n_ip = sum(1 for a in acts if a in INPLANE_BURNS)
     n_coast = sum(1 for a in acts if a == 0)
 
+    # Burn accounting is taken from the dv ledger, not the decision walk: every
+    # burn action has tau = 1 and writes its dv on its own record, so
+    # {i : delta_v[i] > 0} is an exact, alignment-independent burn list.
+    burn_idx = np.nonzero(dv > 0.0)[0]
+    burn_acts = [int(d["action"][int(i)]) for i in burn_idx]
+    n_norm = sum(1 for a in burn_acts if a in NORMAL_ACTIONS)
+    n_comb = sum(1 for a in burn_acts if a in COMBINED_ACTIONS)
+    n_ip = sum(1 for a in burn_acts if a in INPLANE_BURNS)
+    n_burn = len(burn_acts)
+
     # plane delta-v actually applied out of plane (|normal| component)
-    dv_normal = 25.0 * (sum(1 for a in acts if a in (24, 25)) +
-                        sum(1 for a in acts if a in (26, 27, 28, 29))) \
-        + 10.0 * sum(1 for a in acts if a in (22, 23)) \
-        + 1.0 * sum(1 for a in acts if a in (20, 21))
+    dv_normal = 25.0 * sum(1 for a in burn_acts if a in (24, 25, 26, 27, 28, 29)) \
+        + 10.0 * sum(1 for a in burn_acts if a in (22, 23)) \
+        + 1.0 * sum(1 for a in burn_acts if a in (20, 21))
 
     # endgame residuals
     di_end = plane_angle(hhat(float(d["sat_inc"][ns]), float(d["sat_raan"][ns])),
@@ -205,8 +217,9 @@ def analyze(path, rung):
         rp_tgt_km=(ta * (1 - te) - R_EARTH) / 1e3,
         dv_spent=dv_spent, dv_frac_budget=dv_spent / BUDGET,
         fuel_end=fuel_end, exhausted=int(exhausted),
-        n_decisions=nd, n_normal=n_norm, n_combined=n_comb,
-        n_plane=n_norm + n_comb, frac_plane=(n_norm + n_comb) / nd,
+        n_decisions=nd, n_normal=n_norm, n_combined=n_comb, n_burn=n_burn,
+        n_plane=n_norm + n_comb,
+        frac_plane=(n_norm + n_comb) / max(n_burn, 1),
         n_warp=n_warp, frac_warp=n_warp / nd, n_inplane=n_ip, n_coast=n_coast,
         dv_normal_cmd=dv_normal,
         di_end_deg=math.degrees(di_end), de_end=de_end, da_end_km=da_end / 1e3,
