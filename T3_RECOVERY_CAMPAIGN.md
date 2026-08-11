@@ -290,6 +290,13 @@ the observed launch offsets). Every run's own `--train.seed` is unambiguous from
 command line. Ladder script hardened (sequential + no-new-dir guard); batch 2
 (20260423, 31415) runs sequentially.
 
+**Zero-shot eccentricity curve, T3 canonical (fixed e both, 100 eps/cell, seed 123):**
+e=0.00 → **100%**, 0.02 → **100%**, 0.04 → **100%**, 0.05 → 98% (training-distribution
+edge), 0.06 → 71%, 0.07 → 56% (out-of-distribution rolloff; the pre-fix curve was
+already at 14% by e=0.075), e=0.083 → *not measurable in-band* (perigee floor leaves a
+~5 km sliver of the 300–800 km band; all inits gave-up). Wide-e capability beyond this
+is the L3+ ladder's job (band climb + `de_max`/`da_max` sampling), not zero-shot.
+
 **Relative-navigation re-validation (T3 port of the T2 EKF harness, 200 eps):**
 **truth 100.0% = EKF-nominal 100.0%** at nav cadence 60 s (also 100.0% at 300 s); NEES
 0.944 / NIS 0.951 in-bounds, settled position RMSE 7.5 m (pre-fix T2: 0.897 / ~570 m).
