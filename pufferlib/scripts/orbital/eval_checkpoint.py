@@ -28,7 +28,10 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              obs_alt_scale_m=1.6e6, phi_orbit_scale_k=0.001,
              lvlh_scale_m=6.371e6, legacy_action_space=None,
              stochastic=False,
-             rendezvous_radius_m=30000.0, rel_vel_tol_ms=50.0):
+             rendezvous_radius_m=30000.0, rel_vel_tol_ms=50.0,
+             shaping_mode=0, shape_w_lambda=1.0, shape_w_match=0.35,
+             shape_dv_ref_ms=300.0, shape_gamma=0.995,
+             phase_gap_mode=0, phase_obs_mode=0, episode_cap_steps=2000):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -63,6 +66,14 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         lvlh_scale_m=lvlh_scale_m,
         rendezvous_radius_m=rendezvous_radius_m,
         rel_vel_tol_ms=rel_vel_tol_ms,
+        shaping_mode=shaping_mode,
+        shape_w_lambda=shape_w_lambda,
+        shape_w_match=shape_w_match,
+        shape_dv_ref_ms=shape_dv_ref_ms,
+        shape_gamma=shape_gamma,
+        phase_gap_mode=phase_gap_mode,
+        phase_obs_mode=phase_obs_mode,
+        episode_cap_steps=episode_cap_steps,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -233,6 +244,27 @@ def main():
     parser.add_argument('--rel-vel-tol-ms', type=float, default=50.0,
                         help='Success-box relative-velocity tolerance (m/s). Default 50 = '
                              'historical criterion. T1 tightening: try 1.0 / 0.5.')
+    # T3 corrected-dynamics recovery kwargs (defaults = legacy; see T3_RECOVERY_CAMPAIGN.md §5)
+    parser.add_argument('--shaping-mode', type=int, default=0,
+                        help='T3: 0 = legacy gated Φ; 1 = S-R3 mean-longitude phase-time potential. '
+                             'Shaping only affects training signal, but set it to match the ckpt '
+                             'lineage when comparing episode returns.')
+    parser.add_argument('--shape-w-lambda', type=float, default=1.0,
+                        help='T3 shaping_mode 1: weight on |Δλ|/π term.')
+    parser.add_argument('--shape-w-match', type=float, default=0.35,
+                        help='T3 shaping_mode 1: weight on orbit-match Δv term.')
+    parser.add_argument('--shape-dv-ref-ms', type=float, default=300.0,
+                        help='T3 shaping_mode 1: Δv_match normalizer (m/s).')
+    parser.add_argument('--shape-gamma', type=float, default=0.995,
+                        help='T3: shaping discount base; >= 1.0 → γ_shape = 1 exactly.')
+    parser.add_argument('--phase-gap-mode', type=int, default=0,
+                        help='T3: 1 = init_phase_gap controls PHYSICAL mean-longitude gap '
+                             '(legacy M-offset is inert at e>0).')
+    parser.add_argument('--phase-obs-mode', type=int, default=0,
+                        help='T3: 1 = obs[13-16] use mean longitude (BREAKING for pre-T3 ckpts).')
+    parser.add_argument('--episode-cap-steps', type=int, default=2000,
+                        help='T3: runtime safety cap in 60 s sim sub-steps (max 3000). '
+                             'Legacy 2000 = 33.3 h wall clock.')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
@@ -243,7 +275,10 @@ def main():
              args.max_valid_init_attempts, args.gave_up_action,
              args.obs_alt_scale_m, args.phi_orbit_scale_k,
              args.lvlh_scale_m, args.legacy_action_space, args.stochastic,
-             args.rendezvous_radius_m, args.rel_vel_tol_ms)
+             args.rendezvous_radius_m, args.rel_vel_tol_ms,
+             args.shaping_mode, args.shape_w_lambda, args.shape_w_match,
+             args.shape_dv_ref_ms, args.shape_gamma,
+             args.phase_gap_mode, args.phase_obs_mode, args.episode_cap_steps)
 
 
 if __name__ == '__main__':

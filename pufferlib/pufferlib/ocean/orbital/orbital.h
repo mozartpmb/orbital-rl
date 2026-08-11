@@ -22,7 +22,11 @@
 #define ALT_MAX     1600e3          /* Scenario altitude ceiling              */
 #define DT          60.0            /* Simulation timestep (seconds)          */
 #define MAX_BODIES  16              /* Earth + debris (max)                   */
-#define MAX_STEPS   2000            /* Safety cap (~33 hrs orbital time)      */
+#define MAX_STEPS   3000            /* Trajectory-buffer size + max runtime episode cap.
+                                     * The actual per-episode cap is env->episode_cap_steps
+                                     * (default 2000 = legacy 33.3 h; T3 recovery runs use
+                                     * 3000 = 50 h). Counts 60 s SIM SUB-STEPS, not agent
+                                     * decisions — warps buy decisions, never wall clock. */
 #define FUEL_FRAC   0.15            /* Fuel = 15% of initial total mass       */
 #define ISP         300.0           /* Specific impulse (seconds)             */
 #define G0          9.80665         /* Standard gravity (m/s²)                */
@@ -285,6 +289,21 @@ typedef struct {
      * success-box sweeps. */
     double           rendezvous_radius_m;
     double           rel_vel_tol_ms;
+
+    /* T3 corrected-dynamics recovery (2026-08-11): runtime-flagged reward and
+     * coordinate fixes. Defaults preserve legacy behavior bit-exactly; see
+     * T3_RECOVERY_CAMPAIGN.md §5 and scripts/orbital/t3/reports/. */
+    int              shaping_mode;       /* 0 = legacy gated Φ; 1 = S-R3 phase-time potential   */
+    double           shape_w_lambda;     /* mode 1: weight on |Δλ|/π              (default 1.0) */
+    double           shape_w_match;      /* mode 1: weight on orbit-match term    (default 0.35)*/
+    double           shape_dv_ref_ms;    /* mode 1: Δv_match normalizer           (default 300) */
+    double           shape_gamma;        /* shaping discount base; >= 1.0 → γ_shape = 1 exactly
+                                          * (kills the (1−γ^τ)·|Φ| stall income; recon F-1)     */
+    int              phase_gap_mode;     /* 0 = legacy per-perifocal M offset (inert at e>0,
+                                          * recon ANOM-4); 1 = physical mean-longitude gap      */
+    int              phase_obs_mode;     /* 0 = legacy true-anomaly obs[13-16] (teleports on
+                                          * burns, sign wrong 39% at e>0); 1 = mean-longitude   */
+    int              episode_cap_steps;  /* runtime safety cap in sim sub-steps; <= MAX_STEPS   */
 
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
@@ -565,11 +584,25 @@ static inline void fill_observations(Orbital* env) {
     /* [13-16] Rendezvous phasing: sin/cos of orbit-angle phase gap (sat − target),
      * and sin/cos of target true anomaly. For circular orbits θ = M, so these
      * give the agent direct access to the angular offset it must close. */
-    double dtheta_phase = sat->orbit.theta - env->target.theta;
-    obs[13] = (float)sin(dtheta_phase);
-    obs[14] = (float)cos(dtheta_phase);
-    obs[15] = (float)sin(env->target.theta);
-    obs[16] = (float)cos(env->target.theta);
+    if (env->phase_obs_mode == 1) {
+        /* T3: mean-longitude phase channels. The legacy true-anomaly gap is a
+         * per-body coordinate: its sign disagrees with the physical gap on 39%
+         * of e>0 steps and a 1 m/s burn at e≈0 teleports it ~86° (recon
+         * ANOM-1/2). λ = M + ω is sign-correct and burn-continuous. */
+        double lam_s = sat->orbit.M + sat->orbit.omega;
+        double lam_t = env->target.M + env->target.omega;
+        double dlam_phase = lam_s - lam_t;
+        obs[13] = (float)sin(dlam_phase);
+        obs[14] = (float)cos(dlam_phase);
+        obs[15] = (float)sin(lam_t);
+        obs[16] = (float)cos(lam_t);
+    } else {
+        double dtheta_phase = sat->orbit.theta - env->target.theta;
+        obs[13] = (float)sin(dtheta_phase);
+        obs[14] = (float)cos(dtheta_phase);
+        obs[15] = (float)sin(env->target.theta);
+        obs[16] = (float)cos(env->target.theta);
+    }
 
     /* [17-32] Closest N_OBS_BODY bodies: Δr, Δθ, closing_rate, keepout_r
      * First compute distances to all bodies, then pick the N closest. */
@@ -704,7 +737,42 @@ static inline void fill_observations(Orbital* env) {
  *   Φ_vel   = ||v_rel_lvlh|| / REL_VEL_TOL   — rel-velocity null-out
  * Gates σ₂, σ₃ open as earlier-stage potentials drop below calibrated ε.
  * Φ(s) = −(w₁·Φ_orbit·σ₁ + w₂·Φ_phase·σ₂ + w₃·Φ_vel·σ₃). */
+/* Wrap an angle to [−π, π). */
+static inline double wrap_pi(double x) {
+    x = fmod(x + M_PI, 2.0 * M_PI);
+    if (x < 0.0) x += 2.0 * M_PI;
+    return x - M_PI;
+}
+
 static inline double compute_phi(const Orbital* env) {
+    /* T3 shaping_mode 1 — S-R3 "phase-time" potential (T3_RECOVERY_CAMPAIGN.md
+     * §5; measured design comparison in recon_shaping_audit.md §1.2/§3).
+     *   Φ = −[ W_λ·|Δλ|/π + W_m·min(1, Δv_match / DV_REF) ],  Φ ∈ [−(W_λ+W_m), 0]
+     * λ = M + ω is MEAN longitude: linear in time on a coast (no equation-of-
+     * centre ripple), continuous across burns up to O(2Δe), and — unlike the
+     * legacy true-anomaly gap — measures the physically meaningful along-track
+     * separation (recon ANOM-1/2). Δv_match is the linearised two-impulse
+     * orbit-match cost (Edelbaum/Gauss); hypot avoids double-counting because
+     * the burn pair that removes a phasing orbit's Δa also removes the e it
+     * created. No gates: the drift leg earns phase progress densely instead of
+     * being penalized (legacy σ₂ was dead for 100% of viable drift orbits). */
+    if (env->shaping_mode == 1) {
+        double dlam = wrap_pi((env->sat.orbit.M + env->sat.orbit.omega)
+                            - (env->target.M   + env->target.omega));
+        double e_sx = env->sat.orbit.e * cos(env->sat.orbit.omega);
+        double e_sy = env->sat.orbit.e * sin(env->sat.orbit.omega);
+        double e_tx = env->target.e    * cos(env->target.omega);
+        double e_ty = env->target.e    * sin(env->target.omega);
+        double de   = sqrt((e_sx - e_tx)*(e_sx - e_tx) + (e_sy - e_ty)*(e_sy - e_ty));
+        double da_rel    = (env->sat.orbit.a - env->target.a) / env->target.a;
+        double v_t       = sqrt(MU / env->target.a);
+        double dv_match  = 0.5 * v_t * sqrt(da_rel*da_rel + de*de);
+        double match     = dv_match / env->shape_dv_ref_ms;
+        if (match > 1.0) match = 1.0;
+        return -(env->shape_w_lambda * fabs(dlam) / M_PI
+               + env->shape_w_match  * match);
+    }
+
     /* Φ_orbit: orbit shape match.
      * Phase 5.5 altitude expansion: effective orbit-match tolerance scales with
      * the env's altitude domain. tol_eff = max(SUCCESS_TOL_A, K * obs_alt_scale_m).
@@ -819,7 +887,7 @@ static inline int check_termination(Orbital* env) {
      * β(γ^τΦ' − Φ) still pays ~β(γ−1)|Φ| per step to a frozen policy far
      * from target; bound Φ (phi_orbit_scale_k) or use γ_shape=1 before
      * training with a_max − a_min ≳ 10,000 km. */
-    if (env->step >= MAX_STEPS) {
+    if (env->step >= env->episode_cap_steps) {
         env->rewards[0]   = -10.0f;
         env->terminals[0] = 1;
         env->last_terminal_cause = TERM_SAFETY_CAP;
@@ -961,6 +1029,14 @@ static inline void c_reset(Orbital* env) {
     env->step         = 0;
     env->total_dv_used = 0.0;
     env->episode_id++;
+
+    /* T3 kwarg sanitation: zero-initialized envs (orbital.c standalone tests,
+     * any caller that predates the T3 kwargs) fall back to legacy values.
+     * The Python binding always sets these explicitly. */
+    if (env->episode_cap_steps <= 0 || env->episode_cap_steps > MAX_STEPS)
+        env->episode_cap_steps = 2000;          /* legacy 33.3 h cap */
+    if (env->shape_gamma <= 0.0)   env->shape_gamma   = 0.995;
+    if (env->shape_dv_ref_ms <= 0.0) env->shape_dv_ref_ms = 300.0;
 
     /* Phase 5d: rejection-sampling wrapper. Resample initial conditions until
      * both sat and target orbits have perigee >= EARTH_KEEPOUT. Without this,
@@ -1123,6 +1199,14 @@ static inline void c_reset(Orbital* env) {
         phase_gap = (2.0 * (rand() / (double)RAND_MAX) - 1.0) * env->init_phase_gap_max;
     }
     double tgt_M = env->sat.orbit.M + phase_gap;
+    if (env->phase_gap_mode == 1) {
+        /* T3: make the knob control the PHYSICAL mean-longitude gap
+         * λ_t − λ_s = (M_t + ω_t) − (M_s + ω_s) = phase_gap exactly.
+         * Legacy mode 0 offsets M per-perifocal-frame; with independent ω the
+         * realized physical gap is uniform ±180° regardless of the knob
+         * (recon ANOM-4 — every e>0 phase curriculum stage was unstaged). */
+        tgt_M += env->sat.orbit.omega - env->target.omega;
+    }
     tgt_M = fmod(tgt_M, 2.0 * M_PI);
     if (tgt_M < 0.0) tgt_M += 2.0 * M_PI;
     env->target.M = tgt_M;
@@ -1333,7 +1417,13 @@ static inline void c_step(Orbital* env) {
      * γ must match orbital.ini's gamma (0.995). τ=1 except under time-warp. */
     {
         double phi_curr    = compute_phi(env);
-        double gamma_tau   = pow(0.995, (double)env->last_tau);
+        /* T3: shape_gamma >= 1.0 → γ_shape = 1 exactly (pure telescoping;
+         * kills the (1−γ^τ)·|Φ| do-nothing income — measured +1.78/episode
+         * under the legacy γ^τ form, recon F-1 — and restores PBRS validity
+         * vs the trainer's flat per-decision γ). Default 0.995 = legacy. */
+        double gamma_tau   = (env->shape_gamma >= 1.0)
+                             ? 1.0
+                             : pow(env->shape_gamma, (double)env->last_tau);
         double delta       = BETA_SHAPE * (gamma_tau * phi_curr - env->phi_prev);
         env->rewards[0]   += (float)delta;
         env->g_shape_accum += fabs(delta);

@@ -190,6 +190,15 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->lvlh_scale_m            = (double)unpack(kwargs, "lvlh_scale_m");
     env->rendezvous_radius_m     = (double)unpack(kwargs, "rendezvous_radius_m");
     env->rel_vel_tol_ms          = (double)unpack(kwargs, "rel_vel_tol_ms");
+    /* T3 corrected-dynamics recovery kwargs (defaults = legacy behavior) */
+    env->shaping_mode            = (int)unpack(kwargs, "shaping_mode");
+    env->shape_w_lambda          = (double)unpack(kwargs, "shape_w_lambda");
+    env->shape_w_match           = (double)unpack(kwargs, "shape_w_match");
+    env->shape_dv_ref_ms         = (double)unpack(kwargs, "shape_dv_ref_ms");
+    env->shape_gamma             = (double)unpack(kwargs, "shape_gamma");
+    env->phase_gap_mode          = (int)unpack(kwargs, "phase_gap_mode");
+    env->phase_obs_mode          = (int)unpack(kwargs, "phase_obs_mode");
+    env->episode_cap_steps       = (int)unpack(kwargs, "episode_cap_steps");
     env->last_terminal_cause     = TERM_NONE;
     env->last_traj_records       = 0;
     return 0;

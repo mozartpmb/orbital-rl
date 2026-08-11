@@ -106,6 +106,26 @@ class Orbital(pufferlib.PufferEnv):
         # check; shaping normalizers keep the historical constants.
         rendezvous_radius_m=30000.0,
         rel_vel_tol_ms=50.0,
+        # ── T3 corrected-dynamics recovery kwargs (2026-08-11) ─────────────────
+        # Defaults preserve legacy behavior bit-exactly. See T3_RECOVERY_CAMPAIGN.md §5.
+        # shaping_mode 1 = S-R3 "phase-time" potential: Φ = −[w_λ·|Δλ|/π +
+        # w_m·min(1, Δv_match/dv_ref)] on MEAN longitude λ = M+ω, no gates.
+        shaping_mode=0,
+        shape_w_lambda=1.0,
+        shape_w_match=0.35,
+        shape_dv_ref_ms=300.0,
+        # Shaping discount base; >= 1.0 → γ_shape = 1 exactly (kills the
+        # (1−γ^τ)|Φ| do-nothing income, measured +1.78/ep under legacy γ^τ).
+        shape_gamma=0.995,
+        # 1 → init_phase_gap_max / phase_gap_fixed control the PHYSICAL
+        # mean-longitude gap (legacy M-offset is inert at e>0 — recon ANOM-4).
+        phase_gap_mode=0,
+        # 1 → obs[13-16] use mean longitude (sign-correct, burn-continuous)
+        # instead of true anomaly. BREAKING for pre-T3 checkpoints.
+        phase_obs_mode=0,
+        # Runtime safety cap in 60 s sim sub-steps (wall clock = cap minutes).
+        # Legacy 2000 = 33.3 h. T3 recovery training uses 3000. Max 3000.
+        episode_cap_steps=2000,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -168,10 +188,20 @@ class Orbital(pufferlib.PufferEnv):
             lvlh_scale_m=lvlh_scale_m,
             rendezvous_radius_m=rendezvous_radius_m,
             rel_vel_tol_ms=rel_vel_tol_ms,
+            shaping_mode=shaping_mode,
+            shape_w_lambda=shape_w_lambda,
+            shape_w_match=shape_w_match,
+            shape_dv_ref_ms=shape_dv_ref_ms,
+            shape_gamma=shape_gamma,
+            phase_gap_mode=phase_gap_mode,
+            phase_obs_mode=phase_obs_mode,
+            episode_cap_steps=episode_cap_steps,
         )
 
-        # Pre-allocated trajectory buffer (reused every call)
-        self._traj_buf = np.zeros((2000, TRAJ_FLOATS), dtype=np.float32)
+        # Pre-allocated trajectory buffer (reused every call).
+        # Row count MUST equal MAX_STEPS in orbital.h (T3: 3000) —
+        # vec_get_trajectory can fill up to that many records.
+        self._traj_buf = np.zeros((3000, TRAJ_FLOATS), dtype=np.float32)
 
         if traj_log_dir:
             os.makedirs(traj_log_dir, exist_ok=True)
