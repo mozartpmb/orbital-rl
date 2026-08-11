@@ -331,6 +331,31 @@ def zero_state(policy):
 # passed 18/18 gates while returning a 2,951 km epoch solution at G2. The gates
 # are not an acceptance test; the grid knobs below are the shipped ones and
 # must not be tuned without re-measuring epoch error against truth.
+# Tsiolkovsky inversion of obs[6]. obs[6] is fuel_mass/(dry+fuel); the tank
+# starts at FUEL_FRAC = 0.15, so the cumulative delta-v ACTUALLY APPLIED is
+#     dv = VE * ln( (1 - obs[6]) / (1 - 0.15) ),   VE = ISP*G0 = 2942 m/s
+# This reads the mass the C env really burned rather than the delta-v the
+# policy commanded, so a fuel-limited burn is counted correctly, and it
+# saturates at 478 m/s — the documented budget.
+VE_MS = 300.0 * 9.80665
+FUEL_FRAC0 = 0.15
+
+
+def dv_spent(fuel_frac):
+    return VE_MS * math.log(max(1.0 - float(fuel_frac), 1e-9) / (1.0 - FUEL_FRAC0))
+
+
+def fuel_budget_left(fuel_frac):
+    """Remaining fraction of the delta-v BUDGET (1.0 = full tank)."""
+    f = max(min(float(fuel_frac), FUEL_FRAC0), 0.0)
+    return (f / max(1.0 - f, 1e-9)) / (FUEL_FRAC0 / (1.0 - FUEL_FRAC0))
+
+
+def _is_burn(a):
+    """Any tau==1 non-coast action — exactly c_step's own burn test."""
+    return a != 0 and om.ACTION_TAU[a] == 1
+
+
 BO_Q_A = 1.0e-13          # NAV-G's bearings-only covariance floor
 BO_W0 = 45                # initial batch window (observations)
 BO_ACQ_EVERY = 15         # retry cadence, in new observations
@@ -424,6 +449,20 @@ def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
     flat_rho, flat_pe, flat_ve, flat_slr, flat_acq = [], [], [], [], []
     acq_latency, acq_epoch_err, n_acq_fail, n_diverge = [], [], 0, 0
     ep_blind_dec, ep_dec, ep_minrho = [], [], []
+    # ── blind-window behaviour (the mechanism training is supposed to fix) ──
+    # Canonical baseline: fed a ~9,000 km-wrong prior, the truth-trained policy
+    # dumps its whole 478 m/s budget in ~16 min of sim time and strands itself
+    # BEFORE any angles-only solver could have converged (NAV-G's w0 is 45
+    # observations = 45 min). These counters measure exactly that.
+    acq_dv, acq_fuel_left = [], []          # at the acquisition instant
+    ep_blind_burns, ep_acq_burns = [], []   # burns, split by nav state
+    ep_blind_dv, ep_acq_dv = [], []         # delta-v applied, split by nav state
+    ep_acq_dec = []
+    ep_total_dv, ep_ever_acq, ep_blind_at_end = [], [], []
+    blind_burns = acq_burns = acq_dec = 0
+    blind_dv = acq_dv_ep = 0.0
+    fuel_prev = None
+    logged_acq = False
 
     fresh, episodes, t0 = True, 0, time.time()
     times, sats, betas = [], [], []
@@ -448,6 +487,10 @@ def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
                          s_beta)
             acquired, next_try, fresh = False, BO_W0, False
             blind_dec, dec, minrho = 0, 0, float('inf')
+            blind_burns = acq_burns = acq_dec = 0
+            blind_dv = acq_dv_ep = 0.0
+            fuel_prev = float(o[6])
+            logged_acq = False
         else:
             # Advance navigation from the PREVIOUS decision epoch to this one,
             # at the fixed sensor cadence. Done here, not at the end of the
@@ -501,6 +544,10 @@ def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
                 mpc.set_cart(np.asarray(x_n, dtype=float), F @ P_e @ F.T,
                              sat_cart)
                 acquired = True
+                if not logged_acq:
+                    acq_dv.append(dv_spent(o[6]))
+                    acq_fuel_left.append(fuel_budget_left(o[6]))
+                    logged_acq = True
             elif len(times) > BO_ARC_MAX:
                 n_acq_fail += 1
 
@@ -556,6 +603,22 @@ def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
         obs, rewards, terms, truncs, _ = env.step(np.array([action], dtype=np.int32))
         prev_sat, prev_tgt, prev_tau = sat_cart, tgt_cart, om.ACTION_TAU[action]
 
+        # Attribute this decision's realised delta-v to the nav state it was
+        # taken under. `blind` here means "the policy was flying an unacquired
+        # estimate", which is the condition the training arm is meant to change.
+        blind_now = show_blind or not acquired
+        f_now = float(obs[0][6]) if not terms[0] else 0.0
+        d_dv = max(dv_spent(f_now) - dv_spent(fuel_prev), 0.0) if not terms[0] else 0.0
+        if blind_now:
+            blind_burns += 1 if _is_burn(action) else 0
+            blind_dv += d_dv
+        else:
+            acq_dec += 1
+            acq_burns += 1 if _is_burn(action) else 0
+            acq_dv_ep += d_dv
+        if not terms[0]:
+            fuel_prev = f_now
+
         if terms[0]:
             episodes += 1
             sim_steps, cause = env.last_episode_result(0)
@@ -565,6 +628,14 @@ def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
             ep_blind_dec.append(blind_dec)
             ep_dec.append(dec)
             ep_minrho.append(minrho)
+            ep_blind_burns.append(blind_burns)
+            ep_acq_burns.append(acq_burns)
+            ep_acq_dec.append(acq_dec)
+            ep_blind_dv.append(blind_dv)
+            ep_acq_dv.append(acq_dv_ep)
+            ep_total_dv.append(dv_spent(fuel_prev))
+            ep_ever_acq.append(1 if logged_acq else 0)
+            ep_blind_at_end.append(1 if blind_now else 0)
             fresh = True
             state = zero_state(policy)
             if verbose and episodes % 25 == 0:
@@ -583,7 +654,63 @@ def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
         acq_latency=np.array(acq_latency), acq_epoch_err=np.array(acq_epoch_err),
         n_acq_fail=n_acq_fail, n_diverge=n_diverge,
         blind_dec=np.array(ep_blind_dec), dec=np.array(ep_dec),
-        minrho=np.array(ep_minrho), wall=time.time() - t0)
+        minrho=np.array(ep_minrho),
+        acq_dv=np.array(acq_dv), acq_fuel_left=np.array(acq_fuel_left),
+        blind_burns=np.array(ep_blind_burns), acq_burns=np.array(ep_acq_burns),
+        acq_dec=np.array(ep_acq_dec),
+        blind_dv=np.array(ep_blind_dv), acq_dv_ep=np.array(ep_acq_dv),
+        total_dv=np.array(ep_total_dv), ever_acq=np.array(ep_ever_acq),
+        blind_at_end=np.array(ep_blind_at_end),
+        wall=time.time() - t0)
+
+
+def behaviour_report(r, indent='  ', quiet=False):
+    """Blind-window behaviour block — the mechanism, not the score."""
+    if quiet:
+        import io
+        import contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            return behaviour_report(r, indent)
+    n = len(r['success'])
+    bd, ad = r['blind_dec'].sum(), r['acq_dec'].sum()
+    strand = r['cause'] == 5
+    strand_blind = strand & (r['blind_at_end'] == 1)
+    out = {}
+    print(f"{indent}blind-window behaviour")
+    if r['acq_dv'].size:
+        out['acq_dv_med'] = float(np.median(r['acq_dv']))
+        out['acq_fuel_med'] = float(np.median(r['acq_fuel_left']))
+        print(f"{indent}  dv spent BEFORE acquisition   median "
+              f"{np.median(r['acq_dv']):6.1f} m/s   p90 "
+              f"{np.percentile(r['acq_dv'], 90):6.1f}   max "
+              f"{r['acq_dv'].max():6.1f}   (budget 478)")
+        print(f"{indent}  fuel budget left AT acquisition median "
+              f"{np.median(r['acq_fuel_left']):.3f}   p10 "
+              f"{np.percentile(r['acq_fuel_left'], 10):.3f}")
+    else:
+        out['acq_dv_med'] = out['acq_fuel_med'] = float('nan')
+        print(f"{indent}  (no episode ever acquired)")
+    br_b = r['blind_burns'].sum() / max(bd, 1)
+    br_a = r['acq_burns'].sum() / max(ad, 1)
+    dv_b = r['blind_dv'].sum() / max(bd, 1)
+    dv_a = r['acq_dv_ep'].sum() / max(ad, 1)
+    out.update(burn_rate_blind=float(br_b), burn_rate_acq=float(br_a),
+               dv_per_dec_blind=float(dv_b), dv_per_dec_acq=float(dv_a),
+               strand_rate=float(strand.mean()),
+               strand_blind_rate=float(strand_blind.mean()),
+               total_dv_med=float(np.median(r['total_dv'])),
+               ever_acq=float(r['ever_acq'].mean()))
+    print(f"{indent}  burn rate   blind {br_b:.3f} burns/decision   "
+          f"acquired {br_a:.3f}   ratio {br_b/max(br_a,1e-9):5.2f}x")
+    print(f"{indent}  dv per decision  blind {dv_b:6.2f} m/s   "
+          f"acquired {dv_a:6.2f} m/s   ratio {dv_b/max(dv_a,1e-9):5.2f}x")
+    print(f"{indent}  stranded {int(strand.sum())}/{n} = {strand.mean():.1%}   "
+          f"of which BLIND at terminal {int(strand_blind.sum())} "
+          f"({strand_blind.mean():.1%} of all episodes)")
+    print(f"{indent}  total dv/episode median {np.median(r['total_dv']):.1f} m/s   "
+          f"episodes that ever acquired {r['ever_acq'].mean():.1%}")
+    return out
 
 
 def _bo_report(r):
@@ -623,6 +750,7 @@ def _bo_report(r):
     if close.any():
         print(f"  {'':22s} conditional success | min separation < 200 km: "
               f"{int(r['success'][close].sum())}/{int(close.sum())}")
+    behaviour_report(r, indent='  ' + ' ' * 22)
 
 
 def stage_bearings(args):
