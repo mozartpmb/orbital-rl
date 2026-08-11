@@ -78,6 +78,17 @@ certain from its command line, and **every one of the four dirs was independentl
 evaluated at 200/200**, so the multi-seed claim is attribution-independent. Batch 2
 (20260423, 31415) ran sequentially with clean attribution.
 
+**Wide-eccentricity family (seed 42, 2026-08-11):**
+
+| Logical name | Conditions (held-out 200/200 each) | Ckpt |
+|---|---|---|
+| **t3_widee_L3** | e≤0.15, 300–2000 km, ±180° (LEO obs scales; also 200/200 at headline) | `models/t3/seed42_L3_widee.pt` (`…670436`) |
+| **t3_wide_WL4** | **e≤0.30, 300–8000 km, ±180°, cap 6000** (wide obs scales: `obs_alt_scale_m=8e6, lvlh_scale_m=1.5e7` — REQUIRED at eval; incompatible with LEO-scale ckpts) | `models/t3/seed42_WL4_wide.pt` (`…988768`) |
+| t3_wide_WL1–WL3 | lineage rungs, 200/200 each | `models/t3/seed42_WL{1,2,3}_wide.pt` |
+
+WL4 realized e_target p50 0.140 / p90 0.261 / max 0.293. Wide family is single-seed;
+seed-robustness established at LEO (5/5). de_max bounds e-vector mismatch (0.08 at WL4).
+
 **Supporting numbers (seed-42 canonical):** Δv p50 235 m/s = 1.58× shape-only two-impulse
 lower bound (`t3_headline_characterization.csv`); Lambert time-matched ratio p50 1.14×
 (pre-fix impossibility 0.31× resolved, `t3_lambert_corrected.csv`); EKF closed-loop

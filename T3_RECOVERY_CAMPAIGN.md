@@ -334,5 +334,35 @@ EKF closed-loop truth 100.0% = EKF-nominal 100.0% (NEES 0.944/NIS 0.951); zero-s
 e-curve 100/100/100/98/71/56 at e = 0→0.07; learned maneuver structure = classical
 drift-orbit phasing (showcase: `plots/t3/ep_0000057.png`, 179.4° gap at 175 m/s).
 
-**Wide-eccentricity extension (L3+):** *(in progress — L3 = 300–2000 km band, e ≤ 0.15,
-de_max 0.06, da_max 400 km, dv_ref 700)*
+### 7.1 Wide-eccentricity extension ✅ SOLVED (2026-08-11, seed 42)
+
+**L3 (LEO-scale lineage, warm from the headline canonical):** 300–2000 km, e ≤ 0.15,
+de_max 0.06, da_max 400 km → **200/200 (100.0%)** held-out, and **retains 200/200 at the
+original headline**. Ckpt `models/t3/seed42_L3_widee.pt` (`…670436`).
+
+**WL1→WL4 (wide-envelope lineage, fresh re-ladder under 8000-km obs scales
+`obs_alt_scale_m=8e6, lvlh_scale_m=1.5e7, dv_ref=700` — obs semantics must be constant
+within a lineage, so this family is separate from the LEO canonical):**
+
+| rung | conditions | held-out | dir |
+|---|---|---|---|
+| WL1 | e=0, same-orbit, ±180°, 500–800 km, cap 3000, fresh | 200/200 | `…770764` |
+| WL2 | e≤0.05 both, ±180°, 300–800 km | 200/200 | `…839460` |
+| WL3 | e≤0.15, de 0.06, da 400 km, 300–2000 km | 200/200 | `…912348` |
+| **WL4** | **e≤0.30, de 0.08, da 600 km, 300–8000 km, cap 6000 (100 h)** | **200/200** | `…988768` |
+
+WL4 realized distribution (`t3_wl4_characterization.csv`): e_target p50 **0.140**, p90
+0.261, max 0.293 (e_sat max 0.364) — genuinely eccentric orbits, not a nominal knob
+(the old project's realized e mean was ≈ 0.028 behind an e_max=0.20 label). 100% in
+every gap bin; Δv p50 270 m/s = 1.46× the two-impulse shape bound; capture residual
+\|v_rel\| p50 22.2 m/s (improved velocity nulling vs the LEO policy's 34.8).
+Ckpts `models/t3/seed42_WL{1..4}_wide.pt`. Honest scope notes: wide-envelope is
+single-seed so far (the recipe's seed-robustness is established at LEO, 5/5); `de_max`
+bounds the e-vector *mismatch* — free e-vector rotations at these e's are physically
+outside the 478 m/s budget (recon feasibility §3.2), so this is the affordable-and-
+interesting task, stated as such. MEO/GEO rungs (L5) would need 3 h/6 h warp actions
+(Discrete-18) and are future work.
+
+**The user-stated campaign goal — "rendezvous at wide range of eccentricity and phase
+difference, working fully" — is met:** ±180° phase gaps at e up to 0.30 across
+300–8000 km, 100% held-out, under verified-correct physics, with lawful comparators.
