@@ -1,0 +1,8 @@
+rung,evec_mode,feas_di0_comb,di_max_97abs,di_max_lose1pp_comb
+W1 500-800 e=0 same-orbit,realized,1.0,2.0,2.0
+W2 300-800 e<=0.05,realized,0.9995,2.0,1.5
+"X3 300-800 e<=0.05 (LEO 3D, SOLVED)",realized,0.9995,2.0,1.5
+W3 300-2000 e<=0.15 de.06 da400,realized,1.0,0.0,0.0
+W3 300-2000 e<=0.15 de.06 da400,intended,1.0,2.0,2.0
+W4 300-8000 e<=0.30 de.08 da600,realized,0.993,0.0,0.0
+W4 300-8000 e<=0.30 de.08 da600,intended,0.993,2.0,1.25
