@@ -203,6 +203,8 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->phase_obs_mode          = (int)unpack(kwargs, "phase_obs_mode");
     env->episode_cap_steps       = (int)unpack(kwargs, "episode_cap_steps");
     env->cap_terminal_reward     = (double)unpack(kwargs, "cap_terminal_reward");
+    env->de_max                  = (double)unpack(kwargs, "de_max");
+    env->da_max_m                = (double)unpack(kwargs, "da_max_m");
     env->last_terminal_cause     = TERM_NONE;
     env->last_traj_records       = 0;
     return 0;

@@ -32,7 +32,7 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              shaping_mode=0, shape_w_lambda=1.0, shape_w_match=0.35,
              shape_dv_ref_ms=300.0, shape_gamma=0.995,
              phase_gap_mode=0, phase_obs_mode=0, episode_cap_steps=2000,
-             cap_terminal_reward=-10.0):
+             cap_terminal_reward=-10.0, de_max=-1.0, da_max_m=-1.0):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -76,6 +76,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         phase_obs_mode=phase_obs_mode,
         episode_cap_steps=episode_cap_steps,
         cap_terminal_reward=cap_terminal_reward,
+        de_max=de_max,
+        da_max_m=da_max_m,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -270,6 +272,11 @@ def main():
     parser.add_argument('--cap-terminal-reward', type=float, default=-10.0,
                         help='T3: reward at the safety-cap terminal. Legacy -10; T3 runs 0.0 '
                              '(red-team #1: -10 under per-decision gamma suppresses warps).')
+    parser.add_argument('--de-max', type=float, default=-1.0,
+                        help='T3 L3+: sat e-vector within de_max of target e-vector '
+                             '(bounds |delta-e-vec|, not e). <0 = off (legacy sampling).')
+    parser.add_argument('--da-max-m', type=float, default=-1.0,
+                        help='T3 L3+: |a_target - a_sat| <= da_max_m (min 200 km). <0 = off.')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
@@ -284,7 +291,7 @@ def main():
              args.shaping_mode, args.shape_w_lambda, args.shape_w_match,
              args.shape_dv_ref_ms, args.shape_gamma,
              args.phase_gap_mode, args.phase_obs_mode, args.episode_cap_steps,
-             args.cap_terminal_reward)
+             args.cap_terminal_reward, args.de_max, args.da_max_m)
 
 
 if __name__ == '__main__':

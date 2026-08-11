@@ -131,6 +131,16 @@ class Orbital(pufferlib.PufferEnv):
         # −7.8 bet vs −0.0 for coast-to-cap, so PPO suppresses warps before the
         # first success is sampled (red-team #1, the flatline mechanism).
         cap_terminal_reward=-10.0,
+        # ── T3 wide-eccentricity ladder (L3+) sampler kwargs ────────────────────
+        # de_max >= 0: sat e-vector = target e-vector + area-uniform disc(de_max).
+        # Bounds the e-vector MISMATCH instead of e itself — with independent ω,
+        # matching e-vectors at e_max=0.15 alone averages 396 m/s of the 478 m/s
+        # budget; bounding |Δē| keeps wide-e affordable (recon feasibility §3.4).
+        # Overrides e_max_sat sampling (not e_sat_fixed / same_orbit_init).
+        de_max=-1.0,
+        # da_max_m > 0: |a_target − a_sat| ≤ da_max_m (∩ altitude band; min 200 km).
+        # Required when widening the band to unlock e, else Δv_a is unaffordable.
+        da_max_m=-1.0,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -202,6 +212,8 @@ class Orbital(pufferlib.PufferEnv):
             phase_obs_mode=phase_obs_mode,
             episode_cap_steps=episode_cap_steps,
             cap_terminal_reward=cap_terminal_reward,
+            de_max=de_max,
+            da_max_m=da_max_m,
             # Red-team #4: per-sub-step trajectory recording (352 B/record,
             # ~1 MB/env buffer) only when trajectories are actually saved.
             log_enabled=1 if traj_log_dir else 0,

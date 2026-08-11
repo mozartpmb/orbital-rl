@@ -309,6 +309,17 @@ typedef struct {
                                           * (red-team #1: −10 under per-decision γ makes warps
                                           * a −7.8 bet until success rate ≈ 47%)                */
 
+    /* T3 wide-eccentricity ladder (L3+; recon feasibility §3.4). With ω sampled
+     * independently, matching e-VECTORS costs Δv_e ≈ v·|Δē|/2 — at e_max=0.15
+     * that alone averages 396 m/s of a 478 m/s budget. Bounding |Δē| (not e)
+     * keeps wide-e affordable: MEO/e=0.5 goes 16.6% → 93.0% feasible. */
+    double           de_max;             /* < 0 off. Else sat ē = target ē + disc(de_max):
+                                          * bounds the e-vector mismatch while both orbits
+                                          * can be strongly eccentric. Overrides e_max_sat. */
+    double           da_max_m;           /* < 0 off. Else |a_target − a_sat| ≤ da_max_m
+                                          * (window ∩ altitude band). Values < 200 km are
+                                          * raised to 200 km (transfer-floor guard).       */
+
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
 
@@ -1095,6 +1106,16 @@ static inline void c_reset(Orbital* env) {
         double a_min_t = (env->a_min_override >= R_EARTH) ? env->a_min_override : (R_EARTH + 300e3);
         double a_max_t = (env->a_max_override > env->a_min_override && env->a_min_override >= R_EARTH)
                           ? env->a_max_override : (R_EARTH + 800e3);
+        /* T3 L3+: bound the transfer size independently of the altitude band —
+         * wide bands otherwise make Δv_a unaffordable (300–8000 km band:
+         * mean 783 m/s vs the 478 m/s budget). Window ∩ band; degenerate
+         * windows fall back to the full band. */
+        if (env->da_max_m > 0.0) {
+            double da = (env->da_max_m < 200e3) ? 200e3 : env->da_max_m;
+            double lo = fmax(a_min_t, a_init - da);
+            double hi = fmin(a_max_t, a_init + da);
+            if (hi - lo >= 150e3) { a_min_t = lo; a_max_t = hi; }
+        }
         do {
             a_target = a_min_t + (rand() / (double)RAND_MAX) * (a_max_t - a_min_t);
         } while (fabs(a_target - a_init) < 50e3);  /* ensure meaningful transfer */
@@ -1156,6 +1177,18 @@ static inline void c_reset(Orbital* env) {
     } else {
         env->sat.orbit.e     = 0.0;
         env->sat.orbit.omega = 0.0;
+    }
+    /* T3 L3+ (de_max): bound the chaser–target e-VECTOR mismatch. Replaces the
+     * independent sat-e draw above: ē_sat = ē_target + area-uniform disc of
+     * radius de_max. Both orbits may be strongly eccentric; the matching
+     * maneuver stays affordable (Δv_e ≈ v·|Δē|/2 ≤ v·de_max/2). */
+    if (env->de_max >= 0.0 && !env->same_orbit_init && env->e_sat_fixed < 0.0) {
+        double r_de  = env->de_max * sqrt(rand() / (double)RAND_MAX);
+        double ph_de = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
+        double e_sx  = e_tgt * cos(omega_tgt) + r_de * cos(ph_de);
+        double e_sy  = e_tgt * sin(omega_tgt) + r_de * sin(ph_de);
+        env->sat.orbit.e     = sqrt(e_sx * e_sx + e_sy * e_sy);
+        env->sat.orbit.omega = (env->sat.orbit.e > 1e-9) ? atan2(e_sy, e_sx) : 0.0;
     }
     /* W1: omega_offset_fixed > -10 → set target.omega = sat.omega + offset */
     if (env->omega_offset_fixed > -10.0) {
