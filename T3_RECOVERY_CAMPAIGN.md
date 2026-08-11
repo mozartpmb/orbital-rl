@@ -261,7 +261,23 @@ T3 env flags for every arm: `--env.shaping-mode 1 --env.shape-gamma 1.0
 |---|---|---|---|
 | S1 | Karpathy overfit-one | fixed 30° gap, e=0, same-orbit, 10M | **perf 1.000**, return ≈ 9.4 — pipeline sound (pre-red-team build; cap −10 didn't bite at this scale) |
 | L1 | full gap, circular | same-orbit init, e=0, gap ±180° (physical), a ∈ 500–800 km, 50M fresh, seed 42 | rolling 1.000; **held-out greedy 200/200 (100.0%)**, seed 123, causes: success=200. Ckpt `puffer_orbital_178642016215/model_..._000382.pt`. First RL success under corrected dynamics — full gap distribution, zero failures. |
-| L2 | **headline** | e≤0.05 both (independent ω), ±180°, LEO 300–800, 50M warm from L1 | *(running)* |
+| L2 | **headline** | e≤0.05 both (independent ω), ±180°, LEO 300–800, 50M warm from L1, seed 42 | **200/200 (100.0%)** held-out greedy (seed 123); **200/200 stochastic**; **200/200 at legacy cap 2000**; **500/500 (seed 777)**. Ckpt `puffer_orbital_178642097817/model_..._000382.pt` — **the corrected-dynamics headline checkpoint** (pre-fix bug-assisted best: 97.5%). |
+
+**Seed-42 headline characterization** (500 eps, `t3_headline_characterization.csv`):
+100.0% in every gap bin (0–45/45–90/90–135/135–180°) and every e bin. Δv p50 = 235 m/s
+(p90 325, max 445 of 478 budget), 1.58× the shape-only two-impulse lower bound (scripted
+expert: 1.30× — the policy trades ~25% fuel for ~2× faster missions: steps p50 417–972 vs
+the expert's ~1900). Capture at the box edge: distance p50 29.2 km, residual |v_rel| p50
+34.8 m/s (box: 30 km / 50 m/s) — honest label: far-field rendezvous with partial velocity
+nulling, not terminal capture (the 10 km/10 m/s tightened-box goal remains future work,
+task #8).
+
+**Physics-consistency (Lambert re-run, 200 eps, `t3_lambert_corrected.csv`):**
+policy/two-impulse **time-matched median 1.14×** — the pre-fix impossibility signature
+(0.31×, policy "beating" the optimum via burn-teleports) is resolved; ratios vs
+*immediate* (0.33×) and *free-departure* (0.35×) two-impulse plans are below 1
+legitimately (multi-impulse drift phasing classically undercuts two-impulse plans under
+a deadline).
 
 ## 7. Final results
 
