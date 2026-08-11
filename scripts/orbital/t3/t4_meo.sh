@@ -38,7 +38,8 @@ run_rung() {  # <name> <train_env_flags> <eval_flags> <warm_ckpt|none>
     cd $PUFFER
     puffer train puffer_orbital --train.seed $SEED --train.total-timesteps 50000000 \
         --train.device cpu --train.data-dir $DATA_DIR $BASE $tflags \
-        --train.checkpoint-interval 20 $warm_flag --tag t4_${name}_s${SEED} \
+        --train.checkpoint-interval 20 --wandb --wandb-project orbital-rl \
+        --wandb-group t4-meo-s${SEED} $warm_flag --tag t4_${name}_s${SEED} \
         > /tmp/t4_${name}_s${SEED}_train.log 2>&1
     local dir=$(get_latest_dir)
     if [ "$dir" = "$before" ]; then
