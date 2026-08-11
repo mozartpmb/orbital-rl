@@ -144,6 +144,10 @@ MAKE_FUNCTIONS = {
     'tactical': 'Tactical',
     'target': 'Target',
     'orbital': 'Orbital',
+    # ext-nav: filter-in-the-loop navigation. Pure-Python subclass of Orbital
+    # reusing the same compiled binding — no new setup.py extension, and
+    # `puffer_orbital` is untouched.
+    'orbital_nav': 'OrbitalNav',
     'go': 'Go',
     'rware': 'Rware',
     'trash_pickup': 'TrashPickupEnv',
