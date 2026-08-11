@@ -172,6 +172,8 @@ class OrbitalNav(Orbital):
         self._prev_sat = np.zeros((n, 4))
         self._prev_tgt = np.zeros((n, 4))
         self._slots = np.array(nm.TARGET_SLOTS_T3)
+        self._scratch = np.zeros((n, nm.OBS_DIM), dtype=np.float64)
+        self._pair = np.zeros((2 * n, 4), dtype=np.float64)
 
         if self._nav_mode == 'rb_ekf':
             q = self._nav_q_a if self._nav_q_a > 0 else nm.Q_ACCEL_PSD_RB
@@ -212,7 +214,10 @@ class OrbitalNav(Orbital):
     def _encode(self, sat, sat_c, est_x):
         """Rebuild the target-derived obs slots from the estimate, in place."""
         a, e, om, th = nm.cartesian_to_elements(est_x)
-        out = np.array(self.observations, dtype=np.float64)
+        # `fill_target_obs_t3` only WRITES the target slots, so a persistent
+        # scratch buffer is enough — no need to copy the 38-wide observation
+        # every step just to overwrite 12 of its columns.
+        out = self._scratch
         nm.fill_target_obs_t3(out, sat, (a, e, om, th), est_x, sat_c,
                               self._alt_scale, self._lvlh_scale)
         c = self._nav_clip
@@ -348,8 +353,14 @@ class OrbitalNav(Orbital):
                     break
                 sat_from = sc[idx]
                 tgt_prev = tc[idx]
-                s_new, _ = nm.propagate_cartesian(sat_from, self._nav_dt)
-                t_new, _ = nm.propagate_cartesian(tgt_prev, self._nav_dt)
+                # One batched call for both truth states: at B=1024 these are
+                # numpy-call-overhead bound, not FLOP bound.
+                m = idx.size
+                pair = self._pair[:2 * m]
+                pair[:m] = sat_from
+                pair[m:] = tgt_prev
+                pn, _ = nm.propagate_cartesian(pair, self._nav_dt)
+                s_new, t_new = pn[:m], pn[m:]
                 sc[idx] = s_new
                 tc[idx] = t_new
                 # The last sub-tick of a decision IS the env's own epoch: pin

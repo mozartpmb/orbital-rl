@@ -305,7 +305,7 @@ class AcquisitionSurrogate:
         if self.mode != 'crlb_online':
             return
         if not first:
-            F, _ = nm.stm_fd(tgt_prev[sel], dt)
+            F, _, _ = nm.stm_fd(tgt_prev[sel], dt)
             self.Phi[pend] = F @ self.Phi[pend]
         sat, tgt = sat_now[sel], tgt_now[sel]
         dx = tgt[:, 0] - sat[:, 0]
