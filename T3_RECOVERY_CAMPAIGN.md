@@ -306,6 +306,33 @@ ties sensor updates to decision epochs starves the filter (1-hr blackouts → di
 the realistic model and the fix. Degraded-sensor curve at nav-60: 3×→100.0%, 10×→99.5%,
 30×→96.0%, 100×→81.5%, 300×→61.0%. `t3_relnav_corrected.csv`, plots in `plots/relnav_t3*/`.
 
-## 7. Final results
+**Multi-seed batch 2 (sequential, clean attribution):** seed 20260423 — L1 `…360522`
+200/200, L2 `…431536` 200/200; seed 31415 — L1 `…505036` 200/200, L2 `…576174` 200/200.
 
-*(pending)*
+## 7. Final results — headline task ✅ SOLVED (2026-08-11)
+
+**Under corrected dynamics, the headline task (LEO 300–800 km, e ≤ 0.05 both with
+independent ω, physical phase gap ±180°, 30 km / 50 m/s box, 478 m/s budget) is solved
+at 100.0% held-out by 5/5 training seeds:**
+
+| train seed | L1 (e=0, ±180°) | L2 headline | ckpt (durable) |
+|---|---|---|---|
+| 42 | 200/200 | **200/200** + 200/200 stochastic + 200/200 cap-2000 + 500/500 s777 | `models/t3/seed42_L2_headline.pt` |
+| 7 † | 200/200 | 200/200 | `models/t3/batch1_L2_a_258109.pt` |
+| 1337 † (historical 0% seed) | 200/200 | 200/200 | `models/t3/batch1_L2_b_259027.pt` |
+| 20260423 | 200/200 | 200/200 | `models/t3/seed20260423_L2_headline.pt` |
+| 31415 | 200/200 | 200/200 | `models/t3/seed31415_L2_headline.pt` |
+
+† batch-1 attribution by launch-stamp analysis (§6); every dir independently evaluated.
+
+**2,900 held-out episodes, zero failures of any kind** (no timeout, collision, stranding,
+or escape). Context: pre-fix bug-assisted best = 97.5% single-seed / 93.7% 5-seed mean;
+post-fix pre-T3 plateau = 33.5%; scripted classical expert = 99.2%.
+
+Validation stack, all lawful: Lambert time-matched 1.14× (was impossible 0.31×);
+EKF closed-loop truth 100.0% = EKF-nominal 100.0% (NEES 0.944/NIS 0.951); zero-shot
+e-curve 100/100/100/98/71/56 at e = 0→0.07; learned maneuver structure = classical
+drift-orbit phasing (showcase: `plots/t3/ep_0000057.png`, 179.4° gap at 175 m/s).
+
+**Wide-eccentricity extension (L3+):** *(in progress — L3 = 300–2000 km band, e ≤ 0.15,
+de_max 0.06, da_max 400 km, dv_ref 700)*

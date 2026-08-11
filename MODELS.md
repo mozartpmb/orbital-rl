@@ -65,12 +65,18 @@ Checkpoints have **Discrete(16) heads** — do NOT pass `--legacy-action-space`.
 | t3_seed42_L1 (e=0 rung) | 42 | 200/200 at L1 conditions | `models/t3/seed42_L1_final.pt` | `puffer_orbital_178642016215/model_..._000382.pt` |
 | t3_batch1_L2_a / _b | 7 / 1337† | 200/200 each (headline) | `models/t3/batch1_L2_{a,b}_*.pt` | `…258109` / `…259027` |
 | t3_batch1_L1_a / _b | 7 / 1337† | 200/200 each (L1 conditions) | `models/t3/batch1_L1_{a,b}_*.pt` | `…176815` / `…177125` |
+| t3_seed20260423 | 20260423 | 200/200 (headline) | `models/t3/seed20260423_L2_headline.pt` | `…431536` (L1 `…360522` 200/200) |
+| t3_seed31415 | 31415 | 200/200 (headline) | `models/t3/seed31415_L2_headline.pt` | `…576174` (L1 `…505036` 200/200) |
+
+**FIVE-SEED FINAL: 5/5 training seeds at 100.0% held-out on the headline task —
+2,900 held-out episodes, zero failures of any kind.** (Pre-fix bug-assisted:
+93.7% 5-seed mean. Seed 1337 — historically a 0% flatline seed — now 100.0%.)
 
 † Batch-1 ladders ran concurrently and raced dir attribution; seed↔dir mapping above is
 from launch-time dir-ID stamp analysis (campaign doc §6), each run's `--train.seed` is
 certain from its command line, and **every one of the four dirs was independently
-evaluated at 200/200**, so the multi-seed claim is attribution-independent. Seeds
-20260423 and 31415 run sequentially (batch 2).
+evaluated at 200/200**, so the multi-seed claim is attribution-independent. Batch 2
+(20260423, 31415) ran sequentially with clean attribution.
 
 **Supporting numbers (seed-42 canonical):** Δv p50 235 m/s = 1.58× shape-only two-impulse
 lower bound (`t3_headline_characterization.csv`); Lambert time-matched ratio p50 1.14×
