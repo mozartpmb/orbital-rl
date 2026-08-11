@@ -1354,8 +1354,14 @@ static inline int check_termination(Orbital* env) {
              * near-goal death). With the bounded S-R3 potential the     \
              * telescoped total is Φ_T − Φ₀ for every episode — progress \
              * credit with no perverse refunds. Legacy mode unchanged.   \
-             * c_reset re-derives phi_prev.                              */ \
-            if (env->shaping_mode == 1) break;                           \
+             * c_reset re-derives phi_prev.                              \
+             * ext-3d: "clamp-nowhere" carries forward to mode 2 verbatim \
+             * (3d_C §4.2) — under the plane term a normal burn that      \
+             * INCREASES Δi and then dies would otherwise be refunded.    \
+             * It is also required for anchor A2: with the clamp live in  \
+             * mode 2 but dead in mode 1, 0.68% of one-step rewards       \
+             * diverged by up to 1.49 at the terminals (measured).        */ \
+            if (env->shaping_mode >= 1) break;                           \
             double _delta = BETA_SHAPE * (0.0 - env->phi_prev);          \
             env->rewards[0]   += (float)_delta;                          \
             env->g_shape_accum += fabs(_delta);                          \
