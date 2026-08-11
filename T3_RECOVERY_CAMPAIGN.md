@@ -417,3 +417,45 @@ box unless stated):** ±180° phase gaps at 100.0% (5 seeds, LEO) · e≤0.30 at
 5 km/2 m/s at 100.0% and 5 km/1 m/s at 95.5% (seed 42, LEO) · EKF-in-the-loop lossless
 at both envelopes. Standing simplifications unchanged: 2D coplanar, two-body, impulsive,
 no debris.
+
+## 9. Statistical & design footnotes for external review
+
+Three questions a careful reviewer should ask, answered precisely.
+
+**9.1 — Does `valid_init_only=1` make "100%" mean "100% of feasible draws"?**
+No, and the distinction matters in both directions. The filter rejects exactly one
+thing (`c_reset`, perigee check): initial *orbits* — chaser or target — whose perigee
+sits below the 200 km survival floor. Those are malformed scenarios (a target on a
+reentering orbit; "success" would require chasing it into the death zone), not hard
+cases. **Δv- and horizon-infeasible geometries are NOT filtered and remain in every
+eval** — the M5 failure is precisely such a draw (e_t=0.435, Δa₀=−957 km: 455 of
+478 m/s spent at the full clock). Two empirical guards: (i) every quoted eval printed
+**"0 gave-up inits excluded"** — the denominators are full 200s (the one exception,
+e=0.083 in the 300–800 km band, was reported as *not measurable in-band*, never as a
+success rate); (ii) the analytic MC puts ~99% of the filtered headline distribution
+jointly Δv+time feasible, so measured 100.0% means the policy also solves essentially
+all of the marginal ~1%. The filter's real effect is distributional and documented:
+high-e draws necessarily live at higher altitude (perigee geometry), which is why the
+e-capability claims are stated with realized-distribution tables, not knob values.
+
+**9.2 — Is 200 episodes enough?** Per-cell: 0 failures in 200 gives a two-sided 95%
+Clopper–Pearson lower bound of **98.2%**. Pooled at the headline box (all zero-failure:
+5 seeds × 200 + seed-42's stochastic/cap-2000/500-ep replications = **1,900 episodes**),
+the lower bound is **99.8%**. Family-level: wide 3,199/3,200 → 99.7% LB on the pooled
+rate. Quote cells as "N/200"; quote the pooled bound when someone asks whether the
+sample is big enough.
+
+**9.3 — Doesn't `cap_terminal_reward = 0` make timing out free?** It changes the
+*training signal*, never the *metric*: the eval classifier counts a timeout as a
+failure regardless of its reward, so no reported number is affected by construction.
+The design defense (red-team, measured): under flat per-decision γ, a −10 timeout is
+not a neutral penalty — it reaches a warp-granularity policy at −7.8 but a
+coast-granularity policy at −0.0 (γ³⁰⁰⁰≈0), so it doesn't teach "don't time out," it
+teaches "don't warp," which is what reproduced the flatline. Setting it to 0 is the
+env-side approximation of *truncation semantics* (bootstrap-at-timeout), which the
+trainer cannot express (`pufferl.py` folds truncations into terminals). There is also
+no incentive to seek timeouts: success pays +9.x, and a timeout's total return equals
+do-nothing's (≈0), strictly dominated. Empirically: **zero timeouts** in all 1,900
+headline episodes; the only timeout tails anywhere are TB5 (9/200, at a box 1.4× above
+the actuation floor) and M5 (1/200, the infeasible-corner draw) — none of them
+timeout-*seeking*, all of them running out of clock while genuinely trying.
