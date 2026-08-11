@@ -1820,6 +1820,23 @@ static inline void c_reset(Orbital* env) {
                 env->sat.orbit.inc  = (hsz >= 0.0) ? 0.0 : M_PI;
                 env->sat.orbit.raan = 0.0;
             }
+
+            /* T5 W3/W4 diagnosis ROOT-CAUSE FIX: the de_max disc above is
+             * drawn in the NODE-RELATIVE 2-vector (e cos omega, e sin omega),
+             * but this rotation just assigned a uniform-random RAAN, which
+             * rotates the periapsis in INERTIAL space (varpi = raan + omega)
+             * and destroys the disc bound: realized inertial |dE| ran to
+             * 4.5x (W3) / 8.0x (W4) the knob, making the e-match leg alone
+             * exceed the whole 478 m/s budget in 28%/54% of episodes (the
+             * measured W3 70% / W4 7% collapse; di_max=0 control: 199/200).
+             * Preserve the drawn INERTIAL periapsis longitude by re-expressing
+             * omega relative to the new node. Guarded on the de-disc branch,
+             * so e_max_sat-sampled lineages (W1/W2/X3) are bit-exact. */
+            if (env->de_max >= 0.0 && env->e_sat_fixed < 0.0) {
+                env->sat.orbit.omega -= env->sat.orbit.raan;
+                while (env->sat.orbit.omega < 0.0)
+                    env->sat.orbit.omega += 2.0 * M_PI;
+            }
         }
     }
 
