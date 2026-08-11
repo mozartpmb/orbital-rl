@@ -1,0 +1,7 @@
+cadence,ticks_per_decision,env_ms_per_decision,nav_ms_per_decision,nav_over_env,sps_2workers,slowdown_2w,sps_4workers_512,slowdown_4w,wall_50M_min_2w,wall_50M_min_4w,note
+perdec (1 tick/decision),1.00,11.38,1.62,0.14,133160,1.05,162080,0.86,6.3,5.1,50.5% closed-loop — REJECTED by T3 eval
+cap 4 ticks/decision,2.68,11.38,3.89,0.34,125272,1.11,155696,0.90,6.7,5.4,worst gap 15 min at tau=60; unvalidated
+cap 6 ticks/decision,3.80,11.38,5.40,0.47,120513,1.16,151712,0.92,6.9,5.5,worst gap 10 min at tau=60; unvalidated
+nav300 (300 s cadence),6.50,11.38,9.06,0.80,110403,1.26,142898,0.98,7.5,5.8,"100.0% @1x, 99.5% @10x — VALIDATED"
+cap 12 ticks/decision,7.15,11.38,9.94,0.87,108217,1.29,140927,0.99,7.7,5.9,"== nav300 at tau=60, finer at tau<60"
+nav60 (60 s cadence),32.50,11.38,44.24,3.89,61067,2.28,91634,1.52,13.6,9.1,"100.0% @1x, 96.0% @30x — VALIDATED, headline"

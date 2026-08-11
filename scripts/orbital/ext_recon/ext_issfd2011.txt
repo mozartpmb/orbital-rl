@@ -1,0 +1,1446 @@
+
+===PAGE 1===
+PROXIMITY OPERATIONS OF ON-ORBIT SERVICING SPACECRAFT USING AN 
+ECCENTRICITY/INCLINATION VECTOR SEPARATION 
+  
+J. Spurmann (1), S. D’Amico (2) 
+(1) DLR, German Space Operations Center, 82230 Wessling, joern.spurmann@dlr.de 
+(2) DLR, German Space Operations Center, 82230 Wessling, simone.damico@dlr.de 
+ 
+ 
+Abstract: This paper investigates a proximity operations conc ept able to realize the demanding 
+requirements for on-orbit servicing spacecraft, whi le providing an efficient collision avoidance 
+strategy and reduced propellant consumption. In con trast to a traditional rendezvous approach 
+where the evaluation of the collision risk is only based on considerations done in the orbital plane, 
+here a relative eccentricity/inclination vector sep aration concept is proposed which promises 
+improved flexibility, robustness and reduced inter- spacecraft separations at a minimal collision 
+risk. In this paper the novel proximity operations concept, originally developed for geostationary 
+satellites and already used to operate low Earth or bit formations, is adopted to support far and mid 
+range operations of on-orbit servicing non-cooperat ive vehicles. After addressing the effects of the 
+relevant differential perturbations, suitable nomin al relative motion geometries are derived based 
+on a real-world navigation accuracy analysis. Radar  tracking data and GPS navigation solutions 
+for the client and servicer satellites respectively  are used to trade minimum safety separations and 
+characteristics of the rendezvous entry gate. Final ly a fuel-efficient formation keeping and 
+reconfiguration strategy is designed based on analy tical solutions of the proposed linear motion 
+model. 
+ 
+Keywords:  Eccentricity/Inclination Vector Separation, Autono mous Formation Control, Formation 
+Flying, On-Orbit Servicing, Relative Navigation. 
+ 
+1 Introduction 
+ 
+The capability to autonomously rendezvous and dock two spacecraft would provide benefits to 
+multiple mission scenarios. The correction of launch failures is one relevant example. Usually, upon 
+a malfunction of the upper stage of the launcher th e spacecraft does not achieve its desired altitude 
+or inclination. Such an injection error can in the most cases not be corrected by the spacecraft 
+onboard propulsion system and the mission is lost o r at least unable to achieve its primary 
+objectives. In case an on-orbit servicing spacecraf t is already in orbit within a fleet management 
+program for example the injection error could be co rrected and the overall success rate of space 
+missions could be increased. Another applicable area for autonomous rendezvous and docking is the 
+removal of space debris. Even if within the next 20 years no further launches of spacecraft would be 
+performed a cascade of collisions starts enhancing the number of collision fragments and thereby 
+the overall number of space debris particles [1]. I n this context any activity preventing satellites 
+from becoming uncontrolled debris would improve the  situation. Exemplary it could be thought of 
+repair or refueling activities close to the spacecr aft end of life. Lifetime of satellites could be 
+extended by taking over the attitude and orbit cont rol functionalities in a docked configuration. In 
+such an achieved combined configuration a re-entry of the coupled spacecraft could be performed as 
+well. Accordingly, also the capability to remove space debris in general would be enabled.  
+ 
+As a result of the aforementioned mission applicati ons the goal must be to perform rendezvous and 
+docking with non-cooperative spacecraft and a prope r de-orbiting for debris removal. For this 
+purpose after launch and phasing a tailored formati on flying configuration has to be established 
+before going into the two dimensional approach for proximity operations. The concept of 
+eccentricity/inclination vector separation [2] is t he most suitable to achieve this objective, since i t 
+
+===PAGE 2===
+provides a passively safe formation flying configur ation and a straightforward capability for 
+formation keeping and reconfiguration. Previous res earch in this field has already demonstrated the 
+potential of this method for the GRACE [3] or the T erraSAR-X/TanDEM-X mission [4]. Further, 
+the technology demonstration mission PRISMA has alr eady demonstrated autonomous formation 
+control based on relative eccentricity/inclination vectors in low Earth orbit [5]. 
+ 
+However, the aforementioned formation flying missio ns rely on cooperative spacecraft. GPS 
+navigation solutions and raw data are available on- board for real-time navigation and control tasks 
+as well as on-ground for precise post-facto reconst ruction of the relative motion. The real challenge 
+with non-cooperative spacecraft in the frame of an on-orbit servicing mission is represented by the 
+availability of absolute navigation data only. The relative motion can only be reconstructed on-
+ground based on measurement data types of absolute nature. As a consequence effects given by 
+common error cancellation cannot be exploited like typically done in formation flying satellites 
+embarking hardware of same build and type. To this end different data types are analyzed in this 
+paper obtained from satellites mission flying in lo w Earth orbit. Among the data types are the GPS 
+navigation solution, radar tracking data provided b y Fraunhofer institute for high frequency physics 
+and radar techniques (FHR, former FGAN) [6] and ang le tracking data. From the performed 
+analysis the most promising candidates will be used  for a relative navigation accuracy analysis 
+representative for an on-orbit servicing mission. 
+ 
+The presented relative navigation accuracy analysis  drives the selection of the dimensions of the 
+formation flying geometry. For this purpose the ecc entricity/inclination vector separation method is 
+introduced. Its main advantage is that radial and a long-track motion are no longer considered alone, 
+but instead a complete 3D motion with a separation in the radial/cross-track plane. The larger 
+uncertainties in the along-track component resultin g from navigation, atmospheric density 
+uncertainty and maneuver execution errors can thus be avoided. Within the present work the 
+parameterization of the relative motion in terms of  relative eccentricity/inclination vectors is used 
+for the first time to transfer the servicer to the rendezvous entry gate from which the two 
+dimensional approach is initiated. With respect to this transfer a formation reconfiguration strategy  
+will be derived with respect to minimum collision r isk, minimum fuel consumption and the 
+possibility to allow for frequent autonomous reconf igurations of the formation. An additional 
+constraint regarded within the selection of the for mation geometry is the visibility constraint for 
+relative navigation sensors, which will be used for  the close range approach during an on-orbit 
+servicing mission. Finally, an effective and fuel e fficient way for formation keeping at further 
+distances is derived based on the e/i-vector separation. 
+ 
+2 Relative Motion 
+ 
+The proposed formation flying concept is based on t he generalization of the eccentricity/inclination 
+vector separation method. For the description of th is concept first the parameterization of the 
+relative motion will be described. It will build up  from the unperturbed, perturbed and controlled 
+motion description. 
+ 
+2.1 Unperturbed Motion 
+ 
+For convenience the client spacecraft is taken as a  reference for the formation. In this context the 
+servicing spacecraft will orbit around the client a nd its motion mapped in the relative coordinate 
+frame. The absolute and relative orbit parameteriza tions in the Earth-Centered-Inertial (ECI) frame 
+are given by the following equations [2]. 
+
+===PAGE 3===
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ω−Ω
+−
+−
+−
+Ω−Ω+−
+−
+=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ω
++
+=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ω
+=
+i
+ii
+ee
+ee
+iuu
+aaa
+i
+i
+e
+e
+a
+i
+e
+e
+M
+a
+i
+e
+e
+u
+a
+S
+S
+yy
+xx
+SS
+S
+y
+x
+y
+x
+y
+x
+S
+S
+sin )(
+cos )()(
+/ )(
+and sin 
+cos 
+δ
+δ
+δ
+δ
+δλ 
+δ
+δω
+ω
+ω
+αα  (1) 
+The first half of the equation gives a parameteriza tion in Keplerian elements. This is modified by 
+adopting the eccentricity vector e = ( ex, e y)T and the mean argument of latitude u. The second half of 
+equation (1) gives the parameterization of the rela tive motion in a set of relative orbital elements 
+(ROE) derived from a non-linear combination of the absolute parameterization. The subscript S is 
+introduced denoting quantities of the servicing spa cecraft. The ROE set consists of a normalized 
+semi-major axis difference δ a and the relative mean longitude between the two sp acecraft δλ . 
+Additionally, the relative eccentricity and inclination vectors are introduced for which the following 
+Cartesian and polar notations are applied [2]. 
+ 
+
+
+
+
+
+=
+
+
+
+
+
+=
+
+
+
+
+
+=
+
+
+
+
+
+= ϑ
+ϑδδ
+δδϕ
+ϕδδ
+δδ sin 
+cos and sin 
+cos ii
+i
+ee
+e
+y
+x
+y
+x
+ie  (2) 
+The phases of the relative e/i-vectors are termed r elative perigee ϕ  and relative ascending node ϑ  
+because they characterize the geometry of the relative orbit as seen by the Client spacecraft. 
+ 
+The relative motion is described in the RTN orbital  frame centered on the Client spacecraft. The 
+coordinate frame is defined by the unit vector in r adial direction (positive outwards, R), the unit 
+vector in along-track direction of the satellite mo tion (positive in flight direction, T) and the unit  
+vector normal to the orbital plane in direction to the positive angular momentum vector (cross-track, 
+N). The orbital motion within this frame can be lin earized for near circular orbits and small 
+separations compared to the orbit radius by the Hil l-Clohessy-Wiltshire (HCW) equations. Those 
+can be expressed in relative orbital elements with the mean argument of latitude as independent 
+variable [2]. 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+−+
+−+−
+−+
+−+
+−+−−
+−−
+=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+)cos( 
+)cos( 22
+3
+)sin( 
+)sin( 
+)sin( 2)(2
+3
+)cos( 
+/
+/
+/
+/
+/
+/
+0
+ϑδ
+ϕδδ
+ϕδ
+ϑδ
+ϕδδδλ 
+ϕδδ
+δ
+δ
+δ
+δ
+δ
+δ
+ui
+uea
+ue
+ui
+ueuua
+uea
+vv
+vv
+vv
+ar
+ar
+ar
+N
+T
+R
+N
+T
+R
+ (3) 
+According to Eq. (3) the general bounded relative motion with zero differential semi-major axis is a 
+tilted ellipse (Figure 1). Its dimension is defined  by the relative eccentricity vector norm in the R- T 
+plane and by the relative inclination vector norm i n cross-track direction. The mean along-track 
+separation between the two spacecraft is defined by δλ  
+ 
+
+===PAGE 4===
+ 
+Figure 1. Projections of bounded relative motion in the along-track/radial (left) and cross-
+track/radial (right) directions for arbitrary relative orbital elements. Here Chief stands for 
+Client spacecraft and Deputy for Servicer spacecraft. 
+ 
+2.2 Perturbed Motion 
+The natural motion from Eq. 3 can be extended by pe rturbations arising from Earth’s oblateness 
+effects J
+2 and differential drag. Accordingly, a more efficien t formation keeping strategy can be 
+defined. The two perturbation terms, varying with t ime, are incorporated by summing them with a 
+constant keplerian term. 
+ )()()()(
+20 uuuu DJ αααα δδ δδ δδ ++=  (4) 
+The analytical treatment of the Earth’s oblateness effects is based on the theory developed by 
+Brouwer and Lyddane [6][8]. If only first-order ter ms in J2 and e are considered in the series 
+expansion the ROE can be expressed as a function of  the mean argument of latitude u [2] (first term 
+in Eq. 5). 
+ 
+For the atmospheric drag the main force is predomin antly anti-parallel to the velocity of the 
+spacecraft. As a result the differential drag has a  linear impact on the relative semi-major axis and a 
+quadratic impact on the relative mean argument of latitude (second term in Eq. 5). 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+−∆+
+−∆−
++
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+−+
+−′+
+−′+
+−−
+=
+0
+0
+0
+0
+)(4
+3
+)(
+)() (sin 3
+)) (sin( 
+)) (cos( 
+)()2sin( 2
+21 
+)(
+2
+0
+0
+0
+2
+0
+0
+0 uuaB
+uuaB
+uuiii
+i
+uue
+uue
+uuii
+a
+u
+xy
+x
+x ρ
+ρ
+δγδ
+δ
+ϕϕδ
+ϕϕδ
+δγδλ 
+δ
+δ α  (5) 
+For the remaining coefficients in Eq. 5 ∆ B is the difference between the spacecraft ballistic  
+coefficients ( B = CDA/m ), CD the aerodynamic drag coefficient, A the cross-section area, m the 
+satellite mass, ρ  the atmospheric density and 
+
+===PAGE 5===
+ ( ) 1cos 52
+3and 2
+2
+2
+2 −==′
+
+
+
+= idu 
+d
+a
+RJ
+E γϕϕγ . (6) 
+Eq. (4) needs only to be substituted in Eq. (3) to obtain a first order solution of the equations of 
+motion in the presence of J2 and differential drag effects. 
+ 
+2.3 Controlled Motion 
+ 
+For inclusion of maneuvers into the relative motion model another term can be added to Eq. 4. 
+ )()()()()(
+20 uuuuu vDJ ααααα δδ δδ δδ δδ +++=  (7) 
+More specific, this term results by inversion of th e linear relative motion model. Thus the 
+consequent change of ROE from an impulsive maneuver is given by 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
++
++
++−
+++
+−−−
++
+=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=
+MN
+MN
+MTMR
+MTMR
+TMR
+T
+y
+x
+y
+x
+v
+uv
+uv
+uvuv
+uvuv
+vuuv
+v
+na 
+i
+i
+e
+e
+a
+sin 
+cos 
+sin 2cos 
+cos 2sin 
+)( 32
+2
+1
+δ
+δ
+δδ
+δδ
+δδ
+δ
+δδ 
+δδ 
+δδ 
+δδ 
+δδλ 
+δδ 
+δδ α . (8) 
+Eq. (8) shows the result of an applied thrust at me an argument of latitude um. In addition a net 
+change of mean longitude within the time interval between the maneuver execution and the epoch of 
+the relative orbital elements results.  
+ 
+Two fundamental aspects should be noted from Eq. (8 ) for a proper choice of the formation keeping 
+and reconfiguration strategy. First of all the in-p lane and out-of-plane relative motions are 
+decoupled. Maneuvers in cross-track direction only affect the relative inclination vector, while the 
+other maneuver types only vary the in-plane compone nt. Secondly, radial maneuvers are two times 
+more expensive than along-track pulses for changes of the relative eccentricity vector and do not 
+affect the semi-major axis. 
+ 
+3 Passive Safety and Stability 
+ 
+The relative e/i-vector separation concept is deriv ed from the aforementioned linearized relative 
+motion model and can be used to design proximity op erations geometries characterized by 
+minimum collision risk (passive safety) and minimum  correction effort (passive stability). The 
+concept of e/i-vector separation has originally bee n developed for the safe collocation of 
+geostationary satellites [9], but can equally be applied to proximity operations for formation flight in 
+LEO  (GRACE, TerraSAR-X/TanDEM-X, PRISMA) [2]. It i s based on the consideration that the 
+uncertainty in predicting the along-track separatio n of two spacecraft is generally much higher than 
+for the radial and cross-track component. Due to th e coupling between semi-major axis and orbital 
+period, small uncertainties in the initial position  and velocity result in a corresponding drift error  
+and thus a secularly growing along-track error. Pre dictions of the relative motion over extended 
+periods of time are therefore particularly sensitiv e to both orbit determination errors and maneuver 
+execution errors. To avoid a collision hazard in th e presence of along-track position uncertainties, a  
+proper separation of the two spacecraft in radial and cross-track direction is desirable. More specific 
+the collision risk is defined by the minimum separa tion perpendicular to the flight direction (Eq. 9) 
+for an arbitrary set of ROE [10]. 
+
+===PAGE 6===
+ 
+( )
+( )
+{ } eaaie
+eaa
+iea
+r
+δδδδδ
+δδδ
+δδδδδδ
+δδδ
+δδ
+2,min 
+22
+22// 
+2
+22
+22
+min 
+−+=
+=−+
+−⋅+++
+⋅≥
+
+
+
+
+ie
+ieie
+ie
+ (9) 
+For bounded relative motion ( δ a = 0), the minimum collision risk is provided by p arallel or anti-
+parallel relative e/i-vectors ( ϕ  = ϑ  or ϕ  = ϑ +π ). For this configuration the formation is always 
+separated in the NR plane in contrast to perpendicu lar relative e/i-vectors, for which radial and 
+cross-track separation vanishes at the same time.  
+ 
+Concerning Eq. 9 another effect on formation reconf iguration shall be noticed. Using along-track 
+maneuvers, the relative orbit ellipse is shifted in  radial direction equal to the variation of the sem i-
+major axis 
+δ a induced by the maneuver. In the case that δ a ≥  2 δ e the formation geometry remains 
+safe, whereas for δ a < 2 δ e the minimum separation decreases. The latter situ ation is typical of 
+formation keeping scenarios. This phenomenon makes along-track pulses inherently less safe than 
+radial ones, but can be compensated by a suitably increased relative e/i-vector separation. 
+ 
+Concerning J
+2 within the design of a passively safe formation th e absolute inclination of the 
+formation should ideally be identical to avoid a secular motion of the relative inclination vector (Eq. 
+5). Nevertheless, separation of the two orbital pla nes can be achieved by a small offset in the right 
+ascensions of their ascending nodes. The resulting relative inclination vector has a phase angle ϑ  = 
+±π /2, and the same (or opposite phase) must be select ed for the relative eccentricity vector to obtain 
+a passively safe formation. Adding the necessary co ndition for bounded relative motion of the 
+servicer with respect to the client one obtains the following convenient nominal configuration 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+±
+±=
+nom 
+nom 
+nom 
+nom 
+0
+0
+0
+ia
+ea
+a
+a
+δ
+δ
+δλ 
+δ α  (10) 
+which provides passive stability and passive safety  to the formation. The actual choice of the 
+nominal relative orbital elements has to be done such that 
+ { } diaea ≥nom nom ,min δδ  (11) 
+where d represents a safety threshold for the minimum sepa ration perpendicular to the flight 
+direction. For the definition of d the following main contributions have to be considered: 
+ 
+1.  Relative eccentricity and inclination vectors can o nly be controlled down to a certain 
+accuracy depending on the applied control scheme, t he navigation errors and the maneuver 
+execution errors. 
+2.  Formation reconfigurations in along-track direction , or rendezvous maneuvers require the 
+execution of along-track pulses which affect the relative semi-major axis. 
+3.  The minimum allowed separation between the center o f mass shall take into account the 
+physical dimensions of the spacecraft.  
+4.  A heuristic margin of 50% is typically applied for safety reasons.  
+ 
+The overall contribution budget for the computation  of d can be easily estimated based on the 
+following considerations. The physical dimensions o f the two spacecraft should not extend 10m on 
+
+===PAGE 7===
+the relative scale. Further, the maximum semi-major  axis variation is proportional to the applied 
+maneuver and thus strictly dependent on operational  constraints like rendezvous time. The 
+contribution will be derived within the design of t he formation keeping and reconfiguration 
+maneuvers later on. Finally, the expected orbit con trol accuracy will be derived based on the 
+navigation accuracy analysis described in the next section.  
+ 
+4 Absolute Navigation Accuracy  
+ 
+The goal of this section is to derive the accuracy of a post-fact absolute orbit determination based on 
+measurement data types which may be available in an  on-orbit servicing scenario. Here GPS 
+navigation solutions, radar tracking and angle trac king data are considered and their performance 
+compared for a typical mission scenario. The analys is is performed on flight data of the currently 
+operated missions at the German Space Operations Ce nter (GSOC) CHAMP, GRACE and 
+TerraSAR-X. The analysis was repeated for multiple missions to yield a first indication of an 
+altitude profile. At the time of analysis CHAMP was  flying at 325 km altitude, GRACE at 485 km 
+and TerraSAR-X at 525 km. Since dual-frequency GPS raw data from receivers of geodetic quality 
+are available for all missions a precise orbit dete rmination (POD) with accuracy at cm level can be 
+used as reference. The navigation accuracy can be d erived from the comparison of the ephemeris 
+resulting during analysis to the POD.  
+ 
+For the different tracking data types an orbit dete rmination is performed over 24 hours, as in a 
+typical flight operations scenario. An orbit predic tion arc is appended to the end of the orbit 
+determination arc. The ephemeris from propagation w ill be compared with the POD after 
+90minutes, 12 hours and 24 hours. Hence, an indication of the error development can be retrieved.  
+ 
+The position and velocity errors of the comparison are given below (Table 1). The errors are given 
+as the root mean square (RMS) in each component of the RTN frame for the mentioned missions 
+and the corresponding tracking data type.  
+ 
+Orbit determination errors based on angle tracking data are roughly one order of magnitude worse 
+compared to GPS or radar tracking already after orbit determination. Accordingly, this measurement 
+type has not been considered any further during the  analysis. Furthermore, this data type would 
+require an active logging of the spacecraft onboard  transponder by the ground station. Hence, the 
+applicability for on-orbit servicing missions as de fined above is rather low since it requires a 
+remaining functionality of the client spacecraft. 
+ 
+Orbit determination errors based on GPS and radar t racking show errors in the same order of 
+magnitude for position and velocity. Radar tracking  results are slightly worse compared to GPS 
+especially at higher altitudes. In general the overall error trend decreases with higher altitudes. 
+ 
+As expected the largest contribution to the error b udget is given by the along-track component. In 
+fact the navigation error in along-track direction after 24 hour propagation is one (TX1) or two 
+(CMP) orders of magnitude higher than the orbit det ermination accuracy depending on the orbit 
+altitude. For the radial and cross-track component the navigation error stays within the same order 
+of magnitude for both considered tracking data types.  
+ 
+The results from this section show that orbit deter mination can be performed based on radar 
+tracking data for the client and on GPS navigation solution for the servicer, while leading to similar  
+navigation errors. Hence, an adequate choice for an on-orbit servicing representative scenario can be 
+made. Furthermore, the higher accuracy in radial an d cross-track component over along-track 
+justifies once more the design choice based on the e/i-vector separation concept.  
+
+===PAGE 8===
+ 
+Table 1. Absolute Navigation Errors 
+Position  RMS [m] 
+   GPS RADAR Angle 
+  CMP GRA TX1 CMP TX1 TX1 
+Radial OD Acc 4.6  2.4  2.2  8.4  8.0  154.3  
+ 90 min 6.9  3.4  0.6  8.0  8.1   
+ 12 h 13.7  5.5  3.1  12.1  5.9   
+ 24 h 18.9  6.4  3.6  17.7  6.0   
+Along-track OD Acc 13.4  7.4  6.0  31.2  29.6  374.0  
+ 90 min 97.7  11.9  4.2  74.8  40.3   
+ 12 h 474.3  27.6  18.6  434.5  69.9   
+ 24 h 1 230.9  39.5  60.6  1 168.2  137.4   
+Cross-track OD Acc 9.8  3.5  2.8  10.8  5.3  34.6  
+ 90 min 19.5  5.8  3.4  21.8  7.3   
+ 12 h 16.2  6.7  2.5  18.4  6.6   
+ 24 h 14.4  6.3  3.0  16.4  6.1   
+ 
+Velocity  RMS [mm/s] 
+   GPS RADAR Angle 
+  CMP GRA TX1 CMP TX1 TX1 
+Radial OD Acc 12.9  7.0  6.2  31.4  25.9   
+ 90 min 111.4  11.8  4.4  85.7  42.7   
+ 12 h 543.2  29.1  19.7  498.0  77.6   
+ 24 h 1 412.6  42.3  67.2  1 340.9  152.8   
+Along-track OD Acc 5.3  2.6  2.6  9.5  8.5   
+ 90 min 5.9  3.9  0.7  7.4  8.8   
+ 12 h 10.4  6.1  0.3  8.0  6.3   
+ 24 h 12.2  7.2  3.8  10.7  6.3   
+Cross-track OD Acc 11.6  3.8  3.1  11.2  6.2   
+ 90 min 25.0  5.7  3.8  26.9  10.1   
+ 12 h 35.1  8.3  3.1  35.7  10.0   
+ 24 h 72.7  8.3  5.2  71.2  12.8   
+ 
+What is still unknown is the degree of correlation and the level of common error cancellation that 
+can be expected from the subtraction of orbit deter mination results in order to obtain the desired 
+relative state. Such problem will be addressed in the next section. So far the propagation error trends 
+from the absolute orbit determination analysis show  a high similarity for GPS and radar tracking 
+performance. Possibly even smaller navigation error s can be expected from the relative navigation 
+which may lead to a further reduction of the safety  threshold d for the selection of the nominal 
+formation flying configuration. 
+ 
+5 Relative Navigation Accuracy 
+ 
+The relative navigation accuracy analysis makes use  of the same flight data as used in the previous 
+section. Similarly the orbit determination accuracy  is evaluated by comparing results based on 
+different tracking data with the available precise orbit determination products. Since flight data from 
+radar tracking and GPS are not currently available from co-orbiting satellites, the relative navigation 
+accuracy analysis is here performed as a sort of ze ro-baseline test. On-ground orbit determination 
+and prediction are performed for the same spacecraft based on different data types.  
+
+===PAGE 9===
+orbit determination and propagation is performed for the same spacecraft based on different tracking 
+data types. GPS navigation solutions are used to re present the servicer and radar tracking data 
+represent the client. Since the same spacecraft is considered the same POD product is used for both 
+and cancels out during subtraction of the obtained ephemeris. The relative navigation errors 
+obtained from the ground-based orbit determination are listed in Table 2.  
+ 
+Table 2. Relative Navigation Errors 
+  Position Velocity 
+   RMS [m] RMS [mm/s] 
+  CMP TX1 CMP TX1 
+Radial OD Acc 6.7  7.8  28.6  31.3  
+ 90 min 6.8  7.7  26.5  46.9  
+ 12 h 6.8  7.8  47.0  62.8  
+ 24 h 6.8  7.8  74.1  89.6  
+Along-track OD Acc 27.4  31.1  7.8  8.5  
+ 90 min 26.2  43.9  7.8  8.3  
+ 12 h 42.8  57.3  7.8  8.5  
+ 24 h 65.8  81.4  7.8  8.5  
+Cross-track OD Acc 2.2  4.2  3.2  6.0  
+ 90 min 2.3  4.3  2.4  6.8  
+ 12 h 2.3  4.5  2.5  7.5  
+ 24 h 2.3  4.5  3.1  8.7  
+ 
+As shown in Table 2, relative radial and cross-trac k components are characterized by errors below 
+10 m (RMS). It is noted that the propagation error is comparable with the orbit determination error 
+and basically does not increase over time. A furthe r comparison with the absolute orbit 
+determination accuracy figures (cf. Table 1) shows that the orbit prediction is characterized by a 
+high level of common error cancellation, while the orbit determination errors are un-correlated. As 
+expected the relative navigation errors in along-tr ack direction are gradually increasing over time 
+but with a magnitude which is 10 times smaller than the absolute errors.  
+ 
+However it has to be noted that for this analysis o rbit determination and propagation have been 
+performed for the same spacecraft. The actual relat ive navigation error may be affected by 
+mismodelling of differential accelerations caused e.g. by differential drag, especially at low altitudes 
+as in the case of CHAMP.  
+ 
+Table 3. Differential Eccentricity and Inclination 
+   RMS [m]  RMS [m] 
+  CMP TX1  CMP TX1 
+OD Acc aδex  6.0  6.0  aδix  2.8  3.1  
+90 min  5.7  5.7   2.8  3.1  
+12 h  5.6  5.6   2.8  3.2  
+24 h  5.4  5.4   2.8  3.2  
+OD Acc aδey  7.5  7.5  aδiy  1.4  5.1  
+90 min  7.8  7.8   1.6  5.3  
+12 h  7.8  7.8   1.7  5.4  
+24 h  8.0  8.0   1.8  5.5  
+ 
+As described in section 3, the design of nominal fo rmation flying configurations is driven by the 
+relative control tracking errors and in turn by the  relative navigation errors. In view of the adopted  
+
+===PAGE 10===
+parameterization of the relative motion, the relati ve navigation errors are further expressed in terms  
+of relative eccentricity and inclination vectors. T able 3 shows that the expected relative navigation 
+errors from on-ground orbit determination based on GPS and radar tracking data are of the order of 
+10 m (RMS).  
+ 
+As a consequence it can be finally concluded from t he results that the maximum navigation error in 
+a
+δe and aδi is always smaller than 10 m for parallel or anti-parallel relative e-/i-vectors. 
+ 
+6 Guidance and Control 
+ 
+The relative navigation results presented in the pr evious section give us the possibility to select a 
+trade-off formation flying configuration which is i nherently safe and stable (cf. section 3). Once the  
+initial and final desired formation geometries are assigned, a formation keeping and reconfiguration 
+strategy can be designed which takes advantage of the relative orbital element parameterization.  
+ 
+6.1 Nominal Formation Geometry 
+ 
+The first objective to derive the nominal formation  geometry is to finalize the discussion from 
+section 3 on the definition of the safety threshold  d. The different contributions are again shown in 
+Eq. 12.  
+ { }[ ] mrg Phys vCtrl FDaaFiaead
+T
+⋅++⋅= δδδ δδ NavAcc NavAcc ,max  (12) 
+The contributions arise as follows: 
+ 
+1.  The maximum navigation error in a
+δe and aδi is derived to be 10m. 
+2.  An impulsive orbit control scheme is considered whe re the navigation accuracy can be 
+considered as 10% of the controlled range (FCtrl  = 10). 
+3.  Given a desired maximum along-track drift for rende zvous of 1.7 km/rev, the maximum 
+necessary along-track impulse amounts to δ vT = 10 cm/s. The resulting maximum semi-
+major axis variation amounts to aδδ aδv = 185 m. 
+4.  The minimum allowed center of mass separation is ta ken as DPhys  = 10 m to account for the 
+spacecraft physical dimensions. 
+5.  A heuristic margin of 50% is typically applied for safety reasons ( Fmrg  = 1.5).  
+ 
+According to Eq. 12, the minimum separation safety threshold amounts to 450 m. 
+ 
+From the derived safety threshold the strategy to r econfigure the formation from an initial nominal 
+formation configuration to a so called rendezvous e ntry point can now be developed employing the 
+relative e/i-vector separation concept. The initial  formation configuration is identified by Eq. (10).  
+The rendezvous entry point is an arbitrary relative  position E = ( E
+R, ET, EN)T defined in the RTN 
+orbital frame. From the initial conditions it is al ways possible to define a bounded relative orbit 
+through (anti-)parallel relative e/i-vectors which contains the rendezvous entry point (Figure 2). By 
+construction, the final formation geometry will pro vide the possibility to revisit the rendezvous 
+entry point at each orbital revolution (Figure 2). 
+ 
+
+===PAGE 11===
+ 
+Figure 2. Relative orbit geometries for the formation reconfiguration problem. The initial 
+relative orbital elements are identified by the subscript I, the final relative orbital elements 
+are identified by the subscript F, the rendezvous entry point is identified by E, while the red 
+circle of radius d represents the collision avoidance zone. 
+ 
+The initial formation flying configuration can be chosen according to Eq. 10 as 
+ { } { } { } m900 ,900 ,1560 2 ,2 ,577 . 0 /2,,
+TTT
+III dddiaeaa ==δδδλ . (13) 
+The selection of the nominal mean along-track separ ation is mainly driven by visibility constraints 
+given by the relative navigation sensors during var ious operational scenarios. In the sequel the 
+following choice has been made 
+ { } 577 . 0)30 tan( /,max nom nom nom =≥ oaiaea δλ δδ . (14) 
+The final ROE set shall contain the rendezvous entr y point within a three dimensional ellipse 
+characterized by (anti-)parallel relative eccentric ity and inclination vectors. For an arbitrary 
+rendezvous entry point E = (580,20,154) T outside the collision avoidance zone the solution is 
+simply given by 
+ { } { } { } m600 ,600 ,327 ,,2,, 2222 TT
+FRNRFT
+T
+FFF eaEEEeaEiaeaa =+−±= δδδδδλ  (15) 
+Having defined three of the six parameters necessar y to define a relative orbit by the equations 
+above the missing parameters are the relative semi- major axis, which is set to zero to avoid 
+diverging drifts, and the phases ϕ  and ϑ  which should guarantee the anti-parallelism of the  relative 
+e/i-vectors (i.e., ϕ   = - ϑ  = π /2). In accordance with Eq. 10 the initial and fina l relative orbital 
+elements for the representative scenario are given by 
+ m
+600 
+0
+600 
+0
+327 
+0
+0
+0
+0
+m
+900 
+0
+900 
+0
+1560 
+0
+0
+0
+0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+−=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+−=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+−=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+−=
+F
+F
+F
+F
+I
+I
+I
+I
+ia
+ea
+a
+a
+ia
+ea
+a
+a
+δ
+δ
+δλ 
+δ
+δ
+δ
+δλ 
+δ αα  (16) 
+ 
+ 
+ 
+ 
+
+===PAGE 12===
+ 
+6.2 Formation Reconfiguration 
+ 
+The basic concept for the derived representative fo rmation reconfiguration in case of an on-orbit 
+servicing mission is illustrated in Figure 3. The i ntended transfer of the servicer to the rendezvous 
+entry gate from which the two dimensional approach is initiated is shown in the left subplot by the 
+corrections necessary to the relative e/i-vectors. 
+ 
+ 
+Figure 3. Anti-parallel relative eccentricity and inclination vectors for the formation 
+reconfiguration (left) and corresponding relative motion in the plane perpendicular to the 
+flight direction (right). 
+ 
+The corrections required for reconfiguration are given by 
+ m
+300 
+0
+300 
+0
+1233 
+0
+0
+0
+0
+0
+0
+0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+−
+−
+=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+−
++−
+−
+=−=
+y
+y
+IF
+IF
+IF
+IF
+ia
+ea
+a
+iaia
+eaea
+aa
+aaa
+δδ 
+δδ 
+δδλ 
+δδ
+δδ
+δλ δλ 
+δδδδ ααα . (17) 
+In-plane and out-of-plane relative orbit control pr oblems are decoupled. One cross-track maneuver 
+is necessary and sufficient to control the relative  inclination vector, while two in-plane maneuvers 
+are necessary and sufficient to correct relative ec centricity vector and relative semi-major axis. The  
+in-plane maneuvers may be implemented as radial, al ong-track or mixed radial/along-track pulses. 
+In general the advantages of radial maneuvers resid e in their larger size since resulting in smaller 
+execution errors for small impulse bits and in the fact that radial maneuvers do not affect the semi-
+major axis. Such advantages can be exploited during  on-orbiting servicing phases with small inter-
+spacecraft separations and higher control accuracy requirements. The advantages of along-track 
+maneuvers lie in their smaller size (half of the ra dial maneuvers) and in the capability to change the  
+semi-major axis for fuel-efficient rendezvous operation phases. 
+ 
+A design of the outlined transfer using one radial and one cross-track maneuver pair, while reducing 
+the mean along-track separation at the same time results in the following 
+∆V maneuver plan. 
+
+===PAGE 13===
+ 
+( )
+( )
+
+
+
+
+
+
+=+=−=−=
+−===+=
+=+==−−=
+=+==−+=
+2m/s 162 . 02/
+2atan m/s 162 . 02/
+2m/s 171 . 04/2/
+2atan m/s 495 . 04/2/
+122
+11
+122
+11
+ππδδ δ
+πδδ δδ δδ δ
+ππδδλ δδ δ
+ππδδ δδ δδλ δδ δ
+NNN
+xyNN
+RRR
+xyRR
+uuna v
+iiuna v
+uuna na v
+eeuna na v
+i
+i
+e
+e
+ (18) 
+In the equation above u represents the location of the maneuvers along the orbit. For the selected e/i-
+vectors the radial maneuvers are always located at the ascending and descending nodes (i.e., u = π , 
+2π ), while the cross-track maneuvers are always locat ed at the extreme northern or southern 
+latitudes (i.e., u = ±π /2). This is also shown with the illustration of the transfer below (Figure 4). 
+ 
+ 
+Figure 4. Complete formation reconfiguration using double radial and cross-track impulsive 
+maneuvers from Eq. (16). The resulting relative position is mapped in the RTN orbital frame 
+(black relative trajectories). The labels 1 to 4 indicate the location of the maneuvers. The 
+labels 0 and E indicate the relative position at start and at the rendezvous entry point. The 
+desired final relative orbit and the collision avoidance regions are illustrated in solid and dash 
+red lines. 
+ 
+6.3 Formation Keeping 
+ 
+The relative motion of the two spacecraft is mainly  affected by Earth’s oblateness perturbations. 
+More specific the relative eccentricity vector foll ows a circular motion in the e-vector plane, while 
+the relative inclination vector experiences a linea r drift proportional to the inclination difference.  
+The latter effect can be removed by selecting a rel ative ascending node of zero (i.e., ϑ  = 0), like 
+selected for the nominal relative orbital elements (Eq. 16).  
+ 
+By defining control windows centered on the nominal  values it is possible to keep the formation by 
+exploitation of the aforementioned natural secular motion (Figure 5). 
+ 
+
+===PAGE 14===
+ 
+Figure 5. Graphical representation of the control windows for the relative eccentricity vector 
+(left) and the relative inclination vector (right). The subscript nom  stands for nominal 
+configuration, max  for maximum allowed deviation from nominal, I and F for quantities 
+before and after the execution of maneuvers. 
+ 
+The desired relative eccentricity and inclination v ectors after performing formation keeping 
+maneuvers are given by 
+ 
+
+
+
+
+
+
+
+
+
+
+−=
+
+
+
+
+
+
+
+
+
+
++
+−
+=
+max )(sign )cos( )sin( 
+)sin( )cos( 
+iii
+i
+ee
+ee
+xnom 
+nom 
+F
+nom nom 
+nom nom 
+F
+y
+x
+yx
+yx
+δδδ
+δ
+δδϕ δδϕ δ
+δϕ δδϕ δ
+δ ie . (19) 
+The subscript nom represents the nominal configuration (Eq. (10)) while δϕ  and δ imax  are maximum 
+tolerated deviations. Eq. (19) can be used to deter mine the relative e/i-vectors after each orbit 
+control maneuver. As described above the control ma neuvers only have to correct the relative e-
+vector for the developed on-orbit servicing represe ntative scenario. This can be achieved by a pair 
+of along-track maneuvers at the ascending and desce nding nodes (Eq. (20)). Even though a couple 
+of radial maneuvers could be used as well the fuel efficient version is preferred this time since the 
+maneuvers are small and the separation during formation flight is rather large. 
+ 
+( )
+
+
+
+
+
+≈+=−≈−=
+≈=+≈+=
+ππδϕ δδδ δ
+δδ δδ δϕ δδδ δ
+122
+11
+2/ )sin( 4/
+0atan 2/ )sin( 4/
+TTT
+xyTT
+uuena na v
+eeuena na v
+e
+e
+ (20) 
+For such a strategy the ∆V budget is dependent on the length of the relative eccentricity vector δ e 
+and the allowed deviation δϕ . For the scenario above with aδ e = 900 m the daily ∆V sums up to 
+ m/s 0608 . 0)sin( 21 ≈≈+= δϕ δδδδ ena vvv TTT  (21) 
+ 
+
+===PAGE 15===
+7 Conclusion 
+ 
+Within the presented work the absolute navigation a ccuracy analysis lead to the selection of radar 
+tracking measurements for client and GPS navigation  solution data for ground based servicer 
+navigation. Moving forward, the relative navigation  analysis resulted in the derivation of a 
+minimum separation safety threshold in the NR-plane , which amounted to 450 m. Thus in the 
+context of former formation flying missions [3][4][ 5] a nominal formation geometry is designed 
+based on the concept of eccentricity/inclination ve ctor separation. With the implementation of the 
+formation reconfiguration strategy using maneuver c ouples in radial and cross-track direction an 
+inherently safe capability to transfer to the rende zvous entry point is established. In this context t he 
+e/i-vector separation is applied to proximity opera tions of on-orbit servicing spacecraft for the firs t 
+time. Future research has to consider relative navi gation sensors and the definition of a 
+corresponding approach strategy. Especially the han dover between absolute and relative navigation 
+will be of interest. Another field for future work is the derivation of a more elaborate safety 
+threshold by inclusion of differential drag effects  in the navigation accuracy analysis. Finally real 
+flight data will be used to evaluate the performanc e of different relative motion models and their 
+impact on the formation flying design. 
+ 
+8. References 
+ 
+[1]  Klinkrad, H., ”Space Debris: Models and Risk Analys is”, Springer-Praxis Books in 
+Astronautical Engineering, Springer-Verlag, 2006. 
+[2]  D'Amico, S., “Autonomous Formation Flying in Low Ea rth Orbit”, PhD thesis, Technical 
+University of Delft, ISBN 978-90-5335-253-3, 2010. 
+[3]  Montenbruck, O. and Kirschner, M. and D'Amico, S. a nd Bettadpur, S., “E/I-vector separation 
+for safe switching of the GRACE formation”, Aerospa ce Science and Technology, Vol. 10, No. 7, 
+pp. 628-635, 2006. 
+[4]  D’Amico, S. and Montenbruck, O., “Proximity operati ons of Formation-Flying Spacecraft 
+Using an Eccentricity/Inclination Vector Separation ”, Journal of Guidance, Control and Dynamics, 
+Vol. 29, No. 3, pp. 554, 2006. 
+[5]  D’Amico, S. and Ardaens, J.S. and De Florio, S., “A utonomous Formation Flying Based on 
+GPS – PRISMA Flight Results”, 6th International Wor kshop on Satellite Constellation and 
+Formation Flying, Taipei, Taiwan, 1.-3. November, 2010. 
+[6]  Aida, S. and Patzelt, T. and Leushacke, L. and Kirs chner, M. and Kiehling, R., “, 21st 
+International Symposium on Space Flight Dynamics, Toulouse, France, 28. Sep. – 2. Oct., 2009. 
+[7]  Brouwer, D., “Solution of the problem of artificial  satellite theory without drag”, The 
+Astronomical Journal, Vol. 64, No. 1274, pp. 378–39 7, 1959. 
+[8]  Lyddane, R.H., “Small eccentricities or inclination s in the Brouwer theory of the artificial 
+satellite”, The Astronomical Journal, Vol. 68, No. 8, pp. 555–558, 1963. 
+[9]  Eckstein, M.C. and Rajasingh, C.K. and Blumer, P., “Colocation strategy and collision 
+avoidance for the geostationary satellites at 19 de grees west”, International Symposium on Space 
+Flight Dynamics, Toulouse, France, 6.-10. November, 1989. 
+[10]  De Florio, S., D’Amico, S., “Collision Risk Assessm ent for Co-Orbiting Spacecraft”, 
+DEOS-DLR-TN-02, Version 1.0, 28. April, 2010. 
+ 

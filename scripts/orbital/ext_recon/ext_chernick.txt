@@ -1,0 +1,1924 @@
+
+===PAGE 1===
+Closed-Form Optimal Impulsive Control of Spacecraft Relative
+Motion Using Reachable Set Theory
+Michelle Chernick* and Simone D’Amico†
+Stanford University, Stanford, California, 94305
+This paper addresses the spacecraft relative orbit reconﬁguration problem of minimizing
+the delta-v cost of impulsive control actions while achieving a desired state in ﬁxed time. The
+problem is posed in relative orbit element (ROE) space, which yields insight into relative
+motion geometry and allows for the straightforward inclusion of perturbations in linear time-
+variant form. Reachable set theory is used to translate the cost-minimization problem into a
+geometricpath-planningproblemandformulatethereachabledelta-vminimum, anewmetric
+to assess optimality and quantify reachability of a maneuver scheme. Next, this paper presents
+amethodologytocomputemaneuverschemesthatmeetthisnewoptimalitycriteriaandachieve
+a prescribed reconﬁguration. Though the methodology is applicable to any linear time-variant
+system, this paper leverages a state representation in ROE to derive new globally optimal
+maneuverschemesinorbitsofarbitraryeccentricity. Themethodologyisalsousedtogenerate
+quantiﬁably sub-optimal solutions when the optimal solutions are unreachable. Further, this
+paper determines the mathematical impact of uncertainties on achieving the desired end state
+and provides a geometric visualization of those eﬀects on the reachable set. The proposed
+algorithms are tested in realistic reconﬁguration scenarios and validated in a high-ﬁdelity
+simulation environment.
+I. Introduction
+D
+istributedspace systems enable advanced missions in ﬁelds such as astronomy and astrophysics, planetary science,
+andspaceinfrastructurebyemployingthecollectiveusageoftwoormorecooperativespacecraft. Proposedformation
+ﬂying missions in eccentric orbits introduce new challenges for spaceborne control architectures, such as eﬃciency
+(reduced on-board processing power and propellant), autonomy (no ground-in-the-loop), and operational constraints
+(interference with payload, and predictability) [1]. To address these challenges, this work develops globally-optimal
+closed-form solutions to the problem of minimizing the delta-v cost of a set of impulsive control actions that accomplish
+a ﬁxed desired satellite relative orbit conﬁguration in ﬁxed time.
+In literature, most approaches to ﬁnding impulsive maneuver schemes that accomplish the ﬁxed-time, ﬁxed-end
+condition reconﬁguration fall into three categories: direct optimization techniques, indirect optimization techniques, and
+closed-formsolutions. Forspaceborneapplications,closed-formsolutionsarefrequentlyfavoredbecausetheyaresimple,
+predictable, and computationally eﬃcient. Numerous authors have developed closed-form solutions in Hill’s coordinates
+[2, 3] using the Hill-Clohessy-Wiltshire equations (HCW), which are valid for near-circular orbits, small separations as
+compared with the orbit radius, and unperturbed Keplerian motion. However, these limitations are overcome by using a
+diﬀerent state representation, called relative orbit elements (ROE).
+As will be discussed in the following section, use of the ROE state representation allows for the derivation of simple,
+high-ﬁdelity solutions to the spacecraft formation control problem. The ROE state inherently enables the linearization of
+theequationsofrelativemotionwithminimallossofaccuracy[ 4],anditisthislinearizationthatallowsforapplicationof
+reachablesettheorytoenableageometricsolutionoftheresultingoptimalcontrolproblem. Despitethebeneﬁtsofusing
+the ROE state representation, few authors have solved the reconﬁguration problem in closed-form using ROE. Gaias
+and D’Amico [5,6] proposed a set of closed-form guidance and control algorithms for optimal control in near-circular
+orbits. Chernick and D’Amico [7] extended these algorithms to include perturbations due to Earth’s oblateness (J2)
+in near-circular orbits and developed control solutions in eccentric unperturbed orbits, but optimality was limited to
+speciﬁc cases. In addition, it was assumed that the in-plane and out-of-plane control problems were decoupled. Zhang
+and Mortari [8] removed the need for the transcendental equation in Chernick’s closed-form solution and used it as
+initialguesstoderivebothsingle-andmulti-impulseminimumnormsolutionsthroughanonlinearleast-squaresiterative
+*Ph.D. Candidate, Space Rendezvous Laboratory, Aeronautics and Astronautics, 496 Lomita Mall
+†Assistant Professor, Space Rendezvous Laboratory, Aeronautics and Astronautics, 496 Lomita Mall
+arXiv:2002.07832v2  [eess.SY]  29 Feb 2020
+
+===PAGE 2===
+method using the second order Gauss Variational Equations. Vaddi et al. [9] proposed analytical solutions to the optimal
+reconﬁguration problem, but only for control of the in-plane orbital elements in near-circular orbits. For eccentric chief
+orbits, Schaub and Alfriend [10] developed an impulsive feedback controller to establish mean orbit element diﬀerences.
+These solutions (and their optimality) are case-speciﬁc and have not yet been advanced to include other perturbations.
+Direct optimization techniques allow for a greater degree of generality because the optimal control problem can be
+formulated with the times, magnitudes, and directions as variables [11]. Though widely applicable, direct optimization
+techniques are not guaranteed to converge to a global optimum because the minimum cost is generally a non-convex
+function of the control action times [12]. In addition, direct optimization techniques do not provide insight into
+the maneuver optimality. Therefore, the majority of numerical approaches in literature utilize indirect optimization
+techniques, taking advantage of the characteristics of the so-called primer and dual pair of the optimal control problem.
+For example, Roscoe et al. [13] designed an optimal algorithm for eccentric perturbed orbits based on Lawden’s primer
+vector theory and Pontryagin’s optimal control [14]. This algorithm involves an iterative process that depends on a good
+initial guess and yields large computational loads. Gilbert and Harasty [15] proposed a diﬀerent approach to indirect
+optimization based on reachable set theory, which converges to a globally optimal sequence of impulsive control inputs
+for problems with norm-like constant cost functionals. Koenig [16] generalized Gilbert’s algorithm to time-variant
+cost functions with the only restriction that the cost function be represented as the integral of a time-variant norm-like
+function of the control input vector. In optimal control and robotics applications, reachable set theory is commonly used
+to assess cost-reachability and safety [17]. Vinh et al. characterized the surface of the reachable domain for a given fuel
+cost in a ﬁxed time interval, and applied the concept to assess the feasibility of an interceptor capturing a target missile
+[18]. Recently, Zagaris et al. used reachability theory to determine initial conditions for which rendezvous maneuvers
+were possible in a binary formation with a tumbling chief in a near-circular orbit [19].
+This paper shows that reachable set theory can be used not just to assess the cost of a maneuver scheme, but as a
+geometric tool to derive the closed-form maneuver scheme itself. This work improves upon current literature through
+four main contributions to the state of the art. First, by leveraging domain speciﬁc knowledge and the linear scaling
+properties of the reachable set, this paper develops the reachable delta-v minimum, a new metric for assessing maneuver
+scheme optimality. Second, this paper presents a general methodology to derive impulsive control solutions that meet
+the new optimality criteria. This general methodology is applied to a new, quasi-nonsingular relative orbit element state
+representation to obtain closed-form maneuver schemes that are applicable to orbits of arbitrary eccentricity. The same
+methodology can be used to generate quantiﬁably sub-optimal solutions when the optimal solutions are unreachable.
+Third, this paper presents a visual and mathematical analysis of the eﬀect of maneuver execution and navigation errors
+on the reachable sets. Finally, the new algorithms are validated by comparison to Koenig’s numerical optimization
+algorithm [16] and by numerical integration of the Gauss Variational Equations including a full-force dynamics model.
+What follows in Sec. II is the formal statement of the energy-optimal formation control problem.
+II. Problem Statement
+Without loss of generality, a formation here consists of two satellites: the chief, which deﬁnes the reference orbit and
+is uncontrolled, and the deputy, which is controlled by a 3D thrust input. The relative motion between two satellites in
+a formation is commonly deﬁned in terms of relative position and velocity in the Hill’s coordinate frame (also called
+radial/along-track/cross-track coordinates, or RTN), whose origin is at the chief’s center of mass. The RTN frame is
+deﬁned by the basis[or, ot, on], whereor is aligned with the radial direction and positive outward,on is aligned with
+the chief angular momentum vector and positive in the orbit normal direction, andot completes the right-handed triad.
+However, the relative motion can be equivalently described using combinations of non-dimensional orbit elements
+of the chief and deputy, called relative orbit elements (ROE),δααα = δααα(αααc,αααd). The beneﬁts of using the ROE state
+representation are numerous. First, the homogeneous, unperturbed solution to the ROE dynamics equations is the trivial
+solution of the Keplerian two-body problem,δααα = const., whereas there is no available unperturbed solution to the
+equations of relative motion in Hill’s coordinates [7]. In addition, in the presence of perturbations, a state based on ROE
+slowly varies in time, whereas Hill’s coordinates vary rapidly. Secular and long-period eﬀects of perturbing forces are
+simply included in the equations of relative motion for the ROE state using a state transition matrix (STM),ΦΦΦ(tj, ti). The
+STM propagates the state forward in time, while the control input matrix,ΓΓΓ(tk), represents the eﬀect of a 3D control
+inputδvvvk at timetk. With this notation in mind, the linearized dynamics that govern the reconﬁguration from an initial
+set of ROE,δααα0, to a ﬁnal desired set of ROE,δααα f, under the inﬂuence ofp impulsive maneuvers can be written as
+δααα f = ΦΦΦ(t f, t0)δααα0 +
+pÕ
+k=1
+ΦΦΦ(t f, tk)ΓΓΓ(tk)δvvvk. (1)
+2
+
+===PAGE 3===
+Given an initial set of chief orbital elements (OE),αααc,0, and an initial set of ROE,δααα0, the ﬁxed-time, ﬁxed-end
+conditionsrelativeorbitreconﬁgurationproblemisdeﬁnedbyadesiredﬁnalsetofROE, δααα f∈ R6,andareconﬁguration
+time spanT. With these reconﬁguration parameters, the optimal control problem to be solved in this paper is
+Minimize
+pÕ
+k=1
+||δvvvk|| 2 subject to∆δααα =
+pÕ
+k=1
+ΦΦΦ(t f, tk)ΓΓΓ(tk)δvvvk, tk∈ T (2)
+where a pseudo-state∆δααα is introduced as∆δααα =δααα f− ΦΦΦ(t f, t0)δααα0 to simplify notation. The next section outlines the
+dynamics of relative motion as they apply to the adopted ROE state deﬁnition.
+III. Background
+A. Astrodynamics of Relative Motion
+The state representation of choice is the 6D quasi-nonsingular ROE, deﬁned [7, 20] as
+δααα =
+
+δa
+δλ e
+δex
+δey
+δix
+δiy
+
+=
+
+ad−ac
+ac
+Md− Mc +η(ωd−ωc +(Ωd− Ωc) cos ic)
+ed cosωd− ec cosωc
+ed sinωd− ec sinωc
+id− ic
+(Ωd− Ωc) sin ic
+
+, (3)
+which consists of the relative semi-major axisδa, the eccentric relative mean longitudeδλe, and thex and y components
+of the relative eccentricity vectorδeee and the relative inclination vectorδiii. They are nonlinear combinations of the
+classical absolute orbital elements (OE)[a, e, i, Ω,ω, M] of the chief and deputy spacecraft, denoted with subscripts
+c, d, respectively. The state representation is termed quasi-nonsingular because the state is valid for circular chief
+orbits (ec = 0) but becomes singular for strictly equatorial chief orbits (ic = 0). Apart from the eccentric relative mean
+longitudeδλe, it is the same state used for Guidance, Navigation, and Control (GNC) and orbit design on multiple
+formation ﬂying missions such as PRISMA [21] and TanDEM-X [22].
+To derive closed-form maneuver schemes in the ROE state representation, it is necessary to ﬁrst ﬁnd the STM and
+control input matrix that propagate the dynamics. The STM fromt0 to t f is derived using Koenig et al.’s approach
+[23] for the quasi-nonsingular ROE (provided in Appendix A, Eq.(42)). The change in the mean ROE due to an
+impulsive maneuverδvvvk is described by the control input matrixΓΓΓ(tk) (also written asΓΓΓk) and derived from the Gauss
+Variational Equations (GVE). The GVE describe the rate of change of the osculating OEαααosc as a function of perturbing
+accelerations in the RTN frame. The eﬀect of an impulsive maneuverδvvvk on the osculating ROE is found by integrating
+the GVE over the duration of the maneuver with the assumption that the OE are constant and can be written in matrix
+form using the chain rule as∆δαααosc = ∂δααα(αααc, o s c,αααd, o s c)
+∂αααd, o s c
+∂αααd, o s c
+∂vvv RT N
+δvvvk. To employ the same approach for the mean ROE
+state representation used in this paper, Brouwer’s transformation from osculating to mean OEfmean is applied [24]. The
+partial derivatives offmean with respect to the osculating OE form a Jacobian matrix that is near identity. For the mean
+ROE state, the control input matrix is then
+ΓΓΓ(αααc)≈ ∂δααα(αααc,αααd)
+∂αααd
+αααc =αααd
+∂ fmean(αααd,osc)
+∂αααd,osc
+∂αααd
+∂vvvRT N
+, (4)
+where the subscriptosc denotes the osculating OE and the eﬀect of an impulsive maneuver on the mean ROE is given
+by ∆δααα = ΓΓΓ(αααc)δvvv [9]. For the quasi-nonsingular ROE state in particular, the control input matrix for an impulsive
+maneuver at true argument of latitudeθk =νk +ωk is given by Eq. (13) in Ref. [7] for eccentric orbits. By virtue of the
+formof ΓΓΓ,whentheeccentricityisclosetozero,thecontrolinputmatrixreducessoROEcontroliseﬀectivelydecoupled;
+Speciﬁcally, in-plane maneuvers (radial, tangential) aﬀect only the in-plane ROE,δa, δλ, andδeee, and out-of-plane
+maneuvers (normal) aﬀect only the out-of-plane ROE,δiii. In contrast, in the eccentric case, the relative eccentricity
+vector is aﬀected by maneuvers in the normal direction, as is evident by the nonzero third column entries in the control
+input matrix in Eq. (13) of Ref. [7], so an inherent decoupling cannot be claimed. To avoid this issue, the ROE state can
+be redeﬁned to include a modiﬁed relative eccentricity vector as
+[
+δe′
+x
+δe′
+y
+]
+=
+[
+ed− ec
+ωd−ωc +(Ωd− Ωc) cos ic
+]
+, (5)
+3
+
+===PAGE 4===
+which replaces the relative eccentricity vectorδex,δ ey in Eq.(3). The control input matrix for the new ROE state is
+derived in the same way as for the quasi-nonsingular ROE state: using Eq.(4). The corresponding control input matrix
+for the ROE including the modiﬁed relative eccentricity vector and eccentric relative mean longitude is given by
+∆δαααk = ΓΓΓkδvvvk = 1
+na
+
+2
+η e sinνk 2
+η(1 + e cosνk) 0
+− 2η2
+1+e cosνk
+0 0
+η sinνk η e+cosνk(2+e cosνk)
+1+e cosνk
+0
+−η
+e cosνk
+η
+e sinνk
+2+e cosνk
+1+e cosνk
+0
+0 0 η cos(θ)
+1+e cosνk
+0 0 η sin(θ)
+1+e cosνk
+
+
+δvR
+δvT
+δvN
+
+. (6)
+As shown in Eq.(6), control of the in-plane and out-of-plane ROE is fully decoupled. The relationship between theδeee
+andδeee′ states in Eqs.(3)and (5)itself is nonlinear, but the relationship between the expressions for the pseudo-states is
+actually very simple. This will be further discussed and used to derive closed-form optimal impulsive control solutions
+in Sec. V.
+For unperturbed orbits, the STM for the new ROE state is the same as the STM for the quasi-nonsingular ROE, given
+in Eq. (12) in Ref. [7]. The unperturbed STM is used in the calculation of optimal maneuver schemes because the
+eﬀect of perturbations due to maneuivers is small. However, in calculating the pseudo-state in Eq.(2), where the desired
+change in ROE is the diﬀerence between the ﬁnal desired ROE and the initial ROE propagated by the dynamics over
+the entire reconﬁguration span, a more accurate method can be used to accurately represent the free dynamics, such
+as numerical propagation with the full-force nonlinear dynamics. This is not a problem addressed in this paper, as
+intermediate pseudo-state calculation is an optimal guidance problem.
+B. Reachable Set Theory
+This section provides an introduction to reachable set theory, which will be used to derive a simple geometric
+optimality criteria and closed-form optimal reconﬁguration schemes. LetU(c) be the set of all control actions in RTN
+whose magnitude (two-norm, as in Eq.(2)) is less than or equal toc. S(c, tj) is the set of pseudo-states∆δααα that can be
+reached at the end of the reconﬁgurationT given a single control actionuuu of magnitude less than or equal toc at timetj,
+S(c, tj) ={∆δααα : ∆δααα = ΦΦΦ(t f, tj)ΓΓΓ(tj)uuu, uuu∈ U(c)}, tj∈ T. (7)
+S(c, T) is the set of pseudo-states∆δααα that can be reached at the end of the reconﬁguration timeT given a single control
+action of magnitude less than or equal toc at any time inT, given by
+S(c, T) =
+Ø
+tj∈T
+S(c, tj). (8)
+Finally, S∗(c, T)isthesetofpseudo-states ∆δαααthatcanbereachedattheendofthereconﬁguration T given p≥ 1control
+actionsoftotalmagnitudelessthanorequalto catanytimein T. Forany ∆δααα∗∈ S∗(c, T),theremustexistasetof pcontrol
+actions{uuu1,..., uuup} executed at times{t1,..., tp} that satisﬁes∆δααα∗ = Íp
+k=1 ΦΦΦ(t f, tk)ΓΓΓ(tk)uuuk, Íp
+k=1||uuuk|| 2≤ c, tk∈ T.
+Because the cost of a control action scales linearly with its magnitude andΦΦΦ(t f, tk)ΓΓΓ(tk)uuuk is an element ofS(c, T) ∀tk,
+S∗(c, T)can be deﬁned as
+S∗(c, T) ={∆δααα∗ : ∆δααα∗ =
+pÕ
+k=1
+ck ∆δαααk, ∆δαααk∈ S(c, T), ci≥ 0,
+pÕ
+k=1
+ck = 1}, (9)
+which is the deﬁnition of the convex hull ofS(c, T). Based on this deﬁnition, a pseudo-state that lies on the boundary of
+the convex hullS∗(c, T)is reachable with total delta-v equal toc.
+There are three important properties of the reachable set that will be leveraged to derive reachable delta-v minima
+and energy-optimal maneuver schemes. First, the reachable set is a linear function of a control action for linear
+time-variant (LTV) systems, so the reachable set scales linearly with cost. This allows for the development of a
+very simple optimality condition; ifδvmin is the optimal cost for a given reconﬁguration, then∆δααα will lie on the
+boundary of S∗(δvmin, T). Second, it is clear from the deﬁnitions above that if and only if a desired endpoint is
+on the boundary of bothS and S∗ for a given reconﬁguration, the reconﬁguration can be achieved with a single
+maneuver. Also, it has been previously demonstrated that any state can be reached by a maximum number of
+impulses equal to the dimension of the staten [16]. These facts prove useful in categorizing and deriving closed-form
+4
+
+===PAGE 5===
+maneuver schemes because they deﬁne both the minimum and maximum number of maneuvers required. Third, a
+2n-dimensional (2n-D) state can be projected inton 2D planes and analyzed separately without loss of generality.
+The minimum delta-v required to achieve the entire desired2n-D reconﬁguration cannot be less than the maximum
+delta-v required to achieve any of then separate 2D reconﬁgurations. To achieve a2n-D reconﬁguration given by
+∆δxxxdes =
+[
+∆δx1,des, ∆δx2,des,..., ∆δx2k−1,des, ∆δx2k,des,..., ∆δx2n−1,des, ∆δx2n,des
+]
+for k = 1,..., n, the minimum
+delta-v required is given by
+δvmin≥ max{δvmin,δ x1,2,...,δ vmin,δ x2k−1,2k,...δ vmin,δ x2n−1,2n}, (10)
+whereδvmin,δ x2k−1,2k is the optimal delta-v required to achieve the reconﬁguration in only theδx2k−1,2k plane. A proof of
+this claim is given in Appendix B and shows that the total cost of the entire reconﬁguration is driven by one of the 2D
+planes used to decompose the state.
+The inequality in Eq.(10) stems from the fact that projecting a higher dimensional reachable set onto a lower
+dimensional space inherently loses information about the shape of the original reachable set. For example, it is not
+possible to know whether a circle was projected from a cone or a cylinder. Nonetheless, it is possible to quantify when
+the expression in Eq.(10) is an equality. The minimum delta-v of the entire reconﬁgurationequalsδvmin,δ x2k−1,2k when
+the desired pseudo-state is contained inS∗
+n(δvmin,δ x2k−1,2k, Topt,δ x2k−1,2k). S∗
+n is computed using Eq.(9) in all of then 2D
+planes, whereTopt,δ x2k−1,2k is the set of optimal maneuver times. The subscriptn in S∗
+n denotes a nested reachable set,
+which is generated using a subset of times in the total reconﬁguration time and is therefore itself a subset of the reachable
+set S∗. If S∗
+n includes the desired pseudo-state when mapped onto the other 2D plane(s), the expression in Eq.(10)is an
+equality. A more in depth discussion of how to ﬁnd those optimal times for the quasi-nonsingular ROE follows in Sec. V.
+In ROE space, the planek whose total required delta-v deﬁnes the maximum in Eq.(10) is referred to as the
+dominant plane, and the individual ROE whose total required delta-v deﬁnes the maximum within the plane is known as
+the dominant ROE. For the 6D ROE state, three 2D planes can be deﬁned: the(∆δλ, ∆δa) plane (also called the∆δaaa
+plane), the∆δeee plane, and the∆δiii plane. Control actions in the∆δiii plane are decoupled from the other two planes
+using the new state representation. Cost optimality is reduced from a 6D problem to three 2D problems that can be
+analyzed separately. The next section categorizes reconﬁgurations in each 2D plane according to the number of required
+maneuvers. This analysis drives the derivation of the reachable delta-v minima.
+C. Analysis of Reachable Sets in ROE Space
+Recall,ifadesiredpseudo-state ∆δαααdes liesontheboundaryof S(c, T)and S∗(c, T)forsomecost c,thereconﬁguration
+can be achieved with a single maneuver. If the desired pseudo-state lies only onS∗(c, T)’s boundary, then the number of
+maneuversrequiredisnomorethanthesizeofthestate n[16]. Lookingatthethree2Dplanesseparately,reconﬁgurations
+can be categorized based on whether they can be achieved with one or two maneuvers by determining the times∈ T
+where S(c, t)intersects the boundary ofS∗(c, T), whereS and S∗ are computed with Eqs.(8)and (9), respectively. The
+reachable sets for eccentric orbits (Fig. 1) are found by substitutingΦΦΦ (Eq. (12) in Ref. [7]) andΓΓΓ (Eq. (13) in Ref. [7])
+into the equations forS and S∗. In the∆δeee plane (Fig. 1a),S and S∗ are equal except for a very small region near the
+axis of symmetry of the reachable set which appears only for very high eccentricities (i.e.e > 0.85). As long as the
+desired pseudo-state does not lie within this region, the point can be reached with a single maneuver. Consistent with Eq.
+(14), the reachable set in the∆δeee′ plane (Fig. 1b) has the same attributes as the reachable set in the∆δeee plane, but it is
+unaﬀected by the chief argument of perigee and is scaled along the y-axis by the eccentricity of the chief orbit. In the
+∆δaaa plane (Fig. 1c), there are only a few locations on the top/bottom surface of the parallelogram that are reachable with
+a single maneuver. The∆δiii plane is similar to the∆δeee plane, but with a slightly larger region whereS and S∗ disconnect
+(Fig. 1d).
+5
+
+===PAGE 6===
+(a) ∆δeee plane
+ (b) ∆δeee′ plane
+ (c) ∆δaaa plane
+ (d) ∆δiii plane
+Fig. 1 S(1, T) (gray) and convex hullS∗(1, T) (solid line) boundary in eccentric orbits, generated using Eq.
+(12)-(13) in Ref. [7]
+Remarkably, because of the periodicity of the control input matrix in Eq.(4), the shape ofS∗ in the∆δeee and ∆δiii
+planes is independent of the reconﬁguration time if it is greater than one orbit. In the∆δaaa plane, there is no periodicity
+so S∗ is virtually unbounded for time growing to inﬁnity.
+The simple geometry of the reachable sets in ROE space above is the basis for derivation of the reachable delta-v
+minima and closed-form maneuver schemes in this paper. In fact, comparing reachable sets across state representations
+provides further justiﬁcation for using ROE. Figure 2 shows the reachable sets in Hill’s coordinates, the most common
+relative state representation. The reachable sets in the(∆δrr, ∆δvr),(∆δrt, ∆δvt), and(∆δrn, ∆δvn) planes are generated
+using the Yamanaka-Ankerson (YA) STM [25] for eccentric orbits. The YA reachable sets are not polygons and cannot
+be described by explicit linear or polynomial expressions just by inspection. This comparison furthers the claim that
+using ROE simpliﬁes the relative motion reconﬁguration problem.
+(a)δr,δ vr plane
+ (b)δt,δ vt plane
+ (c)δn,δ vn plane
+Fig. 2 S(1, T) (gray) and convex hullS∗(1, T) boundary (solid black line) inδr,δ vr,δt,δ vt, andδn,δ vn planes in
+eccentric orbits, generated using YA STM.
+Note that to plot these reachable sets, the reconﬁguration time is discretized using a small timestep. As the timestep
+approaches zero, the graph ofS(c, T)becomes more dense. The intuition gained from analyzing the simplicity of the
+ROE reachable sets will be used to deﬁne dominance cases, derive closed-form expressions for the reachable delta-v
+minima, and develop globally optimal closed-form maneuver schemes in the sections that follow.
+IV. Reachable Delta-v Minima
+In previous work, a metric called the delta-v lower bound,δvlb, was used to quantify optimality [5, 7]. As the
+name suggests,δvlb is a lower bound on the delta-v required for a given reconﬁguration. It was derived assuming the
+use of only tangential maneuvers because of their inherent eﬃciency, which restricts the deﬁnition to reconﬁgurations
+that can be reached using only tangential maneuvers. It is therefore appropriate to deﬁne a new metric, called the
+reachable minimum delta-v,δvmin, which is the minimum delta-v required to achieve a desired reconﬁguration. Recall,
+this expression was used in the proof that an2n-dimensional (2n-D) state can be decoupled inton 2D planes. This
+section will derive closed-form expressions and their applicability for the reachable delta-v minima in orbits of arbitrary
+eccentricity by leveraging the state decoupling proof, domain speciﬁc knowledge, and the linear scaling properties of
+the reachable set. First, this section lays out the general methodology used to derive the reachable delta-v minimum.
+Second, the general methodology is applied to a speciﬁc example. Finally, the explicit closed-form expressions of the
+reachable delta-v minima are provided in tables for all dominance cases. The general methodology follows, given a
+desired pseudo-state,∆δαααdes (see Eq. (2)) and reconﬁguration time,T.
+6
+
+===PAGE 7===
+A. General Methodology
+The general methodology to derive closed-form expressions for the reachable delta-v minimum for in-plane
+reconﬁgurations is based on the four steps below and visualized in Fig. 3. A parameter with notation(.)∗ is a speciﬁc
+instance of the variable(.).
+1. Find the expression for the maneuver of magnitude one,δvvv∗, that achieves the largest change in ROE.δvvv∗ is a
+function of the true anomaly,ν. The tangential component ofδvvv∗, δv∗
+t is found by solving for the critical points of
+∆δ(.)2
+x + ∆δ(.)2
+y, where∆δ(.)x and ∆δ(.)y are a set of parameterized equations that deﬁne the boundary of the convex
+hull in a given 2D plane(x, y). The parametric equations are found by propagating the eﬀect of a single maneuver at a
+givenν (or equivalent timet) using the STM and control input matrix and are given by
+[
+∆δ(.)x(ν,δ v∗
+t(ν))
+∆δ(.)y(ν,δ v∗
+t(ν))
+]
+= ΦΦΦ(t f, t)ΓΓΓ(t) =
+ 
+
+[
+∆δλ(ν,δ v∗
+t(ν))
+∆δa(ν,δ v∗
+t(ν))
+]
+in the∆δa, ∆δλ plane, or
+[
+∆δex(ν,δ v∗
+t(ν))
+∆δey(ν,δ v∗
+t(ν))
+]
+in the∆δeee plane, or
+[
+∆δix(ν,δ v∗
+n(ν))
+∆δiy(ν,δ v∗
+n(ν))
+]
+in the∆δiii plane.
+(11)
+Eq. (11)are functions of the maneuver application timet or equivalent angleν. The explicit form of Eq.(11)is given
+in the subsections that follow. Givenδv∗
+t, the radial component,δv∗
+r, is found by solving the constraint of unitary
+delta-v,δv2
+r +δv2
+t = 1. For out-of-plane reconﬁgurations, the unitary maneuver magnitude constraint isδv∗
+n = 1. Figure
+3a illustrates Step 1, where the solid black line representsS∗(c, T) for an arbitraryc. The eﬀect of the maneuver is
+represented by the dashed arrow and is a function of the maneuver location along the reference orbit. The desired
+pseudo-state does not lie on the boundary, so this is not the optimal delta-v, as expected.
+2. Solve for the maneuver location, ν∗ or u∗, that corresponds to the direction of the desired pseudo-state. The
+maneuver location is found by equating the phase of the desired pseudo-state to the phase of thex, y components of the
+appropriate set of parameterized functions in Eq. (11) as
+tan−1
+( ∆δ(.)y
+(ν,δ v∗
+t(ν))
+∆δ(.)x
+(ν,δ v∗
+t(ν))
+)
+= tan−1
+( ∆δ(.)y, d e s
+∆δ(.)x, d e s
+)
+. (12)
+Step 2 is illustrated in Fig. 3b, where a maneuver atν∗ changes the state in the direction of the desired pseudo-state,
+indicated by the darker dashed arrow. The explicit values ofν∗ are given in the last column of Table 3.
+3. Substitute δvvv∗, ν∗ found in Steps 1 and 2 into the parameterized functions in Eq.(11). This yields
+∆δ(.)∗
+x = ∆δ(.)x(ν∗,δ v∗
+t(ν∗)) and ∆δ(.)∗
+y = ∆δ(.)y(ν∗,δ v∗
+t(ν∗)), which are thex and y components of the vector that
+deﬁnes the maximum reachable distance∆δ(.)max =(∆δ(.)∗2
+x + ∆δ(.)∗2
+y)1/2 in the direction of the desired pseudo-state
+∆δ(.)des =(∆δ(.)x,des, ∆δ(.)y,des). Equivalently, the vector points to the pseudo-state on the boundary of the convex
+hull deﬁned by||δvvv∗|| 2 = 1 in the desired direction, as illustrated in Fig. 3c.
+4. Find δvmin by dividing the norm of the desired pseudo-state|| ∆δ(.)des|| 2 by the maximum distance∆δ(.)max,
+found in Step 3. This scales the reachable set so that the desired pseudo-state lies on the boundary of the convex hull, as
+illustrated in Fig. 3d.
+∆δx1
+∆δx2
+δvvv∗(ν)
+(a) Find the “best” unitary
+delta-v as a function of ma-
+neuver locationδvvv∗(ν)
+∆δx1
+∆δx2
+δvvv∗(ν)
+δvvv∗(ν ∗)
+(b) Find the maneuver loca-
+tion ν∗ that aligns with the
+phase of the desired pseudo-
+state
+∆δx1
+∆δx2
+δvvv∗(ν)
+δvvv∗(ν ∗)
+max. dis(a)ce 
+(c) Calculate the maximum
+distance along the phase di-
+rection
+∆δx1
+∆δx2
+δvvv∗(ν ∗)
+max. dis(a)ce 
+desired ch()ge 
+(d) Solve forδvmin as a ra-
+tio of the magnitude of the
+desiredpseudo-stateoverthe
+maximum distance
+Fig. 3 Illustration of the general methodology of the reachable delta-v minimum derivation process. Figures
+a-d correspond to Steps 1-4.
+7
+
+===PAGE 8===
+B. Example: Application of Methodology to Eccentric Chief Orbit
+From Sec. III.B, the dominant 2D plane drives the delta-v cost of the2n-D reconﬁguration. This example
+demonstrates how the general methodology above is used to derive the expression forδvmin for one of the 2D planes,
+δeee′, in eccentric chief orbits. In Ref. [26], recall the algorithms were formulated using the state given in Eq.(3). For any
+reconﬁguration where the chief orbit has a nonzero (and deﬁned) argument of perigee,the reachable setS∗ is oriented
+at an angle ofω from the vertical in the∆δeee plane. The pseudo-state∆δeee was corrected for the rotation due to the
+argument of perigee as∆δ˜eee = RRR−1∆δeee, whereRRR represents a counterclockwise rotation throughω about the origin.
+The parametric equations in Eq.(11)that deﬁned the boundary ofS(c, T)in the∆δ˜eee plane were theδeee components of
+ΦΦΦ(t f, tk)ΓΓΓ(tk)rotated into the∆δ˜eee plane and expressed in terms ofν, and were given by
+[
+a∆δ ˜ex(ν,δ vt(ν))
+a∆δ ˜ey(ν,δ vt(ν))
+]
+= 1
+n
+
+η sin(ν)
+√
+1−δv2
+t(ν) +η(2+e cos(ν)) cos(ν)+e
+1+e cos(ν) δvt(ν)
+−η cos(ν)
+√
+1−δv2
+t(ν) +η(2+e cos(ν)) sin(ν)
+1+e cos(ν) δvt(ν)
+
+. (13)
+However, in this paper, the state of choice is the modiﬁed ROE given in Eq.(5), which, as discussed in Sec. III, allows
+for complete decoupling of the in-plane and out-of-plane control solutions. Though the transformation between theδeee
+state in Eq.(3) to theδeee′ state in Eq.(5) is nonlinear, the transformation between the pseudo-states,∆δ˜eee and ∆δeee′, is
+very simple. In fact, a desired change inδeee′ relates to a desired change inδeee as
+[
+∆δ ˜ex,des
+∆δ ˜ey,des
+]
+=
+[
+∆δe′
+x,des
+ec∆δe′
+y,des
+]
+. (14)
+Therefore, a desired pseudo-state inδeee′, ∆δeee′
+des, can be simply transformed to the equivalent pseudo-state∆δ˜eeedes
+through Eq.(14). Thus, the algorithms that follow in this section, which were derived for theδ˜eee state, can be used. The
+equation forδv∗
+t is derived according to Step 1 in the general methodology in Sec. IV.A as
+δv∗
+t(ν) =
+ 
+
++
+√
+1
+2 + f1(ν)
+2
+√
+4+ f1(ν)2
+for± ∆δ ˜ex, d e s,∓∆δ ˜ey, d e s
+−
+√
+1
+2− f1(ν)
+2
+√
+4+ f1(ν)2
+for± ∆δ ˜ex, d e s,±∆δ ˜ey, d e s
+, where f1(ν) = f2(ν)
+(1+e cos(ν))e sin(ν)
+f2(ν) = 2e2 cos2(ν) + 6e cos(ν) + e2 + 3
+. (15)
+To solve forν∗, Eqs.(13) and (15) are substituted into Eq.(12). However, in this case, solving Eq.(12) yields two
+values ofν∗ per orbit, so some extra considerations must be made. First, it can be shown that the arbitrary pseudo-states
+±∆δex,∓∆δey are achieved by the sameδv∗
+t and ν∗. The same is true for arbitrary pseudo-states±∆δex,±∆δey.
+Therefore, in place of∆δ(.)des in Eq. (12),∆δ ˆ(.)des is used, given by
+(∆δ ˆ(.)x,des, ∆δ ˆ(.)y,des) =
+{
+(∆δ ˜ex,des, ∆δ ˜ey,des) if + ∆δ ˜ey,des
+(−∆δ ˜ex,des,−∆δ ˜ey,des) if− ∆δ ˜ey,des
+(16)
+Second, it can be shown thatS(c, t) brieﬂy disconnects from the boundary of the convex hull during each orbit. By
+solving for theν values that maximize the parametric∆δ ˜ey expression in Eq.(13), it is found that disconnection occurs
+atνdis. =π + cos−1(e) and reconnection occurs atνr e. =π− cos−1(e). These points deﬁne the regions that containν∗,
+the maneuver locations at whichδv∗
+t(ν∗)aligns with the phase of the desired pseudo-state in each orbit. Table 1 gives the
+range containingν∗, based on the sign of the desired pseudo-state. If the phase ofa∆δ ˜edes (denoted∠a∆δ ˜edes in the
+table) lies in the region bounded byνr eorνdis as
+∠∆δ ˜edes∈[∠νdis,π−∠νdis] or ∠∆δ ˜edes∈[ π−∠νr e,∠νr e], (17)
+then the desired pseudo-state lies in the disconnected region. Note that the phase in the plane denoted with∠ is not
+necessarily equivalent to the true anomalyν.
+Table 1 Left and right boundaries of the range containing the optimalν values for a dominant relative eccen-
+tricity vector reconﬁguration
+Desired change Disconnected region? νopt,1 range νopt,2 range
+Eq. (17) true? νleft νright νleft νright
+±∆δ ˜ex,des,±∆δ ˜ey,des No π ν dis 0 νr e
+Yes νdis 2π 0 νr e
+±∆δ ˜ex,des,∓∆δ ˜ey,des No νr e π ν dis 2π
+Yes 0 νr e νdis 2π
+8
+
+===PAGE 9===
+Thereisasingle,unambiguousvalueof ν∗ intherangethatsatisﬁesEq. (12),andtheNewton-Raphson(NR)method
+can be employed to eﬃciently ﬁnd it. Because there is only one value ofν∗ in the ranges given in Table 1, it is enough to
+usetheaverageoftheleftandrightboundaryvaluesasaverygoodinitialguessfortheNRmethod. Themethodrequires
+theevaluationofthefunction f anditsderivative df/dν ateachstep. f comesfromrearrangingEq. (12)andisgivenby
+f = a∆δ ˜ey(ν)−
+(
+a∆δ ˜ey,des/a∆δ ˜ex,des
+)
+a∆δ ˜ex(ν) (18)
+df/dν is an analytic expression that can be found by simply applying the derivative quotient rule to Eq.(18). The
+bisection method can also be used, and is guaranteed to converge as long as Eq.(18) evaluated at the left and right
+boundaries from the third and fourth columns of Table 1 are of opposite signs [27]. In the case that this criteria fails,
+columns two and three of Table 2 contains “relaxed” boundaries that are guaranteed to evaluate to values of opposite
+sign when substituted into Eq. (18). Note that the boundaries in Table 1 are a subset of the “relaxed” boundaries.
+Table 2 Left and right boundaries of the range containing the optimalν values for a dominant relative eccen-
+tricity vector reconﬁguration with guaranteed convergence
+Desired change νopt,1 range,
+guaranteed convergence
+νopt,2 range,
+guaranteed convergence
+νleft νright νleft νright
+±∆δ ˜ex,des,±∆δ ˜ey,des π+ −2π 0+ −π
+±∆δ ˜ex,des,∓∆δ ˜ey,des 0+ −π π + −2π
+Then, following Steps 3 and 4 in Sec. IV.A, the general expression for reachable delta-v minimum for dominantδeee is
+found in closed-form and given in Table 4. Derivation of other dominance cases follows the same procedure. The results
+are summarized in Tables 4, 5, and 6.
+C. Reachable Delta-v Minimum in Eccentric Orbits
+Recall from Eq.(10), the maximumδvmin in Eq.(10)is the dominant ROE. Table 3 lists the values ofδvvv∗ andν∗
+found by applying Steps 1-2 in the general methodology in Sec. IV.A to each dominance case in eccentric orbits. The
+ﬁrst column gives the name of the potential dominant ROE in the case that it is dominant by Eq.(10). The second
+column gives the maneuver that achieves the maximum distance in the 2D plane as a function of theν∗ values given in
+the third column.
+Table 3 Optimal maneuver vectorsδvvv∗ and optimal maneuver locationν∗ for eccentric orbits
+Dominant... δvvv∗,(m/s) ν∗, (rad)
+... δeee,|∆δ ˜e(.), d e s|> 0 See Eq. (15) Solve Eq. (12) with Table 1, (16)
+... δeee, ∆δ ˜ex, d e s = 0
+[
+0 1 0
+]T
+0
+... δeee, ∆δ ˜ey, d e s = 0
+[
+0 1 0
+]T
+cos−1((η− 1)/ec)
+... δa
+[
+0 1 0
+]T
+0
+... δλ
+[ e sin(νt)√
+e2+2e cos(νt)+1
+1+e cos(νt)√
+e2+2e cos(νt)+1
+0
+]T
+[
+0 1 0
+]T
+νt
+0
+... δiii
+[
+0 0 1
+]T
+tan−1
+( ∆δ ˜iy, d e s
+∆δ ˜ix, d e s
+)
+Note that the case of dominantδλ lists two values forδvvv∗,ν∗. The other maneuver location,νt, is the point at which
+the derivative of the parameterized curve (see Eq.(11)) is equal to the slope from the desired pseudo-state itself to the
+pseudo-state achieved atν = 0with a purely tangential maneuver.νt lies betweenﬂoor(νf
+2π)2π andνf and is found by
+9
+
+===PAGE 10===
+solving
+d
+dν ∆δa(ν,δ vt(ν))
+νt
+/ d
+dν ∆δλ(ν,δ vt(ν))
+νt
+= a∆δa(νt,δ vt(νt)) + a∆δa0
+a∆δλ(νt,δ vt(νt)) + a∆δλ0
+. (19)
+where a∆δa0, a∆δλ0 is the pseudo-state achieved withδvvv =
+[
+0 1 0
+]T
+atν = 0. (20)
+As discussed in Sec. V, dominantδλ andδa reconﬁgurations can only be achieved optimally in the dominant plane, so
+to determine if a given 6D reconﬁguration can be achieved, it suﬃces to prove that it isnot dominantδλ orδa, which is
+true if the following conditions are met: 1)δvmin,δ eee > δvmin,δ a, and 2) The desired pseudo-state inδλ, ∆δλdes, is inside
+the convex hull in theδaaa plane. The details of the categorizedδvmin,δλ cases are given in Appendix C. Using Table 3
+and following Steps 3-4, Tables 4, 5, and 6 present the remaining reachable delta-v minima in all dominance cases in
+eccentric orbits. The second column gives the conditions on the desired ROE pseudo-state for which the expression of
+the reachable delta-v minimum in the fourth column applies.
+Table 4 Reachable δvmin, eccentric chief orbits, in-plane
+Dominant... Region deﬁnition Max normalized eﬀect δvmi n, (m/s)
+... δeee
+|∆δ ˜e(.), d e s|> 0 || a∆δ ˜eeem a x|| 2 =(a∆δ ˜e∗
+x)2 +(a∆δ ˜e∗
+y)2
+where a∆δ ˜e∗
+x = a∆δ ˜ex
+(ν∗,δ v∗
+t[ν∗]) δvmi n,δ eee = || a∆δ ˜eee d e s||
+|| a∆δ ˜eee m a x||
+∆δ ˜ex, d e s = 0 a∆δ ˜ey, m a x = 1
+n|η sinν1(2+ec cosν1)
+(1+ec cosν1) |
+whereν1 = cos−1((η− 1)/ec)
+δvmi n,δ eee = | a∆δ ˜ey, d e s|
+a∆δ ˜ey, m a x
+∆δ ˜ey, d e s = 0 a∆δ ˜ex, m a x = 2η
+n δvmi n,δ eee = | a∆δ ˜ex, d e s|
+a∆δ ˜ex, m a x
+The reachable delta-v minimum in the other dominance cases in eccentric orbits are derived in the same way. As in
+Eq. (13), the parametric equations in the∆δa, ∆δλ plane in Eq.(11) are theδa,δλ components ofΦΦΦ(t f, tk)ΓΓΓ(tk), given
+by
+[
+a∆δλ(ν,δ vt(ν))
+a∆δa(ν,δ vt(ν))
+]
+= 1
+n
+
+(
+− 2η2
+1+e cos(ν)− 3
+η ∆Me sin(ν)
+) √
+1−δv2
+t(ν)− 3
+η ∆M(1 + e cos(ν))δvt(ν)
+2
+η e sin(ν)
+√
+1−δv2
+t(ν) + 2
+η(1 + e cos(ν))δvt(ν).
+
+(21)
+The ∆δaaa plane can be conveniently split into two dominance cases,δa andδλ, based on the shape of the reachable setS∗.
+The reconﬁguration is denoted dominantδa if the desired pseudo-state lies on the horizontal edges ofS∗ (see Fig. 1c),
+and otherwise is denoted dominantδλ. The pseudo-state that denotes the end of theδa region is given by
+a∆δak2π, a∆δλk2π, the pseudo-state achieved withδvvv =
+[
+0 1 0
+]T
+atν = ﬂoor(νf
+2π)2π. (22)
+For nonzero but low eccentricity, the transition from the dominantδa region to the dominantδλ region is not a corner,
+but a curved region known as the transition region (see Fig. 4a). The start of the region is given by Eq.(22), and the end
+of the region is given by
+a∆δat, a∆δλt, the pseudo-state achieved withδvvv = 1√
+e2 + 2e cos(νt) + 1
+[
+e sin(νt) 1 + e cos(νt) 0
+]T
+atν =νt (Eq. (19)).
+(23)
+The size of the transition region is a function of the chief eccentricity, and it exists for any reconﬁguration times that are
+notintegermultiplesofthechieforbitperiod. Forsomereconﬁgurationtimes,thedominant δλ regionoftheboundaryof
+S∗ warpsintotwoseparate, linearregions, asshowninFig. 4b. Theseparateregions, calledtheextendedregions, existif
+
+a∆δat− a∆δa f
+a∆δλt− a∆δλ f
+<
+
+a∆δat + a∆δa0
+a∆δλt + a∆δλ0
+, where a∆δ(.)0 is deﬁned in Eq. (20) and (24)
+a∆δa f, a∆δλ f is the pseudo-state achieved withδvvv = 1√
+e2 + 2e cos(νf) + 1
+[
+e sin(νf) 1 + e cos(νf) 0
+]T
+atν =νf. (25)
+10
+
+===PAGE 11===
+Transition 
+region
+Transition 
+region
+(a) Transition region in the∆δaaa plane for low ecc.
+Region 1
+Region 2 (b) Extended region appears when Eq.(24)is true
+Fig. 4 The diﬀerent dominance subcases in the∆δaaa plane
+The dominance cases in the∆δaaa plane are given in Table 5 and in Appendix C, Table 12.
+Table 5 Reachable δvmin, eccentric chief orbits, in-plane
+Dominant... Region deﬁnition Max normalized eﬀect δvmi n,(m/s)
+... δa ∆δad e s> 0and ∆δλ d e s<−δvmi n,δ a|∆δλ k2π| a∆δam a x = 2(e+1)
+η n δvmi n,δ a = | a∆δ ad e s|
+| a∆δ am a x|
+or ∆δad e s< 0 and ∆δλ d e s> δvmi n,δ a|∆δλ k2π|
+... δλ, Transition region ∆δad e s> 0,−| ∆δλt|> ∆δλ d e s
+δ vmi n,δ a >−| ∆δλ k2π| See Table 12
+or ∆δad e s< 0,|∆δλ k2π|> ∆δλ d e s
+δ vmi n,δ a >|∆δλt|
+... δλ
+∆δad e s> 0and ∆δλ d e s>−δvmi n,δ a|∆δλt| See Table 12
+or ∆δad e s< 0and ∆δλ d e s< δvmi n,δ a|∆δλt|
+or large∆δλ d e s
+... δλ,Extended
+region
+Exists if Eq. (24) is satisﬁed See Table 12
+Table 6 presents the reachable delta-v minimum for out-of-plane reconﬁgurations in eccentric orbits. Just as in the
+∆δeee plane, the reachable setS∗ is oriented at an angle ofω from the vertical for any reconﬁguration where the chief has
+a nonzero (and deﬁned) argument of perigee. The parametric equations in the∆δiii plane in Eq.(11)are rotated into the
+∆δ˜iii plane using the same rotation matrix as in the∆δ˜eee case, and are given by
+[
+a∆δ˜ix(ν,δ vn(ν))
+a∆δ˜iy(ν,δ vn(ν))
+]
+= 1
+n
+η
+1 + e cos(ν)
+[
+cos(ν)
+sin(ν)
+]
+δvn(ν). (26)
+As in the dominantδeee case and shown in Fig. 1d, the reachable setS(c, t)brieﬂy disconnects from the boundary of
+the convex hull during each orbit. By solving for theν values that maximize the parametric∆δ˜iy expression in Eq.(26),
+it is found that disconnection occurs atνdis. =π + cos−1(e) and reconnection occurs atνr e. =π− cos−1(e), the same
+ν locations as in the∆δ˜eee case. Reconﬁgurations whose desired pseudo-state lies in the disconnected region require a
+slightly diﬀerent formulation of the reachable delta-v, given in the second row of Table 6. In Table 6,ν∗ is equal to the
+phase of the rotated desired pseudo-state,tan−1( ∆δ ˜iy
+∆δ ˜ix
+).
+Table 6 Reachable δvmin, eccentric chief orbits, out-of-plane
+Dominant... Region deﬁnition Max normalized eﬀect δvmi n,(m/s)
+... δiii
+ν∗∈(νr e,ν d i s) || a∆δ˜iii m a x|| = η
+1+e cos(ν∗)
+1
+n
+|| a∆δ ˜iii d e s||
+|| a∆δ ˜iii m a x||
+ν∗ +π∈(νr e,ν d i s) || a∆δ˜iii m a x|| = η
+1−e cos(ν∗)
+1
+n
+|| a∆δ ˜iii d e s||
+|| a∆δ ˜iii m a x||
+Bothν∗ andν∗ +π <(νr e,ν d i s) | a∆δ ˜iy, m a x| = sin(νr e.)η
+1+e cos(νr e.)
+1
+n
+| a∆δ ˜iy, d e s|
+| a∆δ ˜iy, m a x|
+11
+
+===PAGE 12===
+V. Closed-form Maneuver Schemes
+This section ﬁrst presents the general methodology to calculate an optimal maneuver scheme, then gives the explicit
+closed-form solutions for multiple relevant cases.
+A. General Methodology
+Given an initial chief orbitαααc,0, a desired pseudo-state a∆δαααdes, and a reconﬁguration timeT, the general
+methodology to calculate closed-form, optimal maneuver schemes is given step-by-step as follows.
+1. Determine the dominance case and reachable delta-v minimum by computing all independentδvmin using
+Tables 3-6 and substituting them into Eq. (10).
+2. Find the set of optimal maneuver locationsνopt or uopt (or, equivalently,Topt). The optimization problem in
+Eq. (2) is computationally intractable for many linear time-variant systems. As Koenig [16] details, this problem is
+remedied by solving the dual of Eq.(2), which is to maximizeδv subject to:maxzzz∈S∗(δv,T)λλλTzzz≤λλλT∆δαααdes whereλλλ
+is the normal vector of a supporting hyperplane ofS∗(δv, T), calledL(∆δαααdes,λλλ) (or L), which contains the desired
+pseudo-state ∆δαααdes. It is not necessary to solve the optimization problem itself in this paper because the ROE state
+representation yields geometrically simple reachable sets. However, Koenig’s analysis yields properties that help provide
+some geometric intuition in solving Eq.(2). Once the reachable delta-v minimum is known for a given reconﬁguration,
+the projection ofL in the dominant 2D plane is the line that passes through the desired pseudo-state and is tangent to
+S∗(δvmin, T). Therefore, every point in the intersection betweenL and S∗(δvmin, T)is in the boundary ofS∗(δvmin, T),
+andthedesiredpseudo-statemustbein L∩ S∗(δvmin, T)aswell. BydeﬁnitionoftheconvexhullinEq. (9),itispossible
+to ﬁnd a convex combination of points inL∩ S∗(δvmin, T)that achieves the desired reconﬁguration with cost equal to
+δvmin. Therefore, a set of optimal maneuver timesTopt must be found so that the optimality condition in the dominant
+plane is satisﬁed. In other words,Topt is the set of all times inT at whichL can be reached with a single maneuver and
+is found by determining whereS(c, t)(Eq. (7)) intersects the boundary ofS∗(c, T).
+3. Generate nested reachable sets using Topt from the previous step. The nested reachable setS∗
+n(δvmin, Topt) is
+calculated using Eq.(9) for only the times inTopt, withδvvv equal toδvvv∗ (see Table 3) scaled byδvmin. Because Topt
+is a subset ofT, S∗
+n(δvmin, Topt) is a subset ofS∗(δvmin, T). As noted in the previous section, the desired pseudo-state
+projected in the non-dominant plane must lie in the nested reachable set in order for the reachable delta-v minimum to be
+equal to the values in Tables 4-6. Figure 5 illustratesSn as a shaded region or point.
+a∆δa
+a∆δλ 
+(a) Dominantδeee
+a∆δex
+a∆δey (b) Dominantδa
+a∆δex
+a∆δey
+t0
+tf (c) Dominantδλ
+Fig.5 Ineccentricorbits,thedesiredpseudo-statemustlieinthenestedreachableset S∗
+n (shadedorgraypoint)
+for the full reconﬁguration to be achievable with delta-v driven by the dominant plane.
+∆δa is dependent on the maneuver location in eccentric orbits, given by multiples of2π, which means that the set of
+times inTopt is ﬁnite. Therefore, the only pseudo-states that are reachable occur at maneuver locations that are multiples
+of 2π, soS∗
+n is a single point at the boundary ofS∗ on the∆δex-axis (see Fig. 5b). In addition, as shown in Fig. 5c, for
+dominantδλ, S∗
+n is a single pseudo-state that lies on the segment (dashed line) connecting the pseudo-states at the two
+times inTopt, t0 at the start of the reconﬁguration, andt f at the end.
+4. Satisfy constraints. Each dominance case has a set of constraints that must be satisﬁed in order for 1) a
+closed-form solution to exist and 2) the closed-form solution to be energy-optimal. A Type 1 constraint requires the
+desired pseudo-state to be inside or on the boundary of the nested reachable set, and a Type 2 constraint ensures that the
+totalcostofthemaneuverschemeisequalto δvmin,i.e., Íp
+k=1||δvvvk|| 2 =δvmin. ThethirdcolumnofTable8summarizes
+the Type 1 constraints for all cases. The set of constraints translates to a linear system to be solved for the maneuver
+magnitudes, c1, c2,..., cp. Note that the number of required maneuvers in Column 3 of Table 8 is not arbitrary. The size
+of the state and the location of the desired pseudo-state drive the number of required maneuvers. To control a single 2D
+state, such as the out-of-plane ROE, one maneuver is required if the desired pseudo-state lies in both S and S*, and two
+12
+
+===PAGE 13===
+maneuvers are required if the desired pseudo-states lies just in S*. To control a 4D state, such as the in-plane ROE, more
+maneuvers are required to satisfy the constraints of achieving the desired pseudo-state in each of the four dimensions.
+5. Solvelinearsystem. Atthispoint,onlythemaneuvermagnitudesareunknown. Setsof pmaneuvertimes(given
+in the second column of Table 8) and corresponding pseudo-states inSn (∆δak, ∆δλk, ∆δex,k, ∆δey,k for k = 1,.., p)
+must be chosen so that the Type 1 constraints in column three of Table 8 are satisﬁed. The Type 2 constraint always
+translates toÍp
+k=1 ck = 1 in the linear system.
+The resulting linear system is of the formAAAccc = bbb with unknown coeﬃcientsccc. Since the determinant is always
+non-null based on the choice of maneuvers inSn, the linear system can be solved byccc = AAA−1bbb.
+B. Closed-form Solutions in Eccentric Orbits
+This section gives explicit closed-form maneuver schemes in eccentric orbits, which result from application of
+the general methodology described in the previous section. As the eccentricity approaches zero, the∆δeee′ state is not
+necessary because control of the quasi-nonsingular ROE in Eq.(3)is inherently decoupled. The algorithms reduce to
+the near-circular algorithms given in Ref. [26]. Table 7 gives the optimal maneuverδvvv∗ (column 2) and set of optimal
+maneuverlocations νopt (column3)forrelevantreconﬁgurationcasesineccentricorbits. Thediﬀerencebetweencolumn
+2 in Table 7 and column 2 of Table 3 is that Table 3 was only concerned with ﬁnding the scaling factor (δvmin) on the
+reachable set so that the desired pseudo-state was on the boundary of the convex hull. In contrast, Table 7 lists the
+speciﬁc maneuver locations required to achieve the desired reconﬁguration with delta-v equal toδvmin.
+In the∆δeee plane, L is only reachable at the time at whichS(c, t) aligns with the phase of the desired pseudo-state
+because L is tangent to the reachable set only at the desired pseudo-state. BecauseS(c, t)is periodic in the∆δeee plane, it
+will align with the desired direction every half orbit, at so-calledνopt,1 andνopt,2. The ﬁrst value,νopt,1, is equal toν∗,
+which was found by substituting Eqs.(13)-(16)into Eq.(12)and solving in the range ofν values given by columns three
+and four of Table 1. The second value,νopt,2, is found using the same solving methods as the previous section, but using
+an initial guess in the range given in last two columns of Table 1. As in Sec. IV,νopt,2 can also be found using the
+bisection method, which is guaranteed to converge as long as substituting the left and right boundaries from columns ﬁve
+and six of Table 1 into Eq.(18)yields values of opposite sign. If that criteria fails, the “relaxed” boundaries in columns
+four and ﬁve of Table 2 can be used.
+The explicit values inνopt are the union of integer multiples of2π away fromνopt,1 andνopt,2. This is summarized
+in the last column of row 1 in Table 7.
+Table 7 Optimal maneuver vectorsδvvv∗ and set of optimal maneuver timesTopt for eccentric orbits
+Dominant ... δvvv∗, (m/s) νo p t, (rad)
+... δeee
+|a∆δ ˜e(.), d e s|> 0 See Eq. (15) ∪{νo p t,1 + k2π, k = ﬂoor(ν f−νo p t,1
+2π ),
+νo p t,2 + k2π, k = ﬂoor(ν f−νo p t,2
+2π )}
+a∆δ ˜ex, d e s = 0, a∆δ ˜ey, d e s≷ 0
+[
+0 ±δvmi n,δ eee 0
+]T
+[
+0 ∓δvmi n,δ eee 0
+]T
+∪{ν∗ + k2π, k = ﬂoor(ν f−ν∗
+2π ),
+−ν∗ +(k + 1)2π, k = ﬂoor(ν f−ν∗−2π
+2π )}
+a∆δ ˜ex, d e s≷ 0, a∆δ ˜ey, d e s = 0
+[
+0 ±δvmi n,δ eee 0
+]T
+[
+0 ∓δvmi n,δ eee 0
+]T
+∪{ 0 + k2π, k = ﬂoor(ν f
+2π),
+π + k2π, k = ﬂoor(ν f−π
+2π )}
+... δiii
+ν∗∈(νr e,ν d i s)
+[
+0 0 +δvmi n,δ iii
+]T
+ν∗ + k2π, k = ﬂoor(ν f−ν∗
+2π )
+ν∗ +π∈(νr e,ν d i s)
+[
+0 0 −δvmi n,δ iii
+]T
+(ν∗ +π) + k2π, k = ﬂoor(ν f−(ν∗+π)
+2π )
+Else
+[
+0 0 +δvmi n,δ iii
+]T
+[
+0 0 −δvmi n,δ iii
+]T
+∪{νr e + k2π
+νd i s + k2π}
+, k = ﬂoor(ν f−νd i s
+2π )
+Note that to achieve a marginal improvement in delta-v, integer multiples of linear combinations ofνopt,1 andνopt,2
+can be used for reconﬁgurations in the disconnected region.
+After computing the optimal times and maneuvers using Table 7, the nested reachable set is generated according to
+13
+
+===PAGE 14===
+Step 3 of the general methodology described in Sec. V.A. Then, according to Step 4, a subset of maneuvers is chosen
+from Sn so that it satisﬁes a set of constraints. Table 8 gives the speciﬁc constraints that must be satisﬁed (column 3) and
+the corresponding linear system (column 4) to solve in Steps 4-5 of the general methodology in Sec. V.A. In Table 8, the
+subscript max (min) refers to the largest (smallest) value of that ROE in the nested reachable set for the chosen set of 3
+maneuvers.
+Table 8 Closed-form maneuver scheme constraints in eccentric orbits
+Dominant... # of
+Maneuvers
+Constraints (Type 1) Linear System
+... δeee 3 a∆δam a x≥ a∆δad e s≥ a∆δami n
+a∆δλ m a x≥ a∆δλ d e s≥ a∆δλ mi n
+Í3
+i=1 ci = 1
+Í3
+i=1 ci a∆δai = a∆δad e s
+Í3
+i=1 ci a∆δλi = a∆δλ d e s
+... δiii
+ν∗∈(νr e,ν d i s) 1 N/A c1 = 1
+ν∗ +π∈(νr e,ν d i s) 1 N/A c1 = 1
+Else 2 N/A
+Í2
+i=1 ci a∆δ ˜ix = a∆δ ˜ix, d e s
+Í2
+i=1 ci a∆δ ˜iy = a∆δ ˜iy, d e s
+VI. Sub-optimal Solution Handling
+An optimal solution cannot always be found in closed-form. Fig. 5 shows that the nested reachable set is so restricted
+in dominantδa andδλ reconﬁgurations that only a dominant plane reconﬁguration can be achieved in closed-form.
+The same can occur (but less frequently) in dominantδeee reconﬁgurations where the desired pseudo-state lies outside
+of the nested reachable set in the non-dominant plane. This section will describe the method by which a closed-form
+sub-optimal solution can be found for an unreachable pseudo-state. To generate a sub-optimal solution for a given
+reconﬁguration, the methodology in Sec. V is modiﬁed to relax the requirement in Step 4 that the desired pseudo-state
+must lie inside or on the boundary of the nested reachable set in the non-dominant plane. Then the reconﬁguration
+problem is solved as if the reconﬁguration were dominant in the relative eccentricity vector. The increase in delta-v
+required to achieve the desired pseudo-state can be quantiﬁed by comparison to the reachable delta-v minimum that
+was calculated in Step 1 of the closed-form solution methodology. The “best” closed-form maneuver scheme is the
+sub-optimal scheme with delta-v closest to the reachable delta-v minimum. The ﬁrst example in the Validation section,
+Sec. VIII, will demonstrate application of this method to a case where the desired pseudo-state lies outside of the nested
+reachable set.
+This methodology applies for many types of reconﬁgurations where a closed-form optimal solution cannot be found.
+However, as with the closed-form solutions in Sec. V, the reconﬁguration span must be long enough to satisfy the other
+internal constraints of the system. In addition, for some missions, the delta-v budget may be so strict that the sub-optimal
+solution delta-v is too high to be usable. To ﬁnd closed-form solutions for these restrictive cases, other sub-optimal
+solution methods can be applied, such as extending the reconﬁguration time or breaking the reconﬁguration up into
+multiple reconﬁgurations with boundary conditions.
+VII. Error Analysis
+In an ideal world, the algorithms above produce maneuver schemes that will achieve a desired reconﬁguration exactly.
+In reality however, uncertainty in the dynamics model, state knowledge, and maneuver execution can propagate into
+signiﬁcant errors in the ROE achieved at the end of a reconﬁguration. Therefore, it is pertinent to assess the eﬀect of
+common uncertainties on achieving a desired reconﬁguration.
+Recall, in the linearized framework, the ROE achieved in the presence ofp maneuvers with magnitudesδvvvk and
+times tk for k = 1,..., p are given in Eq.(1). This section analyzes the eﬀect on the achieved ROEδααα f of errors from
+four sources: the magnitude of the maneuver vectorδvvvk, maneuver execution timetk, initial absolute stateαααc,0, and
+initial relative stateδααα0. The error in each of the four cases is assumed to be normally distributed with meanµµµvar and
+covariance VVV var, where the subscriptvar will be replaced with the name of the error source. Error will be represented
+14
+
+===PAGE 15===
+asϵ for scalars and asϵϵϵ for vectors. First, each error source’s eﬀect on the reachable setsS(c, T)and S∗(c, T)is analyzed
+graphically to gain intuition into the abstract 6D space. Then, the eﬀect of the error on the ROE reached at the end of the
+reconﬁguration is quantiﬁed by including the error mean and covariance in the equations in place of the nominal values.
+A. Eﬀect of errors on the reachable sets
+1. Maneuver execution errors
+Maneuver execution errors result from multiple factors including time delays, thruster misalignment, and thruster
+imperfections. Anerrorinthemagnitudeofthemaneuvervectortranslatestoanexpansionorcontractionofthereachable
+sets S(c, t), S(c, T), andS∗(c, T)by the same amount. This is shown in Fig. 6a for an arbitrary 2D case and can be easily
+deduced by substituting(1 +ϵ)δuuu in place ofδuuu in the deﬁnitions of the reachable sets given in Eqs.(7),(8), and(9),
+where the pseudo-state is linear in delta-v. In all ﬁgures in this section, the solid lines indicateS∗(c, T), the convex hull
+of the reachable set, and the dashed lines indicateS(c, t), the reachable set at an arbitrary time in the reconﬁguration
+span. The subscriptnom denotes the shapes of the reachable sets if there were no errors, while the subscripterr denotes
+the shapes of the reachable sets in the presence of errors.
+∆δ x1
+∆δ x2 S ∗
+nom (c, T )
+S nom (c, t )
+S ∗
+err (c, T )
+S err (c, t )
+(a)Anerrorinthemagnitudeofthemaneuvervectorexpands
+orcontractsthenominalreachablesets Snom and S∗nom (black)
+linearly. The scaled reachable setsSerr and S∗err are shown
+in blue.
+∆δ x1
+∆δ x2 S ∗
+nom (c, T ),
+S nom (c, t )
+S ∗
+err (c, T )
+S err (c, t )
+(b)Anerrorinthemaneuverexecutiontimewarps Snom(c, t)
+from a nominal conﬁguration (black dashed line) to an error
+conﬁgurationSerr(c, t) (blue dashed line), but has no eﬀect
+on the convex hull of the reachable setS∗nom(c, T).
+Fig. 6 Eﬀect of errors in maneuver magnitude and execution time
+The eﬀect of an error in the maneuver time is more complicated than the eﬀect of an error in the vector itself.
+Substituting tj +ϵ into the equations of the reachable sets in place oftj shows that the eﬀect is nonlinear. Luckily, the
+eﬀect is simple to visualize. If the maneuver time is executed earlier or later than expected,S(c, tj)becomes S(c, tj +ϵ),
+which, as shown in Fig. 6b, represents a rotation and possible deformation. However, the reachable setsS(c, T) and
+S∗(c, T) do not change at all, as long as the new maneuver time is within the reconﬁguration span because by deﬁnition
+if tj +ϵ∈ ∆t f, then theS(c, tj +ϵ) was already used to constructS(c, T) and S∗(c, T). In this arbitrary example, the
+maneuver time error makes the maneuver time less eﬀective, because the maneuver is no longer occurring at the optimal
+time. As will be shown in the next subsection, luckily the time error has to be very large to cause a signiﬁcant error in
+the achieved ROE.
+2. Navigation errors
+Navigation errors represent uncertainty in the knowledge of the state due to sensor errors or estimation algorithms.
+This section will look at the eﬀect on the ﬁnal achieved ROE due to errors in the initial relative state of the formation and
+in the initial absolute orbit elements state of the chief satellite. An error in estimating the initial relative state does not
+change the reachable sets. This is because the deﬁnitions of the reachable sets are not a function of the initial ROE.
+Recall that the initial ROE only appears in precompensation of the ROE. Therefore, in the state spaceδααα, which can be
+written simply as a function of the pseudo-state∆δααα asδααα = ΦΦΦ f,0δααα0 + ∆δααα, the origin of the reachable sets is actually
+translating. Figure 7a shows this graphically.
+15
+
+===PAGE 16===
+∆δ x1
+∆δ x2 S ∗
+nom (c, T ),
+S nom (c, t ),
+S ∗
+err (c, T )
+S err (c, t )
+δ x2
+δ x1
+ΦΦΦf, 0δα αα 0,err 
+ΦΦΦf, 0δα αα 0,nom 
+(a)AnerrorintheinitialROEcausesnochangeinthepseudo-
+state space (left) but shifts the nominal reachable sets (black
+to blue) around linearly in the state space (right).
+∆δx 1
+δx 2
+δx 1
+ΦΦΦf, 0δα αα 0,err 
+ΦΦΦf, 0δα αα 0,nom 
+∆δx 1
+∆δx 2 S ∗
+nom (c, T )
+S nom (c, t )
+S ∗
+err (c, T )
+S err (c, t )
+(b)Anerrorintheinitialchieforbitelementscausesadistor-
+tionoftheshapeofthenominalreachablesets Snom and S∗nom
+(left) and can shift the reachable sets around nonlinearly in
+the state space (right).
+Fig. 7 Eﬀect of relative and absolute navigation errors
+The plot in Fig. 7a on the left is pseudo-state space, where the reachable sets remain unchanged. In contrast, in the
+plot on the right in Fig. 7a, the origin of the reachable sets (indicated by a dot) is translating (linearly) based on the error
+in the initial ROE.
+An error in the absolute state is harder to quantify mathematically than an error in the relative state, but as in the case
+of a maneuver execution time error, is easy to visualize geometrically in the reachable sets. The chief absolute state
+appears in both the pseudo-state and state equations. Therefore, an error in the absolute state may distort the shapes of
+reachable sets and move them around in the phase plane; the overall eﬀect is a composite of the eﬀects shown in Fig. 7b.
+The eﬀect of error in the initial chief orbit elements is nonlinear, but very small, as will be demonstrated in the next
+subsection with an analysis that includes realistic error.
+Note that this paper does not consider the eﬀect of maneuver vector orientation error. Orientation error can be
+represented with an azimuth and elevation angle from nominal RTN. In that case, a normal distribution for each angle
+would be required to describe the full eﬀect of orientation error on the ﬁnal ROE. Another option is to consider three
+planar cases (rotation about R, rotation about T, rotation about N) with a single angle to represent orientation error. In
+either case, orientation has no eﬀect on the reachable sets as long as it is decoupled from the maneuver magnitude
+change, because the set ofall control actions of norm one is used to generate the reachable sets in time, and rotating the
+maneuver vector does not change its norm.
+B. Quantifying the eﬀect of error on the achieved ROE
+TheaccuracyoftheachievedﬁnalROEisalinearfunctionoferrorinthemaneuvervectororintheinitialROEanda
+nonlinearfunctionoftheerrorintheinitialchiefOEorinthemaneuverexecutiontime. Thissectionwillshowthatifthe
+ﬁnal ROE are a linear function of a given error source, the mean and covariance of the eﬀect of that source can be found
+analytically. For the cases where the eﬀect of an error source is nonlinear, numerical realistic mean and covariance data
+will be used to demonstrate that these two sources are less impactful on the achieved ROE at the end of a reconﬁguration.
+1. Linear error eﬀects
+This section shows how a known mean and covariance of a linear error source can be transformed analytically to a
+mean and covariance of the error in the achieved ROE. Suppose the error in the magnitude of theδvvv vector,ϵmagn., is a
+normal distribution with known meanµmagn.∈ R and covarianceVmagn.∈ R. The ROE achieved in the presence of
+errors is found by simply substituting(1 +ϵmagn.)III3δvvvk into Eq.(1)in place ofδvvvk. Performing this substitution and
+manipulating the equation yields the following form
+δαααactual = AAAmagn. + BBBmagn.ϵmagn., (27)
+where
+AAAmagn. = ΦΦΦ f,0δααα0 + Íp
+k=1 ΦΦΦ f,kΓΓΓkδvvvk∈ R6 and
+BBBmagn. = Íp
+k=1 ΦΦΦ f,kΓΓΓkδvvvk∈ R6. (28)
+Becausethesetofallnormaldistributionsisclosedunderlinearoperations,alinearcombinationofmultiplemultivariate
+normal distributions is also normally distributed, and the mean and covariance of the achieved ROE in the presence of
+maneuver vector magnitude error are given simply by
+µµµδαααa c t u al = AAAmagn. + BBBmagn.µmagn.
+VVVδαααa c t u al = BBBmagn.Vmagn.BBBTmagn.. (29)
+16
+
+===PAGE 17===
+If µmagn., the mean of the maneuver vector magnitude error, is 0, then the mean of the actual achieved ROE is the ﬁnal
+desired ROE for the reconﬁguration. The same methodology can be applied to the ﬁnal ROE achieved in the presence of
+errors in the initial ROE. Substitutingδααα0 +ϵϵϵinit roeinto Eq.(1) in place ofδααα0 and manipulating as in Eq.(27)yields
+AAAinit roe = ΦΦΦ f,0δααα0 + Íp
+k=1 ΦΦΦ f,kΓΓΓkδvvvk∈ R6 and
+BBBinit roe = ΦΦΦ f,0∈ R6×6. (30)
+The mean and covariance of the achieved ROE in the presence of error in the initial ROE takes the same form as Eq.
+(29), but withAAA, BBBinit roein place ofAAA, BBBmagn.
+2. Nonlinear error eﬀects
+The mean and covariance of a nonlinear error eﬀect cannot be directly translated to an analytic expression for the
+mean and covariance of the error in the ﬁnal ROE without linearization. Instead, a large number of data points of the
+errored variable are generated, and each is transformed nonlinearly to its eﬀect on the ﬁnal ROE. By the law of large
+numbers, the mean and covariance of the result of the many transformed data points will closely approximate the actual
+mean and covariance. Test 2 in Sec. VIII will apply the methods to determine linear and nonlinear error eﬀects to a
+realistic relative orbit reconﬁguration.
+The newly-found standard deviation of the error in each ROE, given by the square root of the on-diagonal entries of
+the resulting covariance matrices, can be used to determine the likelihood that the desired end-state lies within a certain
+range about the expected value. However, this common method neglects the oﬀ-diagonal covariances, which, as will be
+shown in the example in Sec. VIII, are signiﬁcant. Therefore, the cross-coupling cannot be discounted, and a better
+method is necessary to understand if a given maneuver scheme satisﬁes performance requirements in the presence of
+known errors. The next section demonstrates how to use the full 6D covariance matrix to assess performance.
+C. Performance
+As formation ﬂying missions grow more ambitious, the requirements for delta-v budgeting and maneuvering
+performance grow more strict. This section shows how an error ellipsoid can be used to assess the statistical likelihood
+that the ﬁnal ROE (in the presence of errors and uncertainty) lies within a given performance envelope.
+Anerrorellipsoidisan n-Dgeneralizationofanerrorellipse,centeredatthemean µµµwithshape,size,andorientation
+deﬁned by a covariance matrixVVV∈ Rn×n and a desired conﬁdence level. For ann-D state, the performance envelope
+is deﬁned as a polygon in nD, or, equivalently the intersection of hyperplanes of dimensionn-1, centered at the mean
+µµµ∈ Rn. Because the polygon is essentially just a desired range that the ﬁnal state must lie in in each coordinate direction,
+its axes align with the coordinate vectors of then-D state space. To determine if the error ellipsoid lies entirely inside the
+performance envelope, it is enough to show that the smallest bounding box that contains the error ellipsoid lies inside of
+the polygon. This section shows how to ﬁnd the ellipsoid maxima which deﬁne the edges of the smallest bounding box
+for ann-D state.
+Given the meanµµµ∈ Rn and covarianceVVV∈ Rn×n, an error ellipsoid can be represented as a transformation matrix
+that stretches and rotates the unit spheroid inRn to the size, shape, and orientation of the error ellipsoid. The covariance
+matrix is positive semi-deﬁnite by deﬁnition, and is therefore diagonalizable and has distinct (linearly independent)
+eigenvectors. Letλλλ, vvv represent the eigendecompensation of the covariance matrix whereλλλ∈ Rn×n is a diagonal matrix
+with(i, i)entry eigenvalueλi and associated eigenvectorvvvi∈ Rn column i of the eigenvector matrixvvv∈ Rn×n. The error
+ellipsoid is centered atµµµwith semi-axis i of length2χ√λi in the direction ofvvvi for i = 1,.., n [28]. χ2 is theχ2 statistic
+value for a given conﬁdence range and degrees of freedom equal to the size of the state (i.e.n). The transformation
+matrix TTT∈ Rn×n that maps the unit spheroid to the error ellipsoid is given byTTT = vvvdiag
+(
+2χ√λ1,..., 2χ√λn
+)
+which,
+when applied the unit axes of the spheroid, simply represents ﬁrst a stretching along each axisi to be of length2χ√λi,
+and then a rotation of the ellipsoid such that the axes align with the semi-axes directions.
+The ellipsoid maxima are found by exploiting the simplicity of the transformation matrix and the positive semi-
+deﬁniteness of the covariance matrix. This method is outlined in Fig. 8 for a 2D demonstrative example. The goal of this
+methodology is to ﬁnd the minimum bounding “box,” or n-dimensional abstraction of a box, that encloses the error
+ellipsoid completely, for anyn-D state. The minimum bounding box that ﬁts around the error ellipsoid has unknown
+dimensions deﬁned by the maxima of the ellipsoid. As shown in Fig. 8a, the “sides” of the bounding box are aligned
+with the coordinate directions of the space, i.e. the basis vectorsˆeee1, ˆeee2, ...,ˆeeen are each normal vectors of the hyperplanes.
+Because it is the smallest possible box, the hyperplanes are tangent to the error ellipsoid at its maxima in each coordinate
+17
+
+===PAGE 18===
+direction and remain tangent to the unit sphere after transformation becauseTTT is linear, as shown in Fig. 8b. However,
+the beneﬁt of looking at the error ellipsoid as a transformed unit sphere comes from the fact that the transformed normal
+vectors that deﬁne these tangent planes are now by deﬁnition radius vectors of the sphere, and have a known length of 1,
+as shown in green in Fig. 8b. If the directions of these normal vectors are found and transformed back, they will deﬁne
+the n maxima, the green vectors in Fig. 8c. The basis vectorsˆeeei deﬁne the hyperplanes both before and after linear
+transformation, so any vectors perpendicular to these transformed basic vectors can be used as direction vectors. The
+transformed basis vectors are calculated asTTT−1 ˆeeei = column i ofTTT−1. Recall TTT is just the product of a diagonal matrix
+and distinct eigenvectors, soTTT and TTT−1 have the same eigenvectors. Therefore rowj of TTT is perpendicular to columni of
+TTT−1 as long asi , j. So using the rows ofTTT as normal vectors and transforming them back to ellipsoid space yields the
+maxima.
+x2
+x1
+Error ellip(oi) 
+Maxima 
+Bounding (o) 
+xmax 
+ymax 
+(a) The normal vectors of the sides of
+theminimumboundingboxaretheba-
+sis vectorsˆeeei
+x2
+x1
+Unit sph()oid 
+Maxima 
+(t(a)sfo(me.) 
+Bounding (o) 
+(tran.formed) 
+1
+(b) The transformed bounding box re-
+mains tangent to the ellipsoid when it
+is transformed into a unit sphere.
+x2
+x1
+Error ellip(oi) 
+Maxima 
+Bounding (o) 
+xmax 
+ymax 
+(c) The normal vectors (green) to the
+hyperplanes on the unit sphere are the
+maxima of the error ellipsoid
+Fig. 8 To ﬁnd the maxima of an error ellipsoid in nD, the ellipsoid is transformed into a unit sphere using the
+eigendecomposition of its covariance matrix.
+AROEreconﬁgurationexamplecanbefoundinSec. VIII.Themethodologyisgeneraltoan n-Dstate,andtakesinto
+account the actual shape and cross coupling of then-D covariance matrix to check for violations of more complicated
+deadbands without loss of information or generality. Using this methodology and the error analysis in the previous
+section, it is now possible to determine with a given conﬁdence level the accuracy of a given maneuver scheme in
+achieving a desired set of ROE.
+VIII. Validation
+The new closed-form maneuver schemes are validated in this section. Numerical integration of the GVE including a
+full-force dynamics model is used to verify that the control solutions achieve the desired reconﬁguration. In addition,
+the optimality of the maneuver schemes is conﬁrmed by comparing the computed reachable delta-v to the output of
+Koenig et al.’s numerical algorithm [16]. The GVE-based propagator in this paper uses a subset of the capabilities of the
+Stanford Space Rendezvous Laboratory’s state of the art propagator, including a 40×40 gravity ﬁeld model, atmospheric
+drag, solar radiation pressure, geomagnetic and solar-ﬂux data, and third-body eﬀects from both the Sun and moon.
+The numerical integration architecture is as follows. Reconﬁguration parameters (δααα0,αααc,0, and∆t f) and maneuver
+scheme (tk,δvvvk for k = 1,..., p) are provided as inputs. The maneuver schemes and times are represented as perturbing
+accelerations over a number of time steps centered on the actual maneuver time. First, the initial mean deputy OE,
+αααd,0, are extracted fromδααα0 andαααc,0 using the nonlinear relationships in Eq.(3). The chief and deputy OE are both
+transformed to osculating OE using Brouwer’s transformation [24] and simultaneously propagated forward by numerical
+integration of the GVE including perturbations. The ﬁnal osculating OE are converted ﬁrst back into mean OE, then
+back to ROE for comparison to the desired ﬁnal ROE. This process is shown in compact block diagram form in Fig. 9.
+18
+
+===PAGE 19===
+Add 
+maneuvers
+as 
+perturbing 
+accelerations 
+centered 
+at
+   
+for 
+k=1,...,p
+mean_to_osc
+mean_to_osc
+roe_to_kep
+osc_to_mean
+osc_to_mean
+kep_to_roe
+GVE_propagate
+GVE_propagate
+Fig. 9 Simulation architecture for numerical integration of the GVE including maneuvers.
+The second validation method uses Koenig et al.’s algorithm to conﬁrm optimality. The optimization problem
+in Eq. (2) is solved in order to maximize the delta-v cost subject to the constraint that the desired reconﬁguration
+cannot be reached at a lesser cost. This is equivalent to maximizing the cost to reach a supporting hyperplaneL which
+contains the target. The hyperplane is deﬁned by a normal vectorλλλ tangent to the boundary of the convex hull at the
+desired pseudo-state. As Koenig shows[16], a lower bound on the minimum reconﬁguration cost can be found using an
+algorithm which iteratively reﬁnesλλλ by adding and removing candidate maneuver times in order to improve the cost.
+Figure 10 is a graphical overview of the algorithm. Once the lower bound,δvlb, has been computed numerically using
+Koenig’s algorithm, it will be compared to the reachable minimum delta-v,δvmin, derived in this paper to conﬁrm global
+optimality.
+Initial
+, 
+guess
+Compute 
+optimal
+for 
+candidate 
+times
+Refine 
+candidate 
+times
+Converged 
+to 
+within 
+user 
+specified 
+tolerance?
+No
+Yes
+Optimal 
+control 
+input 
+extraction
+Fig. 10 Algorithm to iteratively compute lower bound on minimum reconﬁguration cost.[16]
+Two example reconﬁgurations are deﬁned to demonstrate the new closed-form maneuver schemes in realistic mission
+scenarios. The ﬁrst test demonstrates application of the methodology presented in this paper to derive optimal and
+quantiﬁably sub-optimal maneuver schemes for a 6D reconﬁguration in an eccentric chief orbit. The second test
+demonstrates the eﬀects of four diﬀerent error sources on the ROE achieved at the end of the reconﬁguration span for a
+given reconﬁguration.
+A. Test 1: 6D reconﬁguration, eccentric chief orbit
+The reconﬁguration parameters for Test 1 are given by
+αααc,0 =
+[
+15000 km 0.5 10 o 0o 20o 0o
+]
+δααα′
+0 =
+[
+30 −10500 0 −50 0 −30
+]
+m
+δααα′
+f =
+[
+100 −12500 200 300 20 0
+]
+m
+∆t f = 2.2 orbits.
+(31)
+As discussed, using theδeee′ state allows for the full 6D reconﬁguration to be treated as a 4D in-plane reconﬁguration and
+a 2D out-of-plane reconﬁguration. The desired decoupled pseudo-states are given by
+∆δαααI P =
+[
+a∆δades a∆δλdes a∆δ ˜ex,des a∆δ ˜ey,des
+]T
+=
+[
+70 −1377.965 307 .646 260 .488
+]T
+m (32)
+∆δαααOOP =
+[
+a∆δ˜ix,des a∆δ˜iy,des
+]T
+=
+[
+29.0545 21 .350
+]T
+m. (33)
+19
+
+===PAGE 20===
+Notethat a∆δeee′
+des hasalreadybeentransformedtotheequivalentdesiredpseudo-state a∆δ ˜edes usingEq. (14). Thenext
+two subsections treat the reconﬁguration problems separately to derive the in-plane and out-of-plane nested reachable
+sets. This yields all possible optimal maneuvers. Then, in theResultssection, appropriately sized sets of maneuvers are
+chosen from each nested reachable set to satisfy inherent system constraints and achieve the desired reconﬁguration.
+1. Out-of-plane reconﬁguration
+Thereachabledelta-vminimumforthereconﬁgurationinEq. (33)isfoundusingTable6tobe δvmin,OOP = 0.00854
+m/s. The total maneuver scheme cost matches the output of Koenig’s algorithm,δvlb = 0.00854m/s. νopt are found
+using column 3 of Table 3 to beνopt = [3.7753, 10.0585]. Theν values are converted to times by ﬁrst calculating the
+equivalent mean anomalies and then scaling by the mean motion to beTopt = [13397.11, 31680.13] s. The points in the
+corresponding nested reachable setS∗
+n(δvmin,δiii, Topt), calculated using Eq. (8), are given by
+Sn,OOP =
+[
+20 20
+30 30
+]
+m. (34)
+After the in-plane maneuver schemes are calculated, one of the columns in Eq.(34), which represents a possible
+maneuver that satisﬁes the Type 1 constraints in column 3 of Table 8, will be chosen for use along with the three
+maneuvers from the in-plane calculations. Typically this choice is based on satisfying mission constraints, attitude
+control timing, or science operations.
+2. In-plane reconﬁguration
+The reachable delta-v minimum for the reconﬁguration in Eq.(32) isδvmin, I P = 0.07801 m/s, which is equal to
+δvmin,δ eee and calculated using Table 4. Applying Koenig’s algorithm gives a global minimum delta-vδvlb = 0.07815
+m/s. The reachable delta-v minimum matches up to0.14mm/s (0.18%) which is approximately the stopping tolerance
+set by the user, therefore the closed-form maneuver scheme is globally optimal. From there,νopt are found using
+column 3 of Table 3 to beνopt = [0.8967, 3.5907, 7.1799, 9.8738, 13.4631]. Theν values are converted to times,Topt,
+given by [826.28, 12328.94, 19109.30, 30611.95, 37392.32] s. The points in the corresponding nested reachable set
+S∗
+n(δvmin,δ eee, Topt), calculated using Eq. (8), are given by
+Sn, I P =
+
+704.20 −299.86 704 .20 −299.86 704 .20
+−14326.00 4235 .94 −7689.06 1409 .81 −1052.11
+197.91 200 .00 197 .91 200 .00 197 .91
+346.34 350 .00 346 .34 350 .00 346 .34
+
+m, (35)
+whereeachcolumnrepresentsa4Dvectorofthein-planechangeinROE( a∆δαααdes)achievedusingtheoptimalmaneuver
+δvvv∗, given in Eq. (15).
+3. Results
+There are ten sets of three in-plane maneuvers and one out-of-plane maneuver that can be chosen from the ﬁve
+maneuvers inSn, I P (Eq. (35)) and the two maneuvers inSn,OOP (Eq. (34)) to satisfy the inherent system constraints.
+One of the combined schemes is given by
+δvvv1 =
+[
+0.00136 0 .0143 0
+]T
+m/s att1 = 826.28 s
+δvvv2 =
+[
+0.00603 −0.0490 0
+]T
+m/s att2 = 12328.94 s
+δvvv3 =
+[
+0 0 −0.008543
+]T
+m/s att3 = 13397.11 s
+δvvv4 =
+[
+0.00137 0 .0143 0
+]T
+m/s att4 = 19109.30 s
+(36)
+which corresponds to columns 1, 2, and 3 ofSn,I P and column 1 ofSn,OOP. Fig. 11 shows the evolution of the ROE
+when the maneuvers in Eq. (36) are applied.
+20
+
+===PAGE 21===
+B1
+B2
+B3B4
+start
+end
+(a)δa,δλ plane
+B1
+B2
+B3B4
+start
+end (b)δeee′ plane
+B1B2B3
+B4
+end
+start (c)δiii plane
+Fig. 11 Evolution of the ROE in Test 1 with full-force dynamics model
+In addition, the reconﬁguration error, deﬁned as the 1-norm of the diﬀerence between the desired mean ROE and the
+achieved mean ROE, scaled by the desired mean ROE, is given in Table 9.
+Table 9 Reconﬁguration accuracy, Test 1
+Relative orbit element
+aδa a δλ aδe′x aδe′y aδix aδiy
+Desired value, m 100.00 -12500.00 307.65 470.98 20.00 0.00
+Achieved value, m 100.02 -12504.33 308.33 464.12 20.94 -0.48
+% Error 0.02% 0.03% 0.22% 1.46% 4.69% -%
+As shown in the third and fourth columns of Table 9, the maneuver scheme calculated in theδ˜eee representation
+achieves the desired reconﬁguration in theδeee′ with high accuracy. In fact, even though the open-loop maneuver scheme
+was calculated excluding perturbations, the desired reconﬁguration is achieved with less than 10 meters (<5%) of error.
+For the ﬁrst time in literature, this example demonstrates the ability of the new closed-form maneuver schemes to
+reconﬁgure the relative motion in an eccentric chief orbit with globally optimal delta-v.
+Now supposeaδa f =−50 m andaδλ f =−15000 m. Then a∆δades =−80 m anda∆δλdes =−3877.96 m. The
+desired psuedo state lies outside of the nested reachable set in the non-dominant plane as shown in Fig. 12a, so the
+sub-optimal solution methodology presented in Sec. VI must be used. Applying the methodology in Sec. VI yields nine
+possible maneuver schemes for the in-plane reconﬁguration. The scheme with minimum delta-v has a total delta-v of
+0.0998 m/s. This a27%increase over the optimal delta-v. Figs. 12b and 12c show the evolution of the ROE.
+(a)Thedesiredpseudo-stateliesoutside
+of the nested reachable set
+B1
+B2
+B3
+(b)EvolutionoftheROEin δa,δλ plane
+with full-force dynamics model
+B1
+B2
+B3
+(c) Evolution of the ROE inδeee′ plane
+with full-force dynamics model
+Fig. 12 Application of sub-optimal solution handling methodology
+Unlike Fig. 11b, where the maneuvers follow a straight line path towards the desired pseudo-state, which indicates
+optimality, the path in Fig. 12c doubles back on itself after the third burn. However, the desired pseudo-state in 6D is
+still achieved.
+Inmissionswherethereconﬁgurationtimeisnotastrictconstraint,analternativeapproachtosolvingthesub-optimal
+problem is to increase the reconﬁguration time. This allowsδλ to drift for longer, thus decreasing the required change
+21
+
+===PAGE 22===
+in δλ by control. Suppose the reconﬁguration time is increased to 4 orbits. Then with the same reconﬁguration
+parameters andδa f =−50m andδλ f =−15000m, the desired pseudo-states in the∆aaa plane area∆δades =−80m and
+a∆δλdes =−3369.0m. The free dynamics take care of about 500m of the desired change inδλ. In addition, because the
+reconﬁguration time is extended, there are also more times at whichS(c, t) aligns with the desired pseudo-state in the
+relative eccentricity vector plane. For this example, these two changes 1) increased the size of the nested reachable set
+and 2) moved the desired pseudo-state to the interior of the nested reachable set, as shown in Fig. 13a.
+(a) The desired pseudo-state lies inside
+of the nested reachable set when the re-
+conﬁguration time is extended
+B1
+B2
+B3
+(b)EvolutionoftheROEin δa,δλ plane
+with full-force dynamics model
+B1
+B2
+B3
+(c) Evolution of the ROE inδeee′ plane
+with full-force dynamics model
+Fig. 13 Evolution of the ROE in Test 1 with full-force dynamics model for a longer reconﬁguration time
+The desired pseudo-state now lies inside of the nested reachable set, therefore the reconﬁguration can be achieved
+with the optimal delta-v. Also,δvmin is still0.07801 m/s because the desired pseudo-statea∆δeeedes has not changed.
+Figs. 13b and 13c show the evolution of the ROE using an optimal maneuver scheme generated using the method in Sec.
+V.A. The maneuvers follow a straight line path towards the desired pseudo-state in Fig. 13c, indicating optimality.
+B. Test 2: Performance analysis for 6D near-circular reconﬁguration
+This example will look at how realistic error sources -δvvvk, tk,δααα0,αααc,0 - aﬀect the ﬁnal achieved ROE for a 6D
+reconﬁguration in an eccentric chief orbit. The reconﬁguration parameters are given by
+αααc,0 =
+[
+9000 km 0.2 0 .1 0 .1 0 .444 0
+]T
+δααα′
+0 =
+[
+−99.998 −43.193 247 .690 107 .851 63 .000 0
+]T
+m
+δααα′
+f =
+[
+20 2000 205 .64 −943.0 56 .6 56 .6
+]
+m
+∆t f = 2.5 orbits.
+(37)
+The desired decoupled pseudo-states are given bya∆δαααdes =
+[
+120.0 −313.0 −42.0 −210.2 −6.43 56 .6
+]T
+m.
+Note thata∆δeee′
+des has already been transformed to the equivalent desired pseudo-statea∆δ ˜edes using Eq.(14). Table 7
+is used to obtain an optimal 6D maneuver scheme as given by
+δvvv1 =
+[
+−0.0006 −0.0095 0
+]T
+m/s att1 = 1502.30 s
+δvvv2 =
+[
+0 0 −0.0402
+]T
+m/s att2 = 6459.91 s
+δvvv3 =
+[
+−0.0005 −0.0070 0
+]T
+m/s att3 = 999.95 s
+δvvv4 =
+[
+−0.0042 0 .0637 0
+]T
+m/s att3 = 14956.9 s,
+(38)
+whereδvmin,tot al =δvmin,I P +δvmin,OOP = 0.1205m/s. After ﬁnding a maneuver scheme, the next step is to add in
+realistic error. The mean of the error is000 for each source. To capture the uncertainty in maneuver execution errors, the
+covariances in the maneuver magnitudeδvvv and maneuver execution timetk are given by
+σδvvvk = 0.032( m/s)2 andσtk = 602 s2 (39)
+respectively. The same distribution of error is applied to each of the four maneuver vectors and times in Eq.(38) for
+consistency. Fortheerrorintheinitialabsoluteandrelativestates,thisexamplewillusethetypicalerrorsgeneratedbythe
+22
+
+===PAGE 23===
+state of the art in GNSS. Precision GNSS yields meter-level accuracy in the absolute Cartesian state and centimeter-level
+accuracy in the relative Cartesian state [29]. To be consistent with the state representations in this example, the mean and
+standarddeviationsmustbetransformedintothequasi-nonsingularROEandKeplerianorbitelementstaterepresentations
+using the well-known nonlinear transformations. Given a covariance in the absolute Cartesian state, the equivalent
+covariance for the absolute OE state is calculated by applying the nonlinear Cartesian to Keplerian transform to a large
+set of simulated absolute Cartesian state data points. Similarly, an equivalent covariance for the ROE state can be found
+from a covariance in the relative Cartesian state by ﬁrst rewriting the ROE as quasi-nonsingular orbit element diﬀerences
+and then using Eq. (B14) in Ref. [30]. Suppose the error covariances are given by
+VVV xxx0 = diag
+(
+12, 12, 12, 0.12, 0.12, 0.12
+)
+(40)
+VVVδxxx0 = diag
+(
+0.012, 0.012, 0.012, 0.0012, 0.0012, 0.0012
+)
+(41)
+for the absolute and relative Cartesian states, respectively. After calculating the equivalent OE/ROE covariances using
+the Law of Large Numbers and Eqs. 40-41, each error source’s respective eﬀect on the achieved ﬁnal ROE can now be
+calculated by either the linear or nonlinear methods described in Sec. VII.B. Because the mean of the error in each of the
+four sources was zero, the mean of the error in the ﬁnal achieved ROE is also zero. Error is only included in one variable
+at a time. In the resultingVVVδααα f, the the on-diagonal terms are the variances in each ﬁnal achieved ROE due to a given
+error source, and the oﬀ-diagonal terms are the covariances. Table 10 gives the minimum and maximum variance and
+covariance in the terms ofδααα f for each error source.
+Table 10 Values of variances and covariances inδααα f,actual due to four error sources
+Error source Equations used [Min |variance|, Max |variance|] [Min |covariance|, Max |covariance|]
+δααα0 (29) with (41), Linear [0.2251, 6093.6] [0.0009,258.43]
+ααα0 Law of large numbers and (40) [0.0008, 0.0914] [0.002, 0.0628]
+δvvvk (29) with (39), Linear [0.0372, 86.302] [0.327, 87.233]
+tk Law of large numbers and (39) [0.0091, 1.5677] [0.023, 1.342]
+The variances and covariances from the two linear sources (δααα0 in row 1 andδvvvk in row 3) are consistently about
+103 times larger in magnitude than the variances and covariances from the two nonlinear sources (ααα0 in row 2 andtk in
+row 4). Because their eﬀect is so small, the nonlinear error sources can typically be neglected in a performance analysis;
+it is not necessary to run a law of large numbers simulation on-board. As discussed previously and conﬁrmed in Table 10
+above, however, the oﬀ-diagonal covariances are non-zero, and neglecting them in a performance analysis would be
+incorrect. Therefore, the method in Sec. VII.C is used to determine the bounds that include the achieved ROE for a
+given conﬁdence level by ﬁnding the smallest bounding “box” in 6D that would contain the error ellipsoid due to each
+error source. This example uses a conﬁdence level of 95%, which corresponds to aχ2 value of 12.59.
+Table 11 Performance bounds in each ROE in the presence of four independent error sources
+Error 95% conﬁdence bounds on each ROE
+aδa, m aδλ, m aδex, m aδey, m aδix, m aδiy, m
+δααα0 [-3.503, 43.503] [1446.0, 2553.9] [187.96, 223.33] [-956.2, -929.8] [49.492, 63.645] [53.202, 59.935]
+ααα0 [19.618, 20.382] [1998.8, 2001.2] [203.50, 207.79] [-944.5, -941.5] [56.195, 56.942] [56.372, 56.765]
+δvvv m [-5.547, 45.547] [1933.4, 2066.6] [184.20, 227.09] [-1008, -877.1] [55.199, 57.938] [44.525, 68.612]
+tm [18.313, 21.687] [1991.1, 2008.9] [198.04, 213.25] [-946.3, -939.7] [54.479, 58.658] [55.893, 57.244]
+It is clear in Table 11 that the conﬁdence interval is large for the linear error sources and extremely small for the
+nonlinear error sources. In other words, even in the presence of error in the initial absolute OE of the chief and the
+maneuver times, the ﬁnal ROE are achieved with high accuracy. This is consistent with earlier claims that the error due
+23
+
+===PAGE 24===
+to the nonlinear sources can be ignored. However, the linear error sources reduce the accuracy of the maneuver scheme
+signiﬁcantly, and therefore must be mitigated. One way to reduce the eﬀect of error is to use a receding time horizon and
+keep replanning the maneuver scheme until 1) a maneuver must occur in the current scheme, or 2) the time horizon
+becomes too short to replan. At each time step, the performance bounds of the previously calculated maneuver scheme
+and the new one are compared, and the more accurate scheme is chosen.
+IX. Conclusion
+To address the challenges of multi-spacecraft control, this paper presents new solutions to the satellite relative orbit
+reconﬁguration problem of achieving a desired spacecraft end state in ﬁxed-time. The relative orbit reconﬁguration
+problem is cast in relative orbit element (ROE) space, which inherently allows for the linearization of the dynamics
+equations that govern relative motion and the straightforward inclusion of perturbations.
+Thispaperleveragesthegeometricadvantagesofreachablesettheorytoderivegeneralclosed-form, globallyoptimal
+impulsive maneuver schemes in orbits of arbitrary eccentricity. The reachable set is the geometric state space that
+can be achieved with multiple maneuvers in speciﬁed ﬁnite time with speciﬁed total cost. This paper develops a new
+metric for quantifying maneuver scheme optimality, and shows that optimality can be assessed without loss of generality
+by projecting a general2n-dimensional reconﬁguration inton 2-dimensional (2D) planes. The plane that drives the
+minimum delta-v is called the dominant plane. It is shown that the minimum delta-v is exactly equal to the delta-v
+required by the dominant plane reconﬁguration if the desired end state lies in the nested reachable set, the set formed
+by mapping the optimal times and maneuvers for the dominant change onto the non-dominant planes. This means
+that a complicated higher-dimensional problem can be solved by looking at its projections into multiple 2D problems.
+A general methodology to derive the minimum delta-v is presented and then applied speciﬁcally to the ROE state
+representation for each dominance case.
+The reachability of the minimum delta-v for each dominance case is quantiﬁed by analyzing the nested reachable sets
+in the non-dominant planes. According to the results of this analysis, this paper presents the explicit expressions for all
+possible maneuver schemes that are achievable with minimum delta-v in each dominance case. The maneuver schemes
+are validated in realistic mission scenarios to show that they achieve a desired reconﬁguration and do so optimally in
+eccentric chief orbits. Even with perturbations such as a full-force gravity model, drag, third body, and solar radiation
+pressure included in the simulation, the error in achieving the desired reconﬁguration is less than 5% in the example.
+The paper demonstrates that the same algorithms can be used to generate quantiﬁably sub-optimal solutions for
+reconﬁgurations that cannot be reached with delta-v driven by the dominant plane, which therefore extended the
+applicability of the closed-form solutions. However, there are reconﬁgurations that are still unachievable that must be
+explored, e.g. whentheoptimalmaneuversarelinearlydependent,orwhenthereconﬁgurationtimeislessthanoneorbit.
+Inaddition,thesub-optimaldelta-v,thoughquantiﬁable,maybetoolargeformissionswithstrictbudgets. Thismotivates
+the need to develop a new method for deriving maneuver schemes that achieve the minimum delta-v. One method, as
+shown in this paper, is to increase the reconﬁguration time. Other possible solutions are to split a reconﬁguration, add
+more maneuvers, or numerically solve for a maneuver scheme using the sub-optimal delta-v as an initial guess.
+Finally, the paper describes a new method to assess maneuver scheme performance by ﬁtting ann-dimensional
+boundingboxtoan n-dimensionalerrorellipsoidusingthenon-diagonalcovariancematrixforadesiredconﬁdencelevel.
+An error analysis using this method shows that maneuver timing error and the high navigation error in the absolute state
+can usually be neglected, but that error mitigation is important for errors in the initial relative state and in the maneuver
+magnitudes. The same method can be applied to other potential error sources such as thruster misalignment.
+Appendix A: Dynamics of Relative Motion
+The state transition matrix for the modiﬁed quasi-nonsingular ROE in Eq. (3) for dominantJ2 eﬀects is given by
+ΦΦΦ(t f, t0) =
+
+1 0 0 0 0 0
+−7κη Pτ− 3
+2 nτ 1 7 κex0Pτ/η 7κey0Pτ/η −7κηSτ 0
+7
+2κey f Qτ 0 cos (Ûωτ)− 4κex0ey f GQτ − sin(Ûωτ)− 4κey0ey f GQτ 5κey f Sτ 0
+− 7
+2κex f Qτ 0 sin (Ûωτ) + 4κex0ex f GQτ cos(Ûωτ) + 4κey0ex f GQτ −5κex f Sτ 0
+0 0 0 0 1 0
+7
+2κSτ 0 −4κex0GSτ −4κey0GSτ 2κTτ 1
+
+, (42)
+24
+
+===PAGE 25===
+where the constants are deﬁned in Eq. (6) in Ref. [7]. The subscripts 0 and f denote initial and ﬁnal values of the chief’s
+orbit elements, respectively, andex, ey are the x, y components of the absolute eccentricity vector.µ is the Earth’s
+gravitational parameter,Re is the Earth’s equatorial radius, andn is the mean motion of the chief spacecraft.
+Appendix B: Proof of Decomposition of2n-D Reconﬁguration inton 2D Reconﬁgurations
+This section proves the claim in Eq. (10) by applying it to a 4D reconﬁguration. Suppose that a desired
+reconﬁguration given by[∆δx1,des, ∆δx2,des, ∆δy1,des, ∆δy2,des]is split into the 2D∆δxxxdes reconﬁguration and the 2D
+∆δyyydes reconﬁguration,andthattheminimumdelta-vrequiredtoachieveeach2Dreconﬁgurationindependentlyisknown.
+Let the minimum delta-v required to achieve a desired pseudo-state inδxxx,δyyy be calledδvmin,δ xxx,δvmin,δ yyy respectively.
+The minimum delta-v required to achieve the entire desired reconﬁguration isδvmin≥ max{δvmin,δ xxx,δ vmin,δ yyy}. Proof.
+Supposeδvmin,δ xxx > δvmin,δ yyy. If S∗(δvmin,δ xxx, T), the set of pseudo-states reachable by a series of maneuvers with total
+magnitudeδvmin,δ xxx executed within period T, is computed in both planes using Eq.(9), the desired pseudo-state will lie
+on its boundary in the∆δxxx plane by deﬁnition. Becauseδvmin,δ xxx > δvmin,δ yyy, the desired pseudo-state will lie inside the
+boundary ofS∗(δvmin,δ xxx, T)in the∆δyyy plane. Therefore, the desired pseudo-state inδxxx is reachable (see Fig. 14a). Now
+suppose S∗(δvmin,δ yyy, T)is computed in both planes. In the∆δyyy plane, the desired pseudo-state now lies on the boundary
+of the convex hull by deﬁnition (see Fig. 14b). However, in the∆δxxx plane, the desired pseudo-state is outside of the
+reachable region, because the delta-v required to reach it is larger than the delta-v that deﬁnes the boundary of the convex
+hull. Therefore, the delta-v for the total reconﬁguration is no less thanδvmin,δ xxx.
+∆δx 1
+∆δx 2
+∆δy 1
+∆δy 2
+(∆δx 1,des ,∆δx 2,des )
+(∆δy 1,des ,∆δy 2,des )
+(a)Reachablesetsinbothplanesdeﬁnedby δvmin,δ xxx,rep-
+resented by the solid line
+∆δx 1
+∆δx 2
+∆δy 1
+∆δy 2
+(∆δx 1,des ,∆δx 2,des )
+(∆δy 1,des ,∆δy 2,des )
+(b)Reachablesetsinbothplanesdeﬁnedby δvmin,δ yyy,rep-
+resented by the dashed line
+Fig. 14 Illustration of proof that total cost of entire reconﬁguration is driven by one 2D plane.
+Appendix C: Reachable Delta-v Minimum for Dominantδλ
+As discussed in Sec. IV, a dominantδλ reconﬁguration is only achieved optimally in the dominant plane. Therefore,
+typically it suﬃces to check that a reconﬁguration isnot dominantδλ. However, for completeness, the reachable delta-v
+minima for dominantδλ reconﬁgurations is given in the table below.
+Table 12 Reachable δvmin, eccentric chief orbits, dominantδλ
+Dominant... Max normalized eﬀect δvmin,(m/s)
+... δλ, Transition region a∆δamax = 2
+√
+e2+2e cos(ν∗)+1
+ηn δvmin,tr ans = |a∆δad e s|
+|a∆δam a x|
+... δλ N/A δvmin,δλ = n
+ a∆δad e s−ma∆δλ d e s
+ma∆δλ0−a∆δa0
+ where m = a∆δat +a∆δa0
+a∆δλ t +a∆δλ0
+... δλ, Extended region N/A δvmin = n a∆δad e s−m1 a∆δλ d e s
+a∆δat−m1 a∆δλ t
+where m1 = a∆δat−a∆δa f
+a∆δλ t−a∆δλ f
+(if ∆δλdes < δvmin,δλ ∆δλ f)
+δvmin = n m2 a∆δλ d e s−a∆δad e s
+a∆δa0−m2 a∆δλ0
+where m2 = a∆δa f +a∆δa
+a∆δλ f +a∆δλ0
+(if ∆δλdes > δvmin,δλ ∆δλ f)
+where recall, Eqs. (21) and Eqs. (20), (22)-(25) are used.
+25
+
+===PAGE 26===
+Appendix D: Other Closed-form Solutions
+The tables below present closed-form globally optimal maneuvers schemes for cases where only the desired
+pseudo-state in the dominant plane is important. The general methodology is the same as for the other closed-form
+solutions presented in this paper. The optimal times and maneuvers are computed for a given dominance case using
+Table 13.
+Table 13 Optimal maneuver vectorsδvvv∗ and optimal maneuver timesTopt for dominant-plane-only reconﬁgu-
+rations
+Dominant... δvvv∗, (m/s) To p t, (s)
+... δa
+∆δa> 0 : δvvv∗ =
+[
+0 +δvmi n,δ a 0
+]T
+∆δa< 0 : δvvv∗ =
+[
+0 −δvmi n,δ a 0
+]T for alli k 2π, k = ﬂoor(ν f
+2π)
+... δλ
+[
+0 ±1 0
+]T
+[ e sin(νt)√
+e2+2e cos(νt)+1
+∓ 1+e cos(νt)√
+e2+2e cos(νt)+1
+0
+]T for∓∆δλ d e s
+0
+νt
+Then,asubsetof Sn,thenestedreachableset,ischosensothatthemaneuverssatisfytheconstraintsgiveninthethird
+column of Table 14. There are fewer constraints for these cases because the eﬀects of the maneuvers in the non-dominant
+planes is not considered.
+Table 14 Closed-form maneuver scheme constraints in dominant-plane-only reconﬁgurations
+Dominant # of Man. Constraints (Type 1) Linear System
+... δa
+1 a∆δnλd e s = ∓3
+η n(M f− k2π)(1 + e) for±∆δad e s c1 = 1
+2 a∆δλ d e s , ∓3
+η n(M f− k2π)(1 + e) for±∆δad e s
+Í2
+i=1 ci = 1
+Í2
+i=1 ci a∆δλi = a∆δλ d e s
+... δλ 2 N/A
+Í2
+i=1 ci a∆δai = a∆δad e s
+Í2
+i=1 ci a∆δλi = a∆δλ d e s
+Funding Sources
+This work was supported by a NASA Oﬃce of the Chief Technologists Space Technology Research Fellowship,
+NASA grant no. 80NSSC18K1187.
+References
+[1] D’Amico,S.,Pavone,M.,Saraf,S.,Alhussien,A.,Al-Saud,T.,Buchman,S.,Byer,R.,andFarhat,C.,“MiniaturizedAutonomous
+Distributed Space System for Future Science and Exploration,”8th International Workshop on Satellite Constellations and
+Formation Flying, IWSCFF 2015, Delft University of Technology, 2015.
+[2] Ichikawa, A., and Ichimura, Y., “Optimal Impulsive Relative Orbit Transfer Along a Circular Orbit,”Journal of Guidance,
+Control, and Dynamics, Vol. 31, No. 4, 2008, pp. 1014–1027. https://doi.org/https://doi.org/10.2514/1.32820.
+[3] Khalil, M., Larbi, B., and Stoll, E., “Spacecraft Formation Control using Analytical Integration of Gauss’ Variational Equations,”
+6th International inproceedings on Astrodynamics Tools and Techniques - ICATT, Darmstadt, Germany, 2016.
+[4] D’Amico, S., “Relative Orbital Elements as Integration Constants of Hill’s Equations,” 2005. DLR-GSOC TN 05-08; Deutsches
+Zentrum für Luft- und Raumfahrt, Oberpfaﬀenhofen.
+[5] Gaias, G., and D’Amico, S., “Impulsive Maneuvers for Formation Reconﬁguration Using Relative Orbital Elements,”Journal of
+Guidance, Control and Dynamics, Vol. 38, No. 6, 2015, pp. 1036–1049. https://doi.org/10.2514/1.G000189.
+26
+
+===PAGE 27===
+[6] Gaias, G., D’Amico, S., and Ardaens, J.-S., “Generalized Multi-Impulsive Maneuvers for Optimum Spacecraft Rendezvous
+in Near-Circular Orbit,”International Journal of Space Science and Engineering, Vol. 3, No. 1, 2015, pp. 68–88.
+https://doi.org/10.1504/IJSPACESE.2015.069361.
+[7] Chernick, M., and D’Amico, S., “New Closed-Form Solutions for Optimal Impulsive Control of Spacecraft Relative Motion,”
+Journal of Guidance, Control and Dynamics, Vol. 41, No. 2, 2018, pp. 301–319.
+[8] Zhang, G., and Mortari, D., “Impulsive orbit correction using second-order Gauss’s variational equations,”Celestial Mechanics
+and Dynamical Astronomy, Vol. 132, No. 2, 2020, p. 13.
+[9] Vaddi, S., Alfriend, K., Vadali, S., and Sengupta, P., “Formation Establishment and Reconﬁguration Using Impulsive Control,”
+Journal of Guidance, Control and Dynamics, Vol. 28, No. 2, 2005, pp. 262–268.
+[10] Schaub,H.,andAlfriend,K.,“ImpulsiveFeedbackControltoEstablishSpeciﬁcMeanOrbitElementsofSpacecraftFormations,”
+Journal of Guidance Control and Dynamics, Vol. 24, No. 4, 2001, pp. 739–745.
+[11] Betts, J., “Survey of Numerical Methods for Trajectory Optimization,”Journal of Guidance, Control and Dynamics, Vol. 21,
+No. 2, 1998, pp. 193–207.
+[12] Sobiesiak, L., and Damaren, C., “Impulsive Spacecraft Formation Maneuvers with Optimal Firing Times,”Journal of Guidance,
+Control and Dynamics, Vol. 38, No. 10, 2015, pp. 1994–2000.
+[13] Roscoe, C., Westphal, J., Griesbach, J., and Schaub, H., “Formation Establishment and Reconﬁguration Using Diﬀerential
+Elements inJ2-Perturbed Orbits,”Journal of Guidance, Control and Dynamics, Vol. 38, 2015, p. 1725–1740.
+[14] Prussing, J.,Primer Vector Theory and Applications, In: Conway, B.A. (ed.) Spacecraft Trajectory Optimization, Cambridge
+University Press, Cambridge, 2011. Pp. 15–35.
+[15] Gilbert, E., and Harasty, G., “A class of ﬁxed-time fuel-optimal impulsive control problems and an eﬃcient algorithm for their
+solution,”IEEE Transactions on Automatic Control, Vol. 16, No. 1, 1971, pp. 1–11. https://doi.org/10.1109/TAC.1971.1099656.
+[16] Koenig, A., and D’Amico, S., “Real-Time Algorithm for Globally Optimal Impulsive Control of Linear Time-Variant Systems,”
+IEEE Transactions on Automatic Control, 2018. Submitted, http://arxiv.org/abs/1804.06099.
+[17] Allen, R. E., Clark, A. A., Starek, J. A., and Pavone, M., “A machine learning approach for real-time reachability analysis,”2014
+IEEE/RSJ International inproceedings on Intelligent Robots and Systems, 2014, pp. 2202–2208. https://doi.org/10.1109/IROS.
+2014.6942859.
+[18] Vinh, N. X., Gilbert, E. G., Howe, R. M., Sheu, D., and Lu, P., “Reachable domain for interception at hyperbolic speeds,”Acta
+Astronautica, Vol. 35, No. 1, 1995, pp. 1 – 8. https://doi.org/https://doi.org/10.1016/0094-5765(94)00132-6.
+[19] Zagaris, C., and Romano, M., “Applied Reachability Analysis for Spacecraft Rendezvous and Docking with a Tumbling Object,”
+2018 Space Flight Mechanics Meeting, Kissimmee, Fl, 2018.
+[20] D’Amico, S., and Montenbruck, O., “Proximity Operations of Formation Flying Spacecraft using an Eccentricity/Inclination
+Vector Separation,”Journal of Guidance, Control and Dynamics, Vol. 29, No. 3, 2006, pp. 554–563.
+[21] D’Amico, S., Florio, S. D., Larsson, R., and Nylund, M., “Autonomous Formation Keeping and Reconﬁguration for Remote
+Sensing Spacecraft,”21st International Symposium on Space Flight Dynamics, 2009. Toulouse, France.
+[22] Ardaens, J.-S., and Fischer, D., “TanDEM-X Autonomous Formation Flying System: Flight Results,”IFAC Proceedings
+Volumes, Vol. 44, No. 1, 2011, pp. 709 – 714. 18th IFAC World Congress.
+[23] Koenig, A., Guﬀanti, T., and D’Amico, S., “New State Transition Matrices for Spacecraft Relative Motion in Perturbed Orbits,”
+Journal of Guidance, Control, and Dynamics, Vol. 40, No. 7, 2017, pp. 1749–1768.
+[24] Brouwer, D., “Solution of the problem of artiﬁcial satellite theory without drag,” Vol. 64, 1959, p. 378.
+[25] Yamanaka, K., and Ankerson, F., “New State Transition Matrix for Relative Motion on an Arbitrary Elliptical Orbit,”Journal of
+Guidance, Control and Dynamics, Vol. 25, 2002, pp. 60–66.
+[26] Chernick, M., and D’Amico, S., “Closed-Form Optimal Impulsive Control of Spacecraft Formations using Reachable Set
+Theory,”2018 AAS/AIAA Astrodynamics Specialist inproceedings, Snowbird, UT, 2018.
+[27] Boyd, S., and Vandenberghe, L., Convex Optimization, Cambridge University Press, 2004. https://doi.org/10.1017/
+CBO9780511804441, p. 146.
+27
+
+===PAGE 28===
+[28] Friendly, M., Monette, G., and Fox, J., “Elliptical Insights: Understanding Statistical Methods Through Elliptical Geometry,”
+Statistical Science, 2011. URL http://datavis.ca/papers/ellipses.pdf.
+[29] Giralo, V., and D’Amico, S., “Distributed multi-GNSS timing and localization for nanosatellites,”Navigation, Vol. 66, No. 4,
+2019, pp. 729–746.
+[30] Sullivan, J., Grimberg, S., and D’Amico, S., “Comprehensive Survey and Assessment of Spacecraft Relative Motion Dynamics
+Models,”Journal of Guidance, Control and Dynamics, Vol. 40, No. 8, 2017, pp. 1837–1859.
+28

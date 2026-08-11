@@ -1,0 +1,88 @@
+
+=== G1_leo_10km_drift :: 278 obs @ 60s, 4.62 h ===
+    separation rho: 10.2-66.6 km, mean rho/r = 0.0057
+    range prior from annulus: 2 interval(s), 0.1-4054.7 km  (span 40547x)
+    CRLB sigma_LOS  bearings-only    222.87 m   range+bearing     5.39 m   (ratio     41.4x)
+    FIM cond        bearings-only 4.587e+10   range+bearing 2.976e+09
+  RB-EKF   posRMSE         6.2 m | velRMSE   0.0060 m/s | relRng 7.373e-05 | NEES med    0.698 in 0.97 | conv 100.0% @     0.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-EKF   posRMSE     23586.4 m | velRMSE  26.7179 m/s | relRng 3.964e-01 | NEES med 10754.331 in 0.01 | conv   4.2% @     9.0 min | acq    0.0 min (fail 0.00) | div 0.12
+  BO-UKF   posRMSE    301746.4 m | velRMSE 342.5668 m/s | relRng 5.089e+00 | NEES med 316251.672 in 0.12 | conv   0.0% @     nan min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-EKF-o posRMSE      1017.6 m | velRMSE   1.1540 m/s | relRng 1.528e-02 | NEES med    2.260 in 0.66 | conv  91.7% @   119.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-MPC-o posRMSE      1264.4 m | velRMSE   1.4311 m/s | relRng 1.823e-02 | NEES med    1.500 in 0.81 | conv  95.8% @   146.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-RPB   posRMSE      1075.1 m | velRMSE   1.2185 m/s | relRng 1.631e-02 | NEES med    5.490 in 0.42 | conv  95.8% @   177.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-BLS   posRMSE      1403.5 m | velRMSE   1.5884 m/s | relRng 2.174e-02 | NEES med    1.202 in 0.89 | conv  87.5% @   198.0 min | acq  114.0 min (fail 0.00) | div 0.00
+  BO-BLS-MPC posRMSE      1226.0 m | velRMSE   1.3898 m/s | relRng 1.412e-02 | NEES med    0.781 in 0.91 | conv  91.7% @   191.5 min | acq  114.0 min (fail 0.00) | div 0.00
+
+=== G2_leo_300km :: 186 obs @ 60s, 3.08 h ===
+    separation rho: 301.5-1435.0 km, mean rho/r = 0.1267
+    range prior from annulus: 2 interval(s), 0.1-3865.2 km  (span 38652x)
+    CRLB sigma_LOS  bearings-only    711.41 m   range+bearing     9.29 m   (ratio     76.6x)
+    FIM cond        bearings-only 8.149e+08   range+bearing 2.800e+09
+  RB-EKF   posRMSE         8.2 m | velRMSE   0.0082 m/s | relRng 4.596e-06 | NEES med    0.994 in 0.98 | conv 100.0% @     0.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-EKF   posRMSE   1255750.6 m | velRMSE 1405.0055 m/s | relRng 9.663e-01 | NEES med 738172010674.944 in 0.00 | conv   0.0% @     nan min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-UKF   posRMSE    337957.0 m | velRMSE 391.1958 m/s | relRng 2.458e-01 | NEES med 24464.887 in 0.10 | conv  33.3% @    84.5 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-EKF-o posRMSE      3415.4 m | velRMSE   3.7824 m/s | relRng 2.439e-03 | NEES med   28.918 in 0.14 | conv 100.0% @    49.5 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-MPC-o posRMSE      2215.0 m | velRMSE   2.4091 m/s | relRng 1.651e-03 | NEES med    7.623 in 0.17 | conv 100.0% @    46.5 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-RPB   posRMSE     37003.8 m | velRMSE  40.4158 m/s | relRng 2.869e-02 | NEES med 4464.377 in 0.17 | conv 100.0% @   118.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-BLS   posRMSE      1264.9 m | velRMSE   1.3693 m/s | relRng 7.602e-04 | NEES med    0.836 in 1.00 | conv 100.0% @    71.0 min | acq   71.0 min (fail 0.00) | div 0.00
+  BO-BLS-MPC posRMSE      1229.1 m | velRMSE   1.4280 m/s | relRng 7.264e-04 | NEES med    0.603 in 0.97 | conv 100.0% @    71.0 min | acq   71.0 min (fail 0.00) | div 0.00
+
+=== G3_leo_180deg :: 140 obs @ 60s, 2.32 h ===
+    separation rho: 13554.7-13572.6 km, mean rho/r = 2.0035
+    range prior from annulus: 2 interval(s), 0.1-14108.0 km  (span 141080x)
+    CRLB sigma_LOS  bearings-only    899.47 m   range+bearing    10.90 m   (ratio     82.5x)
+    FIM cond        bearings-only 1.174e+09   range+bearing 1.307e+11
+  RB-EKF   posRMSE       415.1 m | velRMSE   0.4715 m/s | relRng 5.030e-07 | NEES med    0.867 in 0.98 | conv 100.0% @     0.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-EKF   posRMSE  13547366.3 m | velRMSE 15315.9022 m/s | relRng 9.987e-01 | NEES med 218295897367034.688 in 0.00 | conv   0.0% @     nan min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-UKF   posRMSE   2218271.0 m | velRMSE 4775.6404 m/s | relRng 1.276e-01 | NEES med 1683.324 in 0.00 | conv  50.0% @    87.0 min | acq    0.0 min (fail 0.00) | div 0.38
+  BO-EKF-o posRMSE      5173.1 m | velRMSE   5.1107 m/s | relRng 1.578e-04 | NEES med    4.286 in 0.21 | conv 100.0% @     8.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-MPC-o posRMSE      8499.7 m | velRMSE   8.8605 m/s | relRng 2.774e-04 | NEES med   10.266 in 0.08 | conv 100.0% @     8.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-RPB   posRMSE      4015.0 m | velRMSE   3.5527 m/s | relRng 1.244e-04 | NEES med    2.084 in 0.66 | conv 100.0% @     3.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-BLS   posRMSE      3187.0 m | velRMSE   2.9480 m/s | relRng 5.698e-05 | NEES med    0.576 in 0.96 | conv 100.0% @    44.0 min | acq   44.0 min (fail 0.00) | div 0.00
+  BO-BLS-MPC posRMSE      3257.1 m | velRMSE   2.9812 m/s | relRng 5.646e-05 | NEES med    0.594 in 0.97 | conv 100.0% @    44.0 min | acq   44.0 min (fail 0.00) | div 0.00
+
+=== G4_wide_e30_90deg :: 328 obs @ 60s, 5.45 h ===
+    separation rho: 6507.8-14215.7 km, mean rho/r = 0.8412
+    range prior from annulus: 1 interval(s), 0.1-26659.7 km  (span 266597x)
+    CRLB sigma_LOS  bearings-only   2291.24 m   range+bearing     7.38 m   (ratio    310.3x)
+    FIM cond        bearings-only 6.222e+09   range+bearing 2.257e+10
+  RB-EKF   posRMSE         6.1 m | velRMSE   0.0022 m/s | relRng 5.667e-07 | NEES med    0.979 in 0.99 | conv 100.0% @     0.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-EKF   posRMSE   7124068.1 m | velRMSE 3112.6211 m/s | relRng 1.000e+00 | NEES med 2472772061051.029 in 0.00 | conv   0.0% @     nan min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-UKF   posRMSE   6569814.7 m | velRMSE 3101.8075 m/s | relRng 9.125e-01 | NEES med 73160554.773 in 0.00 | conv   0.0% @     nan min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-EKF-o posRMSE   2759394.9 m | velRMSE 1041.5488 m/s | relRng 4.255e-01 | NEES med 105006.846 in 0.05 | conv  12.5% @    40.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-MPC-o posRMSE    157580.1 m | velRMSE  60.0147 m/s | relRng 2.229e-02 | NEES med  779.630 in 0.04 | conv  83.3% @    75.5 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-RPB   posRMSE   8333483.7 m | velRMSE 3115.6814 m/s | relRng 1.297e+00 | NEES med 690229.613 in 0.03 | conv   4.2% @   108.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-BLS   posRMSE      6018.6 m | velRMSE   2.3391 m/s | relRng 7.286e-04 | NEES med    0.992 in 0.94 | conv 100.0% @    71.0 min | acq   71.0 min (fail 0.00) | div 0.00
+  BO-BLS-MPC posRMSE      4503.3 m | velRMSE   1.7211 m/s | relRng 5.151e-04 | NEES med    0.747 in 0.98 | conv 100.0% @    71.0 min | acq   71.0 min (fail 0.00) | div 0.00
+
+=== G6_leo_5km_1ms_burns :: 186 obs @ 60s, 3.08 h ===
+    separation rho: 5.0-26.5 km, mean rho/r = 0.0022
+    range prior from annulus: 1 interval(s), 0.1-2982.6 km  (span 29826x)
+    CRLB sigma_LOS  bearings-only      5.97 m   range+bearing     3.96 m   (ratio      1.5x)
+    FIM cond        bearings-only 2.840e+08   range+bearing 6.032e+08
+  RB-EKF   posRMSE         5.7 m | velRMSE   0.0062 m/s | relRng 2.199e-04 | NEES med    0.823 in 0.98 | conv 100.0% @     0.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-EKF   posRMSE        40.5 m | velRMSE   0.0421 m/s | relRng 1.955e-03 | NEES med    9.501 in 0.01 | conv  91.7% @    76.0 min | acq    0.0 min (fail 0.00) | div 0.04
+  BO-UKF   posRMSE    340213.2 m | velRMSE 360.4620 m/s | relRng 1.641e+01 | NEES med 7623.802 in 0.24 | conv   0.0% @     nan min | acq    0.0 min (fail 0.00) | div 0.96
+  BO-EKF-o posRMSE        16.8 m | velRMSE   0.0187 m/s | relRng 7.681e-04 | NEES med    0.975 in 0.99 | conv 100.0% @    27.5 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-MPC-o posRMSE        17.2 m | velRMSE   0.0186 m/s | relRng 8.000e-04 | NEES med    1.030 in 0.98 | conv 100.0% @    26.5 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-RPB   posRMSE        18.5 m | velRMSE   0.0190 m/s | relRng 8.852e-04 | NEES med    1.818 in 0.86 | conv 100.0% @    27.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-BLS   posRMSE        17.5 m | velRMSE   0.0193 m/s | relRng 8.072e-04 | NEES med    0.564 in 0.98 | conv 100.0% @    44.0 min | acq   44.0 min (fail 0.00) | div 0.00
+  BO-BLS-MPC posRMSE        17.6 m | velRMSE   0.0193 m/s | relRng 8.083e-04 | NEES med    0.567 in 0.98 | conv 100.0% @    44.0 min | acq   44.0 min (fail 0.00) | div 0.00
+
+=== G5_leo_10km_burns :: 278 obs @ 60s, 4.62 h ===
+    separation rho: 10.2-139.6 km, mean rho/r = 0.0118
+    range prior from annulus: 2 interval(s), 0.1-4054.7 km  (span 40547x)
+    CRLB sigma_LOS  bearings-only     10.97 m   range+bearing     5.38 m   (ratio      2.0x)
+    FIM cond        bearings-only 1.383e+08   range+bearing 2.935e+09
+  RB-EKF   posRMSE         6.3 m | velRMSE   0.0065 m/s | relRng 4.208e-05 | NEES med    0.687 in 0.98 | conv 100.0% @     0.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-EKF   posRMSE       704.1 m | velRMSE   0.8066 m/s | relRng 6.692e-03 | NEES med  155.184 in 0.01 | conv  75.0% @    36.0 min | acq    0.0 min (fail 0.00) | div 0.08
+  BO-UKF   posRMSE    349893.0 m | velRMSE 412.3436 m/s | relRng 3.234e+00 | NEES med 4302025.301 in 0.12 | conv   0.0% @     nan min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-EKF-o posRMSE        53.7 m | velRMSE   0.0610 m/s | relRng 4.711e-04 | NEES med    0.794 in 1.00 | conv 100.0% @    34.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-MPC-o posRMSE        59.8 m | velRMSE   0.0670 m/s | relRng 5.198e-04 | NEES med    0.864 in 0.96 | conv 100.0% @    34.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-RPB   posRMSE        49.8 m | velRMSE   0.0563 m/s | relRng 4.494e-04 | NEES med    0.934 in 0.93 | conv 100.0% @    33.0 min | acq    0.0 min (fail 0.00) | div 0.00
+  BO-BLS   posRMSE        56.8 m | velRMSE   0.0630 m/s | relRng 4.897e-04 | NEES med    0.496 in 0.99 | conv 100.0% @    44.0 min | acq   44.0 min (fail 0.00) | div 0.00
+  BO-BLS-MPC posRMSE        56.6 m | velRMSE   0.0629 m/s | relRng 4.927e-04 | NEES med    0.496 in 0.99 | conv 100.0% @    44.0 min | acq   44.0 min (fail 0.00) | div 0.00
+
+wrote /Users/pete/space_training/web_data/results/ext_bo_filter.csv  (48 rows)
+wrote /Users/pete/space_training/web_data/results/ext_bo_convergence.csv  (3414 rows)
+elapsed 178.6s
