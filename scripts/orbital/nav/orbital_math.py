@@ -25,7 +25,14 @@ OBS_DIM = 38
 
 # Per-action sub-step count (ACTION_TAU in orbital.h). The filter's propagation
 # interval for one env.step() is ACTION_TAU[a] * DT seconds.
-ACTION_TAU = (1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 30, 60, 1, 1, 1, 1)
+#
+# MUST stay 20 long and MUST match orbital.h:117-124. The C env is Discrete-20
+# (16-17 = 3 h/6 h warps, 18-19 = radial +/-1 m/s fine burns); this table was
+# 16 long, so any nav lineage that enabled actions 16-19 would have silently
+# propagated the filter by 60 s instead of 10800/21600 s — a 180x/360x dt error
+# with no exception raised (NAV-H §5 risk 3, fixed here before the nav lineage
+# touches the wide action space).
+ACTION_TAU = (1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 30, 60, 1, 1, 1, 1, 180, 360, 1, 1)
 
 # Default observation normalizers (LEO / Phase 5b-5e compatible).
 OBS_ALT_SCALE_M = 1.6e6
