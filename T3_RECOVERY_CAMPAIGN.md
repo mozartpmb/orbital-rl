@@ -227,9 +227,40 @@ term / JSRL roll-in from the expert) held in reserve — deployed only if pure P
 as a separately-ablated arm. The wide-e goal (L3–L5: band climb with `de_max`/`da_max`
 kwargs, longer warps, scaled caps) starts only after L2 reproduces.
 
+### 5.1 Adversarial red-team of the design (2026-08-11) — verdict: SHIP WITH CHANGES ✅ (all adopted)
+
+An independent Opus red-team attacked the §5 design with measured probes
+(`scripts/orbital/t3/redteam/`, `web_data/results/t3_redteam_*.csv`). Its Python Φ replica
+matched the C shaping to 3.6e-9, so its counterfactuals are exact. Findings and dispositions:
+
+| severity | finding | disposition |
+|---|---|---|
+| **BLOCKER** | **The −10 timeout is the flatline mechanism the recon missed.** Under flat per-decision γ, warp-1hr-to-cap = −7.8 while coast-to-cap = −0.0 (γ³⁰⁰⁰≈0): warps only break even once success ≥ 46.5%, so PPO suppresses warps — the only granularity where the new shaping clears the entropy floor (3.5× at warp-1hr vs 0.29× at warp-5min on a 133 km drift) and the only route to terminal visibility — before the first success is ever sampled. | `cap_terminal_reward` kwarg; **0.0 for all T3 runs** (break-even → 0%). Legacy −10 default. |
+| MAJOR | `phase_obs_mode=1` silently broke the expert's obs decoder (12/12 → 0/12) — would have poisoned every imitation arm. | Decoder fixed in both replica copies; `expert_controller.py --t3` regression: **100/100** at the exact T3 training config. |
+| MAJOR | The clock is unobservable: bit-identical observations measured 600 vs 1800 sub-steps from the cap; even the 99.2% expert fails clock-blind. | obs[15] := remaining-time fraction, obs[16] := cos(ω_s−ω_t) (both replaced channels are rotation-only, zero task information). |
+| MAJOR | Trajectory log always-on: 352 B × every sub-step, 1.01 GB at 1024 envs. | `log_enabled` gated on `traj_log_dir`. |
+| MINOR | NHR clamp pays +0.54 mean / +1.21 max for dying *far* vs near. | Clamp-nowhere under `shaping_mode=1` (progress credit = Φ_T − Φ₀ for every episode, no refunds). |
+| MINOR | Ballistic intercept (one burn + warps, never nulling) wins 7/19 gap cells at cap 3000 — covers most of ±30°. | L0 small-gap rung dropped as a *claim*; all gates report per-gap-bin success + residual rel-vel at capture. |
+| MINOR | `min(1, Δv_match/300)` is 80.7% saturated at L3 inits. | L0–L2 clean (0/0/1.8%); raise `shape_dv_ref_ms`≈700 from L3 on. |
+| cleared | λ-jump farming (the bug class that sank the project twice): worst 0.167°/burn, drift 262× more Δv-efficient, telescoping exact to 4.7e-8. `phase_gap_mode=1`: 0.000° error, KS ≤ 0.054 vs uniform, correct under rejection sampling. Warp-through-box capture fires correctly mid-warp (16/16). | — |
+
+Sign convention (documented per red-team): `init_phase_gap`/`phase_gap_fixed` place the
+**target ahead**: realized Δλ = λ_s − λ_t = **−gap**. The `>= 0` sentinel on
+`phase_gap_fixed` means fixed negative gaps can't be requested; uniform-± sampling is
+unaffected.
+
 ## 6. Training campaign log
 
-*(pending)*
+All evals: `eval_checkpoint.py` *Physical success* line, greedy, 200 episodes unless noted.
+T3 env flags for every arm: `--env.shaping-mode 1 --env.shape-gamma 1.0
+--env.phase-gap-mode 1 --env.phase-obs-mode 1 --env.episode-cap-steps 3000
+--env.cap-terminal-reward 0.0 --env.valid-init-only 1`. Trainer: shipped profile
+(γ=0.995, λ=0.90, ent 0.01, Muon), Discrete(16), fresh nets.
+
+| # | arm | config | result |
+|---|---|---|---|
+| S1 | Karpathy overfit-one | fixed 30° gap, e=0, same-orbit, 10M | **perf 1.000**, return ≈ 9.4 — pipeline sound (pre-red-team build; cap −10 didn't bite at this scale) |
+| L1 | full gap, circular | same-orbit init, e=0, gap ±180° (physical), a ∈ 500–800 km, 50M, seed 42 | *(running)* |
 
 ## 7. Final results
 
