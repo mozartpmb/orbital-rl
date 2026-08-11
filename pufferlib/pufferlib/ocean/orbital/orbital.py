@@ -29,8 +29,16 @@ TRAJ_COLS = (
     + [f'body_y_{i}' for i in range(16)]
     + [f'body_hard_r_{i}' for i in range(16)]
     + [f'body_keepout_r_{i}' for i in range(16)]
+    # ── ext-3d columns, APPENDED so every pre-existing index is unchanged ──
+    + ['sat_z', 'sat_vz', 'sat_inc', 'sat_raan',
+       'target_z', 'target_vz', 'target_inc', 'target_raan',
+       # post-impulse / pre-propagation chaser state of the burn sub-step
+       # (zeros on coast/warp rows) — what the 3D invariant battery needs to
+       # test I7/I8/I9/I11/I15 against the env rather than a reconstruction.
+       'burn_post_x', 'burn_post_y', 'burn_post_z',
+       'burn_post_vx', 'burn_post_vy', 'burn_post_vz']
 )
-TRAJ_FLOATS = len(TRAJ_COLS)  # 86
+TRAJ_FLOATS = len(TRAJ_COLS)  # 100
 
 
 class Orbital(pufferlib.PufferEnv):
@@ -141,6 +149,33 @@ class Orbital(pufferlib.PufferEnv):
         # da_max_m > 0: |a_target − a_sat| ≤ da_max_m (∩ altitude band; min 200 km).
         # Required when widening the band to unlock e, else Δv_a is unaffordable.
         da_max_m=-1.0,
+        # ── ext-3d (2026-08-11). Defaults preserve the 2D lineage BIT-EXACTLY.
+        # Binding spec: scripts/orbital/ext_recon/reports/3d_{A,B,C,E}*.md, as
+        # amended by 3d_REDTEAM.md (amendments win on every conflict).
+        # dim3_mode 1 enables: 3D element/plane state, the 3D obs block in the
+        # dead body slots 21-32, shaping_mode 2, the relative-plane sampler and
+        # the 3D form of the phase-gap knob. Requires num_debris = 0 (the 3D obs
+        # block writes over body slots 1-3).
+        dim3_mode=0,
+        # Relative-inclination knob (rad). >= 0 turns the sampler on:
+        #   ĥ_sat = R(δ, n̂)·ĥ_target,  δ = di_max_rad·√U,  n̂ uniform in the
+        # target plane — the *relative* plane bound, the de_max pattern lifted
+        # to the plane. Realized Δi_rel max/knob = 1.000, 0.0% over, at every
+        # target inclination. Δv cost ≈ 133 m/s per degree at LEO, so on the
+        # 478 m/s budget the whole envelope is a few degrees.
+        di_max_rad=-1.0,
+        # Absolute target plane. Pure GAUGE under two-body dynamics (the env is
+        # SO(3)-invariant), so 0 by default; these exist as test hooks for the
+        # sampler and frame-invariance gates.
+        i_target_rad=0.0,
+        raan_target_rad=0.0,
+        # obs normalizers for the 3D block. <= 0 → auto:
+        #   obs_di_scale_rad → max(di_max_rad, 0.25°),  obs_de_scale → max(de_max, 0.05)
+        obs_di_scale_rad=-1.0,
+        obs_de_scale=-1.0,
+        # Φ match-term squash: 0 = min(1, x) (legacy; required for the A2
+        # bit-exact anchor), 1 = x/(1+x) (bounded, strictly monotone, no dead zone).
+        shape_match_squash=0,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -161,10 +196,14 @@ class Orbital(pufferlib.PufferEnv):
         # space defaults to Discrete(16) so every pre-T4 checkpoint and command
         # is untouched; new lineages opt in with legacy_action_space=20. Phase
         # 5b/5e ckpts (10-dim heads) still use legacy_action_space=10.
+        # ext-3d raises the C env to Discrete(30): 20-25 = normal ±{1,10,25} m/s,
+        # 26-29 = combined tangential+normal {±25, 0, ±25}. The EXPOSED default
+        # stays Discrete(16) so both 2D anchors and every existing command are
+        # untouched; 3D lineages opt in with legacy_action_space=30.
         _las = -1 if legacy_action_space is None else int(legacy_action_space)
         _act_n = 16 if _las <= 0 else _las
-        if not (1 <= _act_n <= 20):
-            raise ValueError(f"legacy_action_space must be in [1, 20] or sentinel <=0, got {_las}")
+        if not (1 <= _act_n <= 30):
+            raise ValueError(f"legacy_action_space must be in [1, 30] or sentinel <=0, got {_las}")
         self.single_action_space = gymnasium.spaces.Discrete(_act_n)
         self.render_mode  = render_mode
         self.num_agents   = num_envs
@@ -216,6 +255,13 @@ class Orbital(pufferlib.PufferEnv):
             cap_terminal_reward=cap_terminal_reward,
             de_max=de_max,
             da_max_m=da_max_m,
+            dim3_mode=dim3_mode,
+            di_max_rad=di_max_rad,
+            i_target_rad=i_target_rad,
+            raan_target_rad=raan_target_rad,
+            obs_di_scale_rad=obs_di_scale_rad,
+            obs_de_scale=obs_de_scale,
+            shape_match_squash=shape_match_squash,
             # Red-team #4: per-sub-step trajectory recording (352 B/record,
             # ~1 MB/env buffer) only when trajectories are actually saved.
             log_enabled=1 if traj_log_dir else 0,

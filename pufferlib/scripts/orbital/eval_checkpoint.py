@@ -32,7 +32,9 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              shaping_mode=0, shape_w_lambda=1.0, shape_w_match=0.35,
              shape_dv_ref_ms=300.0, shape_gamma=0.995,
              phase_gap_mode=0, phase_obs_mode=0, episode_cap_steps=2000,
-             cap_terminal_reward=-10.0, de_max=-1.0, da_max_m=-1.0):
+             cap_terminal_reward=-10.0, de_max=-1.0, da_max_m=-1.0,
+             dim3_mode=0, di_max_rad=-1.0, i_target_rad=0.0, raan_target_rad=0.0,
+             obs_di_scale_rad=-1.0, obs_de_scale=-1.0, shape_match_squash=0):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -78,6 +80,13 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         cap_terminal_reward=cap_terminal_reward,
         de_max=de_max,
         da_max_m=da_max_m,
+        dim3_mode=dim3_mode,
+        di_max_rad=di_max_rad,
+        i_target_rad=i_target_rad,
+        raan_target_rad=raan_target_rad,
+        obs_di_scale_rad=obs_di_scale_rad,
+        obs_de_scale=obs_de_scale,
+        shape_match_squash=shape_match_squash,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -278,6 +287,26 @@ def main():
                              '(bounds |delta-e-vec|, not e). <0 = off (legacy sampling).')
     parser.add_argument('--da-max-m', type=float, default=-1.0,
                         help='T3 L3+: |a_target - a_sat| <= da_max_m (min 200 km). <0 = off.')
+    # ── ext-3d (defaults = legacy 2D, bit-exact) ────────────────────────────
+    parser.add_argument('--dim3-mode', type=int, default=0,
+                        help='ext-3d: 1 = 3D planes, 3D obs block (slots 21-32), 3D phase-gap '
+                             'knob. Requires num_debris = 0. Default 0 = 2D lineage.')
+    parser.add_argument('--di-max-rad', type=float, default=-1.0,
+                        help='ext-3d: relative-inclination knob (rad). >=0 samples '
+                             'h_sat = R(delta, n)·h_target with delta = di_max_rad*sqrt(U). '
+                             '~133 m/s per degree at LEO on a 478 m/s budget.')
+    parser.add_argument('--i-target-rad', type=float, default=0.0,
+                        help='ext-3d: absolute target inclination (rad). Pure gauge under '
+                             'two-body; a test hook for the sampler/frame gates.')
+    parser.add_argument('--raan-target-rad', type=float, default=0.0,
+                        help='ext-3d: absolute target RAAN (rad). Gauge; test hook.')
+    parser.add_argument('--obs-di-scale-rad', type=float, default=-1.0,
+                        help='ext-3d: obs[21,22] normalizer. <=0 -> max(di_max_rad, 0.25 deg).')
+    parser.add_argument('--obs-de-scale', type=float, default=-1.0,
+                        help='ext-3d: obs[23] normalizer. <=0 -> max(de_max, 0.05).')
+    parser.add_argument('--shape-match-squash', type=int, default=0,
+                        help='ext-3d: Phi match squash. 0 = min(1, x) (legacy, A2 anchor); '
+                             '1 = x/(1+x) (no dead zone).')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
@@ -292,7 +321,9 @@ def main():
              args.shaping_mode, args.shape_w_lambda, args.shape_w_match,
              args.shape_dv_ref_ms, args.shape_gamma,
              args.phase_gap_mode, args.phase_obs_mode, args.episode_cap_steps,
-             args.cap_terminal_reward, args.de_max, args.da_max_m)
+             args.cap_terminal_reward, args.de_max, args.da_max_m,
+             args.dim3_mode, args.di_max_rad, args.i_target_rad, args.raan_target_rad,
+             args.obs_di_scale_rad, args.obs_de_scale, args.shape_match_squash)
 
 
 if __name__ == '__main__':

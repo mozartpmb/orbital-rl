@@ -72,7 +72,7 @@
  * Each row: { dv_prograde, dv_radial, dv_normal }. dv_normal kept at 0 for
  * forward compatibility with a future 3D upgrade.
  */
-#define NUM_ACTIONS 20
+#define NUM_ACTIONS 30
 #define WARP_ACTION 9    /* legacy: smallest warp action; still referenced */
 #define WARP_TAU    5    /* legacy: 5 × 60s = 5 min per warp; supplanted by ACTION_TAU */
 static const double ACTION_DV[NUM_ACTIONS][3] = {
@@ -109,6 +109,31 @@ static const double ACTION_DV[NUM_ACTIONS][3] = {
     {   0.0,   0.0,  0.0 },  /* 17: warp 6hr  (τ=360)    */
     {   0.0,   1.0,  0.0 },  /* 18: radial out 1         */
     {   0.0,  -1.0,  0.0 },  /* 19: radial in 1          */
+    /* ext-3d (2026-08-11), Discrete-30. Appended only — indices 0-19 are
+     * frozen. Rows 20-25 are the pure out-of-plane axis (normal = +ĥ, orbit
+     * north); rows 26-29 are COMBINED tangential+normal impulses.
+     *
+     * Why the combined rows exist (3d_REDTEAM MAJOR-3, option ii): the plane
+     * screen that justified di_max ≈ 1° assumed ONE impulse in a combined
+     * direction, but every legacy row is single-axis, so two impulses one
+     * sub-step apart cost D + P in Tsiolkovsky rather than hypot(D, P). The
+     * measured recovery from adding {±25, 0, ±25} is +15pp at X3 and +20pp at
+     * X4. NOTE this also flips the L1-combiner rationale (3d_REDTEAM n1): with
+     * combined actions the 1.41× L1 bonus IS realizable, by design.
+     *
+     * ±1 m/s normal is required for the tight box: 1 m/s ≡ 0.0075° of plane
+     * rotation at LEO, exactly the 5 km / 1 m/s box's plane tolerance
+     * (3d_C §4.8). All ten rows are τ = 1. */
+    {   0.0,   0.0,   1.0 },  /* 20: normal +1            */
+    {   0.0,   0.0,  -1.0 },  /* 21: normal −1            */
+    {   0.0,   0.0,  10.0 },  /* 22: normal +10           */
+    {   0.0,   0.0, -10.0 },  /* 23: normal −10           */
+    {   0.0,   0.0,  25.0 },  /* 24: normal +25           */
+    {   0.0,   0.0, -25.0 },  /* 25: normal −25           */
+    {  25.0,   0.0,  25.0 },  /* 26: combined +25 / +25   */
+    {  25.0,   0.0, -25.0 },  /* 27: combined +25 / −25   */
+    { -25.0,   0.0,  25.0 },  /* 28: combined −25 / +25   */
+    { -25.0,   0.0, -25.0 },  /* 29: combined −25 / −25   */
 };
 
 /* M2 (phase5-5-env-mods): per-action sub-step count. τ=1 → single-step burn or
@@ -121,6 +146,8 @@ static const int ACTION_TAU[NUM_ACTIONS] = {
     1, 1, 1, 1,                   /* 12-15: M3 sub-5 m/s burns */
     180, 360,                     /* 16-17: T3 MEO/GEO warps */
     1, 1,                         /* 18-19: T3 fine radial burns */
+    1, 1, 1, 1, 1, 1,             /* 20-25: ext-3d normal burns */
+    1, 1, 1, 1,                   /* 26-29: ext-3d combined burns */
 };
 
 /* ── PufferLib Log struct ────────────────────────────────────────────────
@@ -144,13 +171,28 @@ typedef struct {
     float n;                /* REQUIRED: episode count (last field)    */
 } Log;
 
-/* ── Orbital elements (2D coplanar) ─────────────────────────────────────── */
+/* ── Orbital elements (classical; 3D under dim3_mode=1) ─────────────────────
+ * ext-3d: gains inc/raan. Zero-init (`Orbital env = {0}`, and c_reset writing
+ * 0.0 whenever dim3_mode==0) ⇒ every Orbit is EXACTLY equatorial and every
+ * value gate below takes the verbatim legacy statements ⇒ the 2D lineage is
+ * bit-identical by construction (3d_A §5.1 closure argument).
+ *
+ * CONSUMER RULE (3d_A §3): no obs channel, shaping term, sampling constraint
+ * or termination test may read `omega` or `raan` ALONE — at small inclination
+ * each carries ~3.9° of noise per metre of state error while their sum ϖ and
+ * λ = M + ϖ are flat across seven decades of inclination (3d_A P6). Use
+ * orb_varpi / orb_lambda / orb_hhat / orb_evec. The pre-existing obs[9-12,16]
+ * raw-ω channels are grandfathered: 3d_REDTEAM MAJOR-2 option (a) keeps slots
+ * 0-16 bit-semantics so every validated decoder/expert/injector still works. */
 typedef struct {
     double a;       /* semi-major axis (m)      */
     double e;       /* eccentricity [0, 1)      */
     double M;       /* mean anomaly (rad)       */
     double theta;   /* true anomaly (rad)       */
-    double omega;   /* argument of periapsis (rad) — orientation of the ellipse */
+    double omega;   /* argument of periapsis (rad), FROM THE ASCENDING NODE.
+                     * Identical to the legacy meaning whenever raan == 0. */
+    double inc;     /* NEW (ext-3d): inclination (rad); 0 = equatorial prograde */
+    double raan;    /* NEW (ext-3d): RAAN Ω (rad); 0 when equatorial            */
 } Orbit;
 
 /* ── Satellite ───────────────────────────────────────────────────────────── */
@@ -192,7 +234,19 @@ typedef struct {
     float target_e;
     float target_x, target_y;    /* target body's Cartesian position (m)   */
     float target_vx, target_vy;  /* target body's Cartesian velocity (m/s) */
-    /* All body positions */
+    /* ── ext-3d columns. APPENDED at the end of the exported row (binding.c
+     * fill_traj_row) so every pre-existing column index stays stable. ────── */
+    float sat_z,  sat_vz;
+    float sat_inc, sat_raan;
+    float target_z, target_vz;
+    float target_inc, target_raan;
+    /* Post-impulse, PRE-propagation chaser state for the sub-step that carried
+     * a burn (zeros on coast/warp rows). Without it the 3D invariant battery's
+     * I7/I8/I9/I11/I15 can only be evaluated against a reconstruction of the
+     * burn — i.e. against themselves. With it they test the env. */
+    float burn_post_x, burn_post_y, burn_post_z;
+    float burn_post_vx, burn_post_vy, burn_post_vz;
+    /* All body positions (bodies are equatorial by construction: body_z ≡ 0) */
     int   num_bodies;
     float body_x[MAX_BODIES];
     float body_y[MAX_BODIES];
@@ -339,6 +393,28 @@ typedef struct {
                                           * (window ∩ altitude band). Values < 200 km are
                                           * raised to 200 km (transfer-floor guard).       */
 
+    /* ── ext-3d (2026-08-11). All defaults preserve the 2D lineage bit-exactly.
+     * Binding spec: scripts/orbital/ext_recon/reports/3d_{A,B,C,E}*.md as
+     * amended by 3d_REDTEAM.md (the amendments win on every conflict). ───── */
+    int              dim3_mode;          /* master gate. 0 ⇒ every 3D value gate takes
+                                          * the legacy path and inc = raan = 0.0.     */
+    double           di_max_rad;         /* < 0 off. Else ĥ_s = R(δ, n̂)·ĥ_t with
+                                          * δ = di_max_rad·√U and n̂ uniform IN THE
+                                          * TARGET PLANE — the rotation sampler
+                                          * (3d_REDTEAM BLOCKER-1). The ī-disc form in
+                                          * 3d_A §4 is DELETED: it under-measures by
+                                          * cos i_t and realizes 21× the knob at
+                                          * i_t = 98°.                                 */
+    double           i_target_rad;       /* absolute target inclination (rad). Pure GAUGE
+                                          * under two-body — default 0 (3d_C §4.4c).
+                                          * Non-zero only as a test hook for the
+                                          * sampler / frame gates.                     */
+    double           raan_target_rad;    /* absolute target RAAN (rad); gauge, default 0 */
+    double           obs_di_scale_rad;   /* obs[21,22] normalizer; <= 0 → max(di_max_rad, 0.25°) */
+    double           obs_de_scale;       /* obs[23] normalizer;    <= 0 → max(de_max, 0.05)      */
+    int              shape_match_squash; /* Φ match squash: 0 = min(1, x) (legacy, and the
+                                          * A2 bit-exact anchor), 1 = x/(1+x) (no dead zone) */
+
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
 
@@ -351,6 +427,11 @@ typedef struct {
     int              last_tau;              /* sub-steps (1 except under warp)        */
     double           g_shape_accum;         /* |accumulated shaping| per episode      */
     double           last_g_shape;          /* snapshot at terminal, survives c_reset */
+
+    /* ext-3d: post-impulse / pre-propagation chaser state of the current
+     * decision's burn sub-step, for the trajectory log (see TrajectoryRecord). */
+    double           last_burn_post[6];
+    int              last_burn_valid;
 
     /* Trajectory logging */
     TrajectoryRecord traj_log[MAX_STEPS];
@@ -421,11 +502,44 @@ static inline void propagate_orbit(Orbit* o, double dt) {
     o->theta = eccentric_to_true(E, o->e);
 }
 
-/* Convert orbital elements (a, e, θ, ω) → Cartesian (x, y, vx, vy).
- * Computes perifocal coordinates then rotates by ω into the inertial frame. */
+/* ── ext-3d element combinations (the ONLY forms consumers may read) ────── */
+
+/* Longitude of periapsis ϖ = ω + Ω. Well conditioned where ω and Ω are not. */
+static inline double orb_varpi(const Orbit* o) { return o->omega + o->raan; }
+
+/* Mean longitude λ = M + ω + Ω. Linear in time on a coast, burn-continuous. */
+static inline double orb_lambda(const Orbit* o) { return o->M + o->omega + o->raan; }
+
+/* Unit angular-momentum vector, 3-1-3 convention:
+ *   ĥ = (sin i sin Ω, −sin i cos Ω, cos i)
+ * ĥ is EXACTLY invariant under both legacy action axes (prograde: Δh ∥ h;
+ * radial: Δh = 0), so the plane channels move only under a normal burn. */
+static inline void orb_hhat(const Orbit* o, double* wx, double* wy, double* wz) {
+    double si = sin(o->inc), ci = cos(o->inc);
+    *wx =  si * sin(o->raan);
+    *wy = -si * cos(o->raan);
+    *wz =  ci;
+}
+
+/* Inertial eccentricity 3-vector built from ELEMENTS.
+ * 3d_REDTEAM BLOCKER-2 variant V3: the Cartesian route ē = (v×h)/μ − r̂ is a
+ * different FP path and breaks the A2 bit-exact anchor on 87.7% of draws; the
+ * element route reduces to the legacy 2-vector (e cosω, e sinω) bit-exactly at
+ * i = Ω = 0 (cosΩ=1, sinΩ=0, cos i=1, sin i=0 ⇒ x − 0.0 == x, 0.0 + x == x). */
+static inline void orb_evec(const Orbit* o, double* ex, double* ey, double* ez) {
+    double cO = cos(o->raan), sO = sin(o->raan);
+    double cw = cos(o->omega), sw = sin(o->omega);
+    double ci = cos(o->inc),   si = sin(o->inc);
+    *ex = o->e * (cO*cw - sO*sw*ci);
+    *ey = o->e * (sO*cw + cO*sw*ci);
+    *ez = o->e * (sw*si);
+}
+
+/* Convert orbital elements (a, e, θ, ω, i, Ω) → Cartesian (x, y, z, vx, vy, vz).
+ * Perifocal coordinates rotated by the 3-1-3 sequence R₃(−Ω)·R₁(−i)·R₃(−ω). */
 static inline void orbit_to_cartesian(const Orbit* o,
-                                       double* x, double* y,
-                                       double* vx, double* vy) {
+                                       double* x, double* y, double* z,
+                                       double* vx, double* vy, double* vz) {
     double p = o->a * (1.0 - o->e * o->e);     /* semi-latus rectum */
     double r = p / (1.0 + o->e * cos(o->theta));
     double h = sqrt(MU * p);                    /* specific angular momentum */
@@ -436,50 +550,208 @@ static inline void orbit_to_cartesian(const Orbit* o,
     double vxp = -(MU / h) * sin(o->theta);
     double vyp =  (MU / h) * (o->e + cos(o->theta));
 
-    /* Rotate by ω into inertial frame */
-    double co = cos(o->omega), so = sin(o->omega);
-    *x  = co * xp - so * yp;
-    *y  = so * xp + co * yp;
-    *vx = co * vxp - so * vyp;
-    *vy = so * vxp + co * vyp;
-}
-
-/* Convert Cartesian (x, y, vx, vy) → orbital elements (a, e, θ, M, ω).
- * Used after applying an impulse burn. */
-static inline void cartesian_to_elements(double x, double y,
-                                          double vx, double vy,
-                                          Orbit* o) {
-    double r  = sqrt(x*x + y*y);
-    double v2 = vx*vx + vy*vy;
-    double vr = (x*vx + y*vy) / r;  /* radial velocity */
-
-    /* Vis-viva: a = 1 / (2/r - v²/μ) */
-    o->a = 1.0 / (2.0/r - v2/MU);
-
-    /* Eccentricity vector (inertial frame) */
-    double ex = ((v2 - MU/r)*x - vr*r*vx) / MU;
-    double ey = ((v2 - MU/r)*y - vr*r*vy) / MU;
-    o->e = sqrt(ex*ex + ey*ey);
-
-    /* Argument of periapsis: direction of eccentricity vector */
-    if (o->e < 1e-10) {
-        o->omega = 0.0;
-    } else {
-        o->omega = atan2(ey, ex);
+    if (o->inc == 0.0 && o->raan == 0.0) {
+        /* ── 2D FAST PATH, value-gated. The four statements below are VERBATIM
+         * from the pre-ext-3d build. The generic 3-1-3 block collapses to them
+         * algebraically and was measured bit-exact at four optimisation
+         * settings (3d_A §2.1, P1: 0/200000) — but a value gate makes the
+         * anchor STRUCTURAL rather than empirical-on-one-toolchain, and it is
+         * free speed for the 2D lineage. */
+        double co = cos(o->omega), so = sin(o->omega);
+        *x  = co * xp - so * yp;
+        *y  = so * xp + co * yp;
+        *vx = co * vxp - so * vyp;
+        *vy = so * vxp + co * vyp;
+        *z  = 0.0;
+        *vz = 0.0;
+        return;
     }
 
-    /* True anomaly: angle from periapsis to position */
+    double cO = cos(o->raan), sO = sin(o->raan);
+    double cw = cos(o->omega), sw = sin(o->omega);
+    double ci = cos(o->inc),   si = sin(o->inc);
+    double R11 =  cO*cw - sO*sw*ci, R12 = -cO*sw - sO*cw*ci;
+    double R21 =  sO*cw + cO*sw*ci, R22 = -sO*sw + cO*cw*ci;
+    double R31 =  sw*si,            R32 =  cw*si;
+    *x  = R11*xp  + R12*yp;
+    *y  = R21*xp  + R22*yp;
+    *z  = R31*xp  + R32*yp;
+    *vx = R11*vxp + R12*vyp;
+    *vy = R21*vxp + R22*vyp;
+    *vz = R31*vxp + R32*vyp;
+}
+
+/* Convert Cartesian (x, y, z, vx, vy, vz) → orbital elements (a, e, θ, M, ω, i, Ω).
+ * Used after applying an impulse burn.
+ *
+ * The `hxy == 0.0` test is EXACT, not a tolerance: with z = vz = 0 exactly,
+ * hx = y·0.0 − 0.0·vy and hy = 0.0·vx − x·0.0 are each a difference of two
+ * exact zeros, so the equatorial branch — which holds the verbatim legacy
+ * statements — fires bit-deterministically. That is what closes the 2D
+ * invariant (3d_A §5.1 step 5; measured 0 non-zero events in 200k draws,
+ * 3d_REDTEAM n4). */
+static inline void cartesian_to_elements(double x, double y, double z,
+                                          double vx, double vy, double vz,
+                                          Orbit* o) {
+    double hx = y*vz - z*vy;
+    double hy = z*vx - x*vz;
+    double hz = x*vy - y*vx;
+    double hxy = sqrt(hx*hx + hy*hy);
+
+    if (hxy == 0.0) {
+        /* ── EQUATORIAL (and the entire 2D lineage). Statements VERBATIM from
+         * the pre-ext-3d build; two spellings in particular must not be
+         * "improved" or the anchor drops from bit-exact to float-noise:
+         *   · the e-vector as ((v²−μ/r)x − v_r·r·v_x)/μ — rewriting it as the
+         *     algebraically identical (r̄·v̄)v̄ form costs 11175/200000
+         *     mismatches (3d_A §5.1, P1b);
+         *   · θ via acos + the v_r < 0 sign flip. atan2(r̄·q̂, r̄·ê) is four
+         *     orders more accurate near apsides, so it is used in the INCLINED
+         *     branch, where no anchor constrains it (3d_A P5).
+         * Prograde-only by construction (trap T5): hz > 0 for every orbit this
+         * env can reach — the sampler never sets i > 0 without dim3_mode, and
+         * no affordable Δv budget reaches i = π. */
+        double r  = sqrt(x*x + y*y);
+        double v2 = vx*vx + vy*vy;
+        double vr = (x*vx + y*vy) / r;  /* radial velocity */
+
+        /* Vis-viva: a = 1 / (2/r - v²/μ) */
+        o->a = 1.0 / (2.0/r - v2/MU);
+
+        /* Eccentricity vector (inertial frame) */
+        double ex = ((v2 - MU/r)*x - vr*r*vx) / MU;
+        double ey = ((v2 - MU/r)*y - vr*r*vy) / MU;
+        o->e = sqrt(ex*ex + ey*ey);
+
+        /* Argument of periapsis: direction of eccentricity vector */
+        if (o->e < 1e-10) {
+            o->omega = 0.0;
+        } else {
+            o->omega = atan2(ey, ex);
+        }
+
+        /* True anomaly: angle from periapsis to position */
+        if (o->e < 1e-10) {
+            o->theta = atan2(y, x);
+        } else {
+            double cos_theta = (ex*x + ey*y) / (o->e * r);
+            cos_theta = fmax(-1.0, fmin(1.0, cos_theta));
+            o->theta = acos(cos_theta);
+            if (vr < 0.0) o->theta = 2.0 * M_PI - o->theta;
+        }
+
+        o->inc  = 0.0;
+        o->raan = 0.0;
+
+        o->M = true_to_mean(o->theta, o->e);
+        if (o->M < 0.0) o->M += 2.0 * M_PI;
+        return;
+    }
+
+    /* ── INCLINED ─────────────────────────────────────────────────────────── */
+    double r  = sqrt(x*x + y*y + z*z);
+    double v2 = vx*vx + vy*vy + vz*vz;
+    double rv = x*vx + y*vy + z*vz;
+    double vr = rv / r;
+
+    o->a = 1.0 / (2.0/r - v2/MU);
+
+    double hmag = sqrt(hx*hx + hy*hy + hz*hz);
+    /* atan2, NEVER acos(hz/hmag): acos loses half the mantissa near i ≈ 0 —
+     * 1.0e-9 vs 4.1e-25 at i = 1e-9, a 2.4e15× degradation, which alone would
+     * exceed the plane-invariance thresholds (3d_E F1, 3d_REDTEAM n5). */
+    o->inc = atan2(hxy, hz);
+
+    /* n̄ = ẑ × h̄ = (−hy, hx, 0) ⇒ Ω = atan2(hx, −hy). Never form n̄ and take
+     * acos(n_x/|n|) (trap T2). hxy != 0 here, so no signed-zero branch. */
+    double raan = atan2(hx, -hy);
+    if (raan < 0.0) raan += 2.0 * M_PI;
+    o->raan = raan;
+
+    double ex = ((v2 - MU/r)*x - vr*r*vx) / MU;
+    double ey = ((v2 - MU/r)*y - vr*r*vy) / MU;
+    double ez = ((v2 - MU/r)*z - vr*r*vz) / MU;
+    o->e = sqrt(ex*ex + ey*ey + ez*ez);
+
+    double nx = -hy/hxy, ny = hx/hxy;                    /* n̂, n_z = 0 */
+    double wx = hx/hmag, wy = hy/hmag, wz = hz/hmag;     /* ĥ          */
+    double mx = -wz*ny,  my = wz*nx,   mz = wx*ny - wy*nx;  /* m̂ = ĥ × n̂ */
+
     if (o->e < 1e-10) {
-        o->theta = atan2(y, x);
+        /* Circular-inclined: ω := 0 and θ := argument of latitude (trap T6). */
+        o->omega = 0.0;
+        double th = atan2(x*mx + y*my + z*mz, x*nx + y*ny);
+        if (th < 0.0) th += 2.0 * M_PI;
+        o->theta = th;
     } else {
-        double cos_theta = (ex*x + ey*y) / (o->e * r);
-        cos_theta = fmax(-1.0, fmin(1.0, cos_theta));
-        o->theta = acos(cos_theta);
-        if (vr < 0.0) o->theta = 2.0 * M_PI - o->theta;
+        double w = atan2(ex*mx + ey*my + ez*mz, ex*nx + ey*ny);
+        if (w < 0.0) w += 2.0 * M_PI;
+        o->omega = w;
+        double eux = ex/o->e, euy = ey/o->e, euz = ez/o->e;
+        double qx = wy*euz - wz*euy;                     /* q̂ = ĥ × ê */
+        double qy = wz*eux - wx*euz;
+        double qz = wx*euy - wy*eux;
+        double th = atan2(x*qx + y*qy + z*qz, x*eux + y*euy + z*euz);
+        if (th < 0.0) th += 2.0 * M_PI;
+        o->theta = th;
     }
 
     o->M = true_to_mean(o->theta, o->e);
     if (o->M < 0.0) o->M += 2.0 * M_PI;
+}
+
+/* ── Target-plane gauge (3d_REDTEAM MAJOR-1 fix (b)) ──────────────────────
+ * Ω is measured from the inertial x̂, so when the two planes differ a global
+ * SO(3) rotation moves Ω_s and Ω_t by DIFFERENT amounts and λ_s − λ_t is not a
+ * function of the physical relative state — measured up to 59.8° of drift at
+ * Δi = 1°, i.e. 0.33 Φ units, 8× the worst adverse step. The fix: express both
+ * bodies in the target's own orbit frame (n̂_t, m̂_t, ĥ_t) first. The residual
+ * gauge freedom is a rotation about ĥ_t, which shifts BOTH bodies' Ω by the
+ * same amount and therefore cancels in the difference (measured invariant to
+ * 2e-11°). At the design gauge i_t = Ω_t = 0 the frame is the identity and
+ * this is the plain equinoctial λ = M + ω + Ω — bit-exactly. */
+typedef struct { double e1[3], e2[3], e3[3]; int identity; } PlaneGauge;
+
+static inline void gauge_from_orbit(const Orbit* t, PlaneGauge* g) {
+    if (t->inc == 0.0 && t->raan == 0.0) {
+        g->identity = 1;
+        return;
+    }
+    g->identity = 0;
+    double wx, wy, wz;
+    orb_hhat(t, &wx, &wy, &wz);
+    double nx = -wy, ny = wx;
+    double nn = sqrt(nx*nx + ny*ny);
+    if (nn > 1e-14) { g->e1[0] = nx/nn; g->e1[1] = ny/nn; g->e1[2] = 0.0; }
+    else            { g->e1[0] = 1.0;   g->e1[1] = 0.0;   g->e1[2] = 0.0; }
+    g->e3[0] = wx; g->e3[1] = wy; g->e3[2] = wz;
+    g->e2[0] = g->e3[1]*g->e1[2] - g->e3[2]*g->e1[1];
+    g->e2[1] = g->e3[2]*g->e1[0] - g->e3[0]*g->e1[2];
+    g->e2[2] = g->e3[0]*g->e1[1] - g->e3[1]*g->e1[0];
+}
+
+/* ϖ = ω + Ω expressed in the target-plane gauge. Position-independent, so the
+ * c_reset phase-gap patch that adds (ϖ_s − ϖ_t) to the target's M is exact. */
+static inline double orb_varpi_gauge(const Orbit* o, const PlaneGauge* g) {
+    if (g->identity) return o->omega + o->raan;
+    double x, y, z, vx, vy, vz;
+    orbit_to_cartesian(o, &x, &y, &z, &vx, &vy, &vz);
+    double X  =  x*g->e1[0] +  y*g->e1[1] +  z*g->e1[2];
+    double Y  =  x*g->e2[0] +  y*g->e2[1] +  z*g->e2[2];
+    double Z  =  x*g->e3[0] +  y*g->e3[1] +  z*g->e3[2];
+    double VX = vx*g->e1[0] + vy*g->e1[1] + vz*g->e1[2];
+    double VY = vx*g->e2[0] + vy*g->e2[1] + vz*g->e2[2];
+    double VZ = vx*g->e3[0] + vy*g->e3[1] + vz*g->e3[2];
+    Orbit t;
+    cartesian_to_elements(X, Y, Z, VX, VY, VZ, &t);
+    return t.omega + t.raan;
+}
+
+/* λ in the target-plane gauge. M is a time coordinate and therefore frame
+ * invariant, so it is taken from the element set directly rather than through
+ * the round trip. At identity gauge this is M + (ω + 0.0) == M + ω bitwise. */
+static inline double orb_lambda_gauge(const Orbit* o, const PlaneGauge* g) {
+    return o->M + orb_varpi_gauge(o, g);
 }
 
 /* Apply an impulsive Δv in the satellite's local orbital frame.
@@ -489,23 +761,37 @@ static inline void cartesian_to_elements(double x, double y,
 static inline double apply_impulse(Orbital* env,
                                     double dv_pro, double dv_rad,
                                     double dv_nor) {
-    (void)dv_nor;  /* 2D — normal burns have no effect in-plane */
-
     Satellite* sat = &env->sat;
-    double x, y, vx, vy;
-    orbit_to_cartesian(&sat->orbit, &x, &y, &vx, &vy);
+    double x, y, z, vx, vy, vz;
+    orbit_to_cartesian(&sat->orbit, &x, &y, &z, &vx, &vy, &vz);
 
-    /* Local frame unit vectors */
-    double v_mag = sqrt(vx*vx + vy*vy);
+    /* Local frame unit vectors. p̂ and r̂ are NOT orthogonal at e > 0 — that is
+     * pre-existing and deliberate (trap T15). n̂ = ĥ IS exactly orthogonal to
+     * both at any e, so adding the normal axis perturbs no existing action
+     * semantics (3d_E F4). |Δv| is the norm of the ASSEMBLED vector, never a
+     * sum or quadrature of components, or the fuel ledger is wrong. */
+    double v_mag = sqrt(vx*vx + vy*vy + vz*vz);
+    double r_mag = sqrt(x*x + y*y + z*z);
     double pro_x = vx / v_mag;   /* prograde = velocity direction */
     double pro_y = vy / v_mag;
-    double rad_x =  x / sqrt(x*x + y*y);  /* radial = position direction */
-    double rad_y =  y / sqrt(x*x + y*y);
+    double pro_z = vz / v_mag;
+    double rad_x =  x / r_mag;   /* radial = position direction */
+    double rad_y =  y / r_mag;
+    double rad_z =  z / r_mag;
+    double hx = y*vz - z*vy, hy = z*vx - x*vz, hz = x*vy - y*vx;
+    double h_mag = sqrt(hx*hx + hy*hy + hz*hz);
+    double nor_x = hx / h_mag;   /* +normal = +ĥ = orbit north (trap T14) */
+    double nor_y = hy / h_mag;
+    double nor_z = hz / h_mag;
 
-    /* Requested Δv in inertial frame */
-    double dvx = dv_pro * pro_x + dv_rad * rad_x;
-    double dvy = dv_pro * pro_y + dv_rad * rad_y;
-    double dv_mag = sqrt(dvx*dvx + dvy*dvy);
+    /* Requested Δv in inertial frame. In-plane terms summed FIRST, normal last,
+     * so that with dv_nor == 0.0 and an equatorial orbit every component is
+     * bitwise the legacy value (a + ±0.0 == a; z = vz = 0 ⇒ hx = hy = 0 ⇒
+     * nor = (0,0,±1) ⇒ dvz = ±0.0 ⇒ vz stays exactly 0.0). */
+    double dvx = dv_pro * pro_x + dv_rad * rad_x + dv_nor * nor_x;
+    double dvy = dv_pro * pro_y + dv_rad * rad_y + dv_nor * nor_y;
+    double dvz = dv_pro * pro_z + dv_rad * rad_z + dv_nor * nor_z;
+    double dv_mag = sqrt(dvx*dvx + dvy*dvy + dvz*dvz);
 
     if (dv_mag < 1e-10) return 0.0;
 
@@ -523,6 +809,7 @@ static inline double apply_impulse(Orbital* env,
         double scale = actual_dv / dv_mag;
         dvx *= scale;
         dvy *= scale;
+        dvz *= scale;
         dv_mag = actual_dv;
         sat->fuel_mass = 0.0;
     } else {
@@ -533,10 +820,17 @@ static inline double apply_impulse(Orbital* env,
     /* Apply velocity change */
     vx += dvx;
     vy += dvy;
+    vz += dvz;
 
     /* Convert back to orbital elements */
-    cartesian_to_elements(x, y, vx, vy, &sat->orbit);
+    cartesian_to_elements(x, y, z, vx, vy, vz, &sat->orbit);
     env->total_dv_used += dv_mag;
+
+    /* ext-3d: snapshot the post-impulse / pre-propagation state for the
+     * trajectory log (the 3D invariant battery needs the true rv_post). */
+    env->last_burn_post[0] = x;  env->last_burn_post[1] = y;  env->last_burn_post[2] = z;
+    env->last_burn_post[3] = vx; env->last_burn_post[4] = vy; env->last_burn_post[5] = vz;
+    env->last_burn_valid   = 1;
 
     return dv_mag;
 }
@@ -548,33 +842,48 @@ static inline double apply_impulse(Orbital* env,
  */
 static inline double preview_perigee(const Satellite* sat,
                                       double dv_pro, double dv_rad) {
-    double x, y, vx, vy;
-    orbit_to_cartesian(&sat->orbit, &x, &y, &vx, &vy);
-    double v_mag = sqrt(vx*vx + vy*vy);
-    double r_mag = sqrt(x*x + y*y);
+    double x, y, z, vx, vy, vz;
+    orbit_to_cartesian(&sat->orbit, &x, &y, &z, &vx, &vy, &vz);
+    double v_mag = sqrt(vx*vx + vy*vy + vz*vz);
+    double r_mag = sqrt(x*x + y*y + z*z);
     if (v_mag < 1e-9 || r_mag < 1e-9) return -1.0;
-    double pro_x = vx / v_mag, pro_y = vy / v_mag;
-    double rad_x =  x / r_mag, rad_y =  y / r_mag;
+    double pro_x = vx / v_mag, pro_y = vy / v_mag, pro_z = vz / v_mag;
+    double rad_x =  x / r_mag, rad_y =  y / r_mag, rad_z =  z / r_mag;
     double dvx = dv_pro * pro_x + dv_rad * rad_x;
     double dvy = dv_pro * pro_y + dv_rad * rad_y;
-    double new_vx = vx + dvx, new_vy = vy + dvy;
+    double dvz = dv_pro * pro_z + dv_rad * rad_z;
+    double new_vx = vx + dvx, new_vy = vy + dvy, new_vz = vz + dvz;
     Orbit po;
-    cartesian_to_elements(x, y, new_vx, new_vy, &po);
+    cartesian_to_elements(x, y, z, new_vx, new_vy, new_vz, &po);
     if (po.a <= 0.0) return -1.0;  /* hyperbolic — invalid */
     return po.a * (1.0 - po.e);
 }
 
 /* ── Observation packing ─────────────────────────────────────────────────── */
 
-/* Get Cartesian position of a body (static bodies are at origin). */
-static inline void body_position(const Body* b, double* bx, double* by) {
+/* Get Cartesian position of a body (static bodies are at origin).
+ * Bodies (Earth + debris) are equatorial by construction — c_reset writes
+ * inc = raan = 0.0 for every one — so bz is identically 0. It is still
+ * returned and used in every distance test, because omitting z anywhere turns
+ * the success sphere into a cylinder (trap T17). */
+static inline void body_position(const Body* b, double* bx, double* by, double* bz) {
     if (b->is_static) {
         *bx = 0.0;
         *by = 0.0;
+        *bz = 0.0;
     } else {
-        double bvx, bvy;
-        orbit_to_cartesian(&b->orbit, bx, by, &bvx, &bvy);
+        double bvx, bvy, bvz;
+        orbit_to_cartesian(&b->orbit, bx, by, bz, &bvx, &bvy, &bvz);
     }
+}
+
+/* Clamp an observation channel to the declared Box(-2, 2). Applied to every
+ * ext-3d slot (3d_REDTEAM m3: the Δv-ledger channels were measured at 3.24 at
+ * the widest rung, i.e. outside the space the trainer is told about). */
+static inline float obs_clamp2(double v) {
+    if (!(v > -2.0)) return (v > 0.0) ? 2.0f : -2.0f;  /* also traps NaN */
+    if (v > 2.0) return 2.0f;
+    return (float)v;
 }
 
 static inline void fill_observations(Orbital* env) {
@@ -585,9 +894,15 @@ static inline void fill_observations(Orbital* env) {
     const double scale_a    = env->obs_alt_scale_m;             /* for altitudes → [0,1]  */
     const double scale_dist = R_EARTH + env->obs_alt_scale_m;    /* for distances → [0,~2] */
 
-    /* Satellite Cartesian state for velocity decomposition */
-    double sx, sy, svx, svy;
-    orbit_to_cartesian(&sat->orbit, &sx, &sy, &svx, &svy);
+    /* Satellite Cartesian state for velocity decomposition.
+     * NOTE (3d_REDTEAM MAJOR-2 option (a)): slots 0-16 and 33-37 keep their
+     * exact pre-ext-3d statements — including the in-plane (x, y) projections
+     * below — so every validated downstream decoder (t3/redteam/rt_common.py
+     * ObsView, nav/orbital_math.py decode_obs, nav/eval_relnav.py build_obs_t3)
+     * and the 100/100 scripted expert keep working unmodified. The out-of-plane
+     * state is carried by the repurposed dead body slots 21-32 instead. */
+    double sx, sy, sz, svx, svy, svz;
+    orbit_to_cartesian(&sat->orbit, &sx, &sy, &sz, &svx, &svy, &svz);
 
     /* Radial and tangential velocity components */
     double r = sqrt(sx*sx + sy*sy);
@@ -631,8 +946,19 @@ static inline void fill_observations(Orbital* env) {
          * 600 vs 1800 sub-steps from the cap — even the 99.2% expert fails
          * clock-blind) and the apsidal alignment cos(ω_s − ω_t) (pairs with
          * obs[9-12]; the driver of Δē-matching burn timing). */
-        double lam_s = sat->orbit.M + sat->orbit.omega;
-        double lam_t = env->target.M + env->target.omega;
+        /* ext-3d: under dim3_mode=1 λ is the 3D mean longitude in the
+         * target-plane gauge. Identical value at i = Ω = 0 by construction
+         * (gauge = identity, ω + 0.0 == ω), so the 2D lineage is unchanged. */
+        double lam_s, lam_t;
+        if (env->dim3_mode) {
+            PlaneGauge g;
+            gauge_from_orbit(&env->target, &g);
+            lam_s = orb_lambda_gauge(&sat->orbit, &g);
+            lam_t = orb_lambda_gauge(&env->target, &g);
+        } else {
+            lam_s = sat->orbit.M + sat->orbit.omega;
+            lam_t = env->target.M + env->target.omega;
+        }
         double dlam_phase = lam_s - lam_t;
         double t_frac = (double)(env->episode_cap_steps - env->step)
                         / (double)env->episode_cap_steps;
@@ -653,10 +979,10 @@ static inline void fill_observations(Orbital* env) {
      * First compute distances to all bodies, then pick the N closest. */
     double dist[MAX_BODIES];
     for (int i = 0; i < env->num_bodies; i++) {
-        double bx, by;
-        body_position(&env->bodies[i], &bx, &by);
-        double dx = sx - bx, dy = sy - by;
-        dist[i] = sqrt(dx*dx + dy*dy);
+        double bx, by, bz;
+        body_position(&env->bodies[i], &bx, &by, &bz);
+        double dx = sx - bx, dy = sy - by, dz = sz - bz;
+        dist[i] = sqrt(dx*dx + dy*dy + dz*dz);
     }
 
     /* Simple selection sort to get N_OBS_BODY closest indices */
@@ -689,14 +1015,14 @@ static inline void fill_observations(Orbital* env) {
         int i = idx[k];
         const Body* b = &env->bodies[i];
 
-        double bx, by, bvx = 0.0, bvy = 0.0;
+        double bx, by, bz, bvx = 0.0, bvy = 0.0, bvz = 0.0;
         if (b->is_static) {
-            bx = 0.0; by = 0.0;
+            bx = 0.0; by = 0.0; bz = 0.0;
         } else {
-            orbit_to_cartesian(&b->orbit, &bx, &by, &bvx, &bvy);
+            orbit_to_cartesian(&b->orbit, &bx, &by, &bz, &bvx, &bvy, &bvz);
         }
 
-        double dx = sx - bx, dy = sy - by;
+        double dx = sx - bx, dy = sy - by, dz = sz - bz;
         double dr = dist[i];
 
         /* Relative bearing: angle difference */
@@ -708,12 +1034,95 @@ static inline void fill_observations(Orbital* env) {
         while (dtheta < -M_PI) dtheta += 2.0 * M_PI;
 
         /* Closing rate: d/dt(|r_sat - r_body|) = (r̂ · (v_sat - v_body)) */
-        double closing = ((dx*(svx-bvx) + dy*(svy-bvy)) / dr);
+        double closing = ((dx*(svx-bvx) + dy*(svy-bvy) + dz*(svz-bvz)) / dr);
 
         obs[base]   = (float)(dr / scale_dist);
         obs[base+1] = (float)(dtheta / M_PI);
         obs[base+2] = (float)(closing / v_circ);
         obs[base+3] = (float)(b->keepout_radius / scale_dist);
+    }
+
+    /* ── [21-32] ext-3d block. OBS REPURPOSING, not relayout (3d_REDTEAM
+     * MAJOR-2, option (a)): slots 21-32 were measured identically zero at the
+     * project's standing no-debris configuration, so the 3D state goes there
+     * and slots 0-16 / 33-37 keep their semantics — which preserves every
+     * validated decoder, the scripted expert, the EKF injector, and the 2D→3D
+     * warm-start. PRECONDITION: dim3_mode = 1 requires num_debris = 0 (the
+     * project standard since the no-debris decision); with debris enabled these
+     * writes overwrite bodies 1-3 of the conjunction block. */
+    if (env->dim3_mode) {
+        double hsx, hsy, hsz, htx, hty, htz;
+        orb_hhat(&sat->orbit,  &hsx, &hsy, &hsz);
+        orb_hhat(&env->target, &htx, &hty, &htz);
+
+        /* Relative-inclination vector δı⃗ = Δi_rel·n̂, n̂ = (ĥ_t × ĥ_s)/|·|.
+         * Continuous through Δi = 0 (the vector → 0⃗; only its derivative has a
+         * corner, bounded by the norm's Lipschitz constant) — unlike i and Ω
+         * separately, which are singular there. */
+        double cx = hty*hsz - htz*hsy;
+        double cy = htz*hsx - htx*hsz;
+        double cz = htx*hsy - hty*hsx;
+        double cn = sqrt(cx*cx + cy*cy + cz*cz);
+        double hdot = htx*hsx + hty*hsy + htz*hsz;
+        double di_rel = atan2(cn, hdot);
+        double dix = 0.0, diy = 0.0, diz = 0.0;
+        if (cn > 1e-300) {
+            dix = di_rel * cx / cn; diy = di_rel * cy / cn; diz = di_rel * cz / cn;
+        }
+
+        /* Chaser RTN: R̂ = r̂_s, N̂ = ĥ_s, T̂ = N̂ × R̂. Projecting δı⃗ here (not
+         * into the target's frame) makes atan2(δı⃗·T̂, δı⃗·R̂) exactly "how far
+         * the chaser must coast to reach the relative node" — the burn-timing
+         * signal, with no explicit node detector (3d_C §1). */
+        double rmag3 = sqrt(sx*sx + sy*sy + sz*sz);
+        double Rx = sx/rmag3, Ry = sy/rmag3, Rz = sz/rmag3;
+        double Tx = hsy*Rz - hsz*Ry, Ty = hsz*Rx - hsx*Rz, Tz = hsx*Ry - hsy*Rx;
+
+        double di_scale = (env->obs_di_scale_rad > 0.0)
+                          ? env->obs_di_scale_rad
+                          : fmax((env->di_max_rad > 0.0 ? env->di_max_rad : 0.0),
+                                 0.25 * M_PI / 180.0);
+        double de_scale = (env->obs_de_scale > 0.0)
+                          ? env->obs_de_scale
+                          : fmax((env->de_max > 0.0 ? env->de_max : 0.0), 0.05);
+
+        obs[21] = obs_clamp2((dix*Rx + diy*Ry + diz*Rz) / di_scale);
+        obs[22] = obs_clamp2((dix*Tx + diy*Ty + diz*Tz) / di_scale);
+
+        double esx, esy, esz, etx, ety, etz;
+        orb_evec(&sat->orbit,  &esx, &esy, &esz);
+        orb_evec(&env->target, &etx, &ety, &etz);
+        double dex = esx - etx, dey = esy - ety, dez = esz - etz;
+        obs[23] = obs_clamp2((dex*htx + dey*hty + dez*htz) / de_scale);
+
+        /* Cross-track LVLH pair, completing obs[33-36]'s in-plane block.
+         * ω⃗_LVLH ∥ N̂_t, so (ω⃗ × ρ⃗)·N̂_t ≡ 0 and the frame-rotation correction
+         * drops out of the N component exactly. */
+        double tx3, ty3, tz3, tvx3, tvy3, tvz3;
+        orbit_to_cartesian(&env->target, &tx3, &ty3, &tz3, &tvx3, &tvy3, &tvz3);
+        double rho_N  = (sx - tx3)*htx + (sy - ty3)*hty + (sz - tz3)*htz;
+        double rhod_N = (svx - tvx3)*htx + (svy - tvy3)*hty + (svz - tvz3)*htz;
+        double v_c_t  = sqrt(MU / env->target.a);
+        obs[24] = obs_clamp2(rho_N / env->lvlh_scale_m);
+        obs[25] = obs_clamp2(rhod_N / v_c_t);
+
+        /* Δv ledger, in the same units Φ(mode 2) uses: one obs unit per dv_ref
+         * of remaining Δv. obs[28] is the feasibility margin — negative means
+         * the tank cannot pay for the geometry. */
+        double dv_ref = (env->shape_dv_ref_ms > 0.0) ? env->shape_dv_ref_ms : 300.0;
+        double dhx = hsx - htx, dhy = hsy - hty, dhz = hsz - htz;
+        double dv_pl = v_c_t * sqrt(dhx*dhx + dhy*dhy + dhz*dhz);
+        double da_rel3 = (sat->orbit.a - env->target.a) / env->target.a;
+        double de3 = sqrt(dex*dex + dey*dey + dez*dez);
+        double dv_in = 0.5 * v_c_t * sqrt(da_rel3*da_rel3 + de3*de3);
+        double dv_rem = VE * log((sat->dry_mass + sat->fuel_mass) / sat->dry_mass);
+        obs[26] = obs_clamp2(dv_pl  / dv_ref);
+        obs[27] = obs_clamp2(dv_rem / dv_ref);
+        obs[28] = obs_clamp2((dv_rem - dv_pl - dv_in) / dv_ref);
+        obs[29] = 0.0f;  /* reserved */
+        obs[30] = 0.0f;
+        obs[31] = 0.0f;
+        obs[32] = 0.0f;
     }
 
     /* [33-37] LVLH-frame relative state — primary observation for rendezvous.
@@ -723,8 +1132,9 @@ static inline void fill_observations(Orbital* env) {
      * inertial angular position, which is the key observation-aliasing fix
      * from Phase 4 spec §3.1. */
     {
-        double tx, ty, tvx, tvy;
-        orbit_to_cartesian(&env->target, &tx, &ty, &tvx, &tvy);
+        double tx, ty, tz, tvx, tvy, tvz;
+        orbit_to_cartesian(&env->target, &tx, &ty, &tz, &tvx, &tvy, &tvz);
+        (void)tz; (void)tvz;   /* in-plane block by design; cross-track is obs[24,25] */
         /* Target inertial angle: ω + θ (perifocal→inertial) */
         double theta_t = env->target.theta + env->target.omega;
         double ct = cos(theta_t), st = sin(theta_t);
@@ -818,6 +1228,65 @@ static inline double compute_phi(const Orbital* env) {
                + env->shape_w_match  * match);
     }
 
+    /* ── ext-3d shaping_mode 2 — the 3D lift of mode 1 ────────────────────
+     *   Δv_in = 0.5·v_t·sqrt(δa_rel² + ‖Δē₃‖²)        (in-plane, unchanged)
+     *   Δv_pl = 1.0·v_t·‖ĥ_s − ĥ_t‖ = 2·v_t·sin(Δi/2) (exact single-impulse chord)
+     *   Δv₃   = Δv_in + Δv_pl                          (L1, NOT hypot-3)
+     *   Φ     = −[W_λ·|Δλ|/π + W_m·squash(Δv₃/dv_ref)]
+     *
+     * Coefficient 1.0 on the plane term, not 0.5 (3d_C §3): the tangential axis
+     * has a Gauss lever of 2 on both δa and δē — two impulses at opposite u
+     * trade one against the other, which is what the shared 0.5 encodes — while
+     * the normal axis has a lever of 1 and no such trade. The rule is
+     * "coefficient = 1/(best lever)", so Φ reads in true m/s of Δv-to-go and one
+     * m/s of correctly-aimed burn buys exactly one unit, on either axis.
+     *
+     * L1 rather than hypot-3 because ∂hypot/∂x = x/‖·‖ attenuates the in-plane
+     * gradient 4.8× whenever the plane error is large — a soft gate, i.e. the
+     * project's defect class #1 in continuous clothing. L1 keeps ∂Φ/∂Δv equal
+     * on both axes. It over-counts a combined burn by up to 1.41×, which with
+     * actions 26-29 in the table is now a realizable bonus for the physically
+     * optimal maneuver, and is unfarmable under shape_gamma = 1 (the episode
+     * total telescopes to Φ_T − Φ₀ regardless of path).
+     *
+     * BIT-EXACT REDUCTION TO MODE 1 AT Δi = 0 (anchor A2, verified 0/200000):
+     * identity gauge ⇒ λ is M + ω; element-derived ē collapses to (e cosω,
+     * e sinω) with a +0.0 third component that squares to +0.0; ĥ_s − ĥ_t = 0⃗
+     * ⇒ Δv_pl is exactly +0.0 ⇒ Δv_in + 0.0 == Δv_in. Hence `sqrt(x*x + y*y)`
+     * and NOT `hypot` — hypot() is a different FP path and mismatched 87.7% of
+     * draws in the red-team's probe (3d_REDTEAM BLOCKER-2). */
+    if (env->shaping_mode == 2) {
+        PlaneGauge g;
+        gauge_from_orbit(&env->target, &g);
+        double dlam = wrap_pi(orb_lambda_gauge(&env->sat.orbit, &g)
+                            - orb_lambda_gauge(&env->target,    &g));
+
+        double e_sx, e_sy, e_sz, e_tx, e_ty, e_tz;
+        orb_evec(&env->sat.orbit, &e_sx, &e_sy, &e_sz);
+        orb_evec(&env->target,    &e_tx, &e_ty, &e_tz);
+        double dex = e_sx - e_tx, dey = e_sy - e_ty, dez = e_sz - e_tz;
+        double de  = sqrt(dex*dex + dey*dey + dez*dez);
+
+        double da_rel = (env->sat.orbit.a - env->target.a) / env->target.a;
+        double v_t    = sqrt(MU / env->target.a);
+        double dv_in  = 0.5 * v_t * sqrt(da_rel*da_rel + de*de);
+
+        double hsx, hsy, hsz, htx, hty, htz;
+        orb_hhat(&env->sat.orbit, &hsx, &hsy, &hsz);
+        orb_hhat(&env->target,    &htx, &hty, &htz);
+        double dhx = hsx - htx, dhy = hsy - hty, dhz = hsz - htz;
+        double dv_pl = 1.0 * v_t * sqrt(dhx*dhx + dhy*dhy + dhz*dhz);
+
+        double match = (dv_in + dv_pl) / env->shape_dv_ref_ms;
+        if (env->shape_match_squash == 1) {
+            match = match / (1.0 + match);   /* bounded, strictly monotone, no dead zone */
+        } else if (match > 1.0) {
+            match = 1.0;
+        }
+        return -(env->shape_w_lambda * fabs(dlam) / M_PI
+               + env->shape_w_match  * match);
+    }
+
     /* Φ_orbit: orbit shape match.
      * Phase 5.5 altitude expansion: effective orbit-match tolerance scales with
      * the env's altitude domain. tol_eff = max(SUCCESS_TOL_A, K * obs_alt_scale_m).
@@ -838,10 +1307,11 @@ static inline double compute_phi(const Orbital* env) {
     double phi_phase = 1.0 - cos(dtheta);
 
     /* Φ_vel: LVLH-frame relative velocity magnitude */
-    double sx, sy, svx, svy;
-    orbit_to_cartesian(&env->sat.orbit, &sx, &sy, &svx, &svy);
-    double tx, ty, tvx, tvy;
-    orbit_to_cartesian(&env->target, &tx, &ty, &tvx, &tvy);
+    double sx, sy, sz, svx, svy, svz;
+    orbit_to_cartesian(&env->sat.orbit, &sx, &sy, &sz, &svx, &svy, &svz);
+    double tx, ty, tz, tvx, tvy, tvz;
+    orbit_to_cartesian(&env->target, &tx, &ty, &tz, &tvx, &tvy, &tvz);
+    (void)sz; (void)svz; (void)tz; (void)tvz;   /* legacy Φ is in-plane by definition */
     double theta_t = env->target.theta + env->target.omega;
     double ct = cos(theta_t), st = sin(theta_t);
     double dvxi = svx - tvx, dvyi = svy - tvy;
@@ -901,16 +1371,20 @@ static inline int check_termination(Orbital* env) {
         return 1;
     }
 
-    double sx, sy, svx, svy;
-    orbit_to_cartesian(&sat->orbit, &sx, &sy, &svx, &svy);
-    double r = sqrt(sx*sx + sy*sy);
+    /* ext-3d trap T17: EVERY distance below must pick up z. Omitting it
+     * anywhere turns the rendezvous sphere into a cylinder and awards success
+     * to trajectories kilometres out of plane. All of these reduce bitwise at
+     * z = vz = 0 (x*x + y*y + 0.0 == x*x + y*y). */
+    double sx, sy, sz, svx, svy, svz;
+    orbit_to_cartesian(&sat->orbit, &sx, &sy, &sz, &svx, &svy, &svz);
+    double r = sqrt(sx*sx + sy*sy + sz*sz);
 
     /* 1. Collision with any body */
     for (int i = 0; i < env->num_bodies; i++) {
-        double bx, by;
-        body_position(&env->bodies[i], &bx, &by);
-        double dx = sx - bx, dy = sy - by;
-        double d = sqrt(dx*dx + dy*dy);
+        double bx, by, bz;
+        body_position(&env->bodies[i], &bx, &by, &bz);
+        double dx = sx - bx, dy = sy - by, dz = sz - bz;
+        double d = sqrt(dx*dx + dy*dy + dz*dz);
         if (d < env->bodies[i].hard_radius) {
             env->rewards[0]   = -10.0f;
             env->terminals[0] = 1;
@@ -921,7 +1395,7 @@ static inline int check_termination(Orbital* env) {
     }
 
     /* 2. Escape trajectory: specific orbital energy E = ½v² - μ/r ≥ 0 */
-    double v2 = svx*svx + svy*svy;
+    double v2 = svx*svx + svy*svy + svz*svz;
     double E_orb = 0.5 * v2 - MU / r;
     if (E_orb >= 0.0) {
         env->rewards[0]   = -10.0f;
@@ -959,12 +1433,12 @@ static inline int check_termination(Orbital* env) {
     /* 4. Stranded / 5. Success — Phase 3 rendezvous check.
      * Success requires BOTH position and relative-velocity match with the
      * propagated target body, not just orbit-shape (a, ē) matching. */
-    double tx, ty, tvx, tvy;
-    orbit_to_cartesian(&env->target, &tx, &ty, &tvx, &tvy);
-    double dx = sx - tx, dy = sy - ty;
-    double dist_to_target = sqrt(dx*dx + dy*dy);
-    double rvx = svx - tvx, rvy = svy - tvy;
-    double rel_vel = sqrt(rvx*rvx + rvy*rvy);
+    double tx, ty, tz, tvx, tvy, tvz;
+    orbit_to_cartesian(&env->target, &tx, &ty, &tz, &tvx, &tvy, &tvz);
+    double dx = sx - tx, dy = sy - ty, dz = sz - tz;
+    double dist_to_target = sqrt(dx*dx + dy*dy + dz*dz);
+    double rvx = svx - tvx, rvy = svy - tvy, rvz = svz - tvz;
+    double rel_vel = sqrt(rvx*rvx + rvy*rvy + rvz*rvz);
     int at_target = (dist_to_target < env->rendezvous_radius_m) &&
                     (rel_vel < env->rel_vel_tol_ms);
     if (sat->fuel_mass <= 0.0 && !at_target) {
@@ -1003,8 +1477,8 @@ static inline void write_traj_record(Orbital* env, float reward, float dv) {
     TrajectoryRecord* rec = &env->traj_log[env->step];
     const Satellite* sat = &env->sat;
 
-    double sx, sy, svx, svy;
-    orbit_to_cartesian(&sat->orbit, &sx, &sy, &svx, &svy);
+    double sx, sy, sz, svx, svy, svz;
+    orbit_to_cartesian(&sat->orbit, &sx, &sy, &sz, &svx, &svy, &svz);
 
     rec->episode_id  = env->episode_id;
     rec->step        = env->step;
@@ -1026,20 +1500,41 @@ static inline void write_traj_record(Orbital* env, float reward, float dv) {
     /* Target body snapshot — actual propagated position and velocity */
     rec->target_a  = (float)env->target.a;
     rec->target_e  = (float)env->target.e;
-    double tx, ty, tvx, tvy;
-    orbit_to_cartesian(&env->target, &tx, &ty, &tvx, &tvy);
+    double tx, ty, tz, tvx, tvy, tvz;
+    orbit_to_cartesian(&env->target, &tx, &ty, &tz, &tvx, &tvy, &tvz);
     rec->target_x  = (float)tx;
     rec->target_y  = (float)ty;
     rec->target_vx = (float)tvx;
     rec->target_vy = (float)tvy;
 
+    /* ext-3d appended columns */
+    rec->sat_z       = (float)sz;
+    rec->sat_vz      = (float)svz;
+    rec->sat_inc     = (float)sat->orbit.inc;
+    rec->sat_raan    = (float)sat->orbit.raan;
+    rec->target_z    = (float)tz;
+    rec->target_vz   = (float)tvz;
+    rec->target_inc  = (float)env->target.inc;
+    rec->target_raan = (float)env->target.raan;
+    if (env->last_burn_valid) {
+        rec->burn_post_x  = (float)env->last_burn_post[0];
+        rec->burn_post_y  = (float)env->last_burn_post[1];
+        rec->burn_post_z  = (float)env->last_burn_post[2];
+        rec->burn_post_vx = (float)env->last_burn_post[3];
+        rec->burn_post_vy = (float)env->last_burn_post[4];
+        rec->burn_post_vz = (float)env->last_burn_post[5];
+    } else {
+        rec->burn_post_x = rec->burn_post_y = rec->burn_post_z = 0.0f;
+        rec->burn_post_vx = rec->burn_post_vy = rec->burn_post_vz = 0.0f;
+    }
+
     /* Min conjunction distance */
     double min_dist = 1e30;
     for (int i = 0; i < env->num_bodies; i++) {
-        double bx, by;
-        body_position(&env->bodies[i], &bx, &by);
-        double dx = sx - bx, dy = sy - by;
-        double d = sqrt(dx*dx + dy*dy);
+        double bx, by, bz;
+        body_position(&env->bodies[i], &bx, &by, &bz);
+        double dx = sx - bx, dy = sy - by, dz = sz - bz;
+        double d = sqrt(dx*dx + dy*dy + dz*dz);
         if (d < min_dist) min_dist = d;
     }
     rec->min_conj_dist = (float)min_dist;
@@ -1047,8 +1542,9 @@ static inline void write_traj_record(Orbital* env, float reward, float dv) {
     /* All body positions */
     rec->num_bodies = env->num_bodies;
     for (int i = 0; i < env->num_bodies; i++) {
-        double bx, by;
-        body_position(&env->bodies[i], &bx, &by);
+        double bx, by, bz;
+        body_position(&env->bodies[i], &bx, &by, &bz);
+        (void)bz;   /* bodies are equatorial by construction: body_z ≡ 0 */
         rec->body_x[i]        = (float)bx;
         rec->body_y[i]        = (float)by;
         rec->body_hard_r[i]   = (float)env->bodies[i].hard_radius;
@@ -1214,6 +1710,89 @@ static inline void c_reset(Orbital* env) {
         env->target.omega = env->sat.orbit.omega + env->omega_offset_fixed;
         omega_tgt = env->target.omega;
     }
+
+    /* ── ext-3d: orbit planes ────────────────────────────────────────────────
+     * dim3_mode = 0 ⇒ inc = raan = 0.0 EXACTLY for the chaser, the target and
+     * every body. Combined with propagate_orbit never touching them and both
+     * conversion routines value-gating on (inc==0 && raan==0), the invariant
+     * "every Orbit is exactly equatorial" is closed under reset, propagation
+     * and burns — which is what makes the 2D anchor bit-exact rather than
+     * merely float-close (3d_A §5.1).
+     *
+     * The target plane is pure GAUGE under two-body dynamics (the env is
+     * SO(3)-invariant), so it defaults to i_t = Ω_t = 0 and all relative
+     * inclination lives in the chaser. i_target_rad / raan_target_rad exist as
+     * test hooks for the sampler and frame gates.
+     *
+     * SAMPLER — rotation form only (3d_REDTEAM BLOCKER-1). ĥ_s = R(δ, n̂)·ĥ_t
+     * with δ = di_max_rad·√U (area-uniform disc) and n̂ uniform IN THE TARGET
+     * PLANE, then (inc, raan) recovered by atan2. Measured max/knob = 1.0000
+     * with 0.0% over at every i_t. The alternative in 3d_A §4 — adding a disc
+     * to ī = (sin i cosΩ, sin i sinΩ) and taking inc = asin|ī| — is DELETED: ī
+     * is a projection, so it under-measures by cos i_t (1.64× the knob at
+     * i_t = 51.6°, 21.4× at 98°), and asin cannot represent i > 90° at all. */
+    {
+        double i_t = 0.0, O_t = 0.0;
+        if (env->dim3_mode) {
+            i_t = env->i_target_rad;
+            O_t = env->raan_target_rad;
+        }
+        env->target.inc    = i_t;
+        env->target.raan   = O_t;
+        env->sat.orbit.inc = i_t;   /* di_max off ⇒ chaser plane = target plane */
+        env->sat.orbit.raan= O_t;
+
+        if (env->dim3_mode && env->di_max_rad >= 0.0 && !env->same_orbit_init) {
+            double delta = env->di_max_rad * sqrt(rand() / (double)RAND_MAX);
+            double ph    = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
+
+            double wx, wy, wz;
+            orb_hhat(&env->target, &wx, &wy, &wz);
+            /* Orthonormal basis of the target PLANE: û₁ = ẑ × ĥ_t (or x̂ when
+             * ĥ_t ∥ ẑ), û₂ = ĥ_t × û₁. */
+            double u1x = -wy, u1y = wx, u1z = 0.0;
+            double u1n = sqrt(u1x*u1x + u1y*u1y);
+            if (u1n > 1e-14) { u1x /= u1n; u1y /= u1n; }
+            else             { u1x = 1.0; u1y = 0.0; }
+            double u2x = wy*u1z - wz*u1y;
+            double u2y = wz*u1x - wx*u1z;
+            double u2z = wx*u1y - wy*u1x;
+            double cph = cos(ph), sph = sin(ph);
+            double nx = u1x*cph + u2x*sph;
+            double ny = u1y*cph + u2y*sph;
+            double nz = u1z*cph + u2z*sph;
+
+            /* Rodrigues: ĥ_s = ĥ_t cosδ + (n̂ × ĥ_t) sinδ + n̂ (n̂·ĥ_t)(1−cosδ).
+             * n̂ ⟂ ĥ_t by construction, so the last term is ~0; it is kept for
+             * exactness against round-off in the basis. */
+            double cd = cos(delta), sd = sin(delta);
+            double dot = nx*wx + ny*wy + nz*wz;
+            double crx = ny*wz - nz*wy;
+            double cry = nz*wx - nx*wz;
+            double crz = nx*wy - ny*wx;
+            double hsx = wx*cd + crx*sd + nx*dot*(1.0 - cd);
+            double hsy = wy*cd + cry*sd + ny*dot*(1.0 - cd);
+            double hsz = wz*cd + crz*sd + nz*dot*(1.0 - cd);
+            double hn  = sqrt(hsx*hsx + hsy*hsy + hsz*hsz);
+            if (hn > 0.0) { hsx /= hn; hsy /= hn; hsz /= hn; }
+
+            double hxy = sqrt(hsx*hsx + hsy*hsy);
+            if (hxy > 1e-14) {
+                env->sat.orbit.inc  = atan2(hxy, hsz);
+                double ra = atan2(hsx, -hsy);
+                if (ra < 0.0) ra += 2.0 * M_PI;
+                env->sat.orbit.raan = ra;
+            } else {
+                /* Signed-zero guard (3d_REDTEAM m5): an exactly equatorial
+                 * ĥ = (0.0, −0.0, 1.0) pushed through the rotation becomes
+                 * (0.0, +0.0, 1.0), and atan2(0.0, −0.0) = π while
+                 * atan2(0.0, +0.0) = 0 — a π jump in Ω out of pure float sign. */
+                env->sat.orbit.inc  = (hsz >= 0.0) ? 0.0 : M_PI;
+                env->sat.orbit.raan = 0.0;
+            }
+        }
+    }
+
     env->sat.orbit.M     = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
     {
         /* θ from M via Kepler solve (works for any e ≥ 0; for e=0 it returns θ = M). */
@@ -1287,8 +1866,22 @@ static inline void c_reset(Orbital* env) {
          * λ_t − λ_s = (M_t + ω_t) − (M_s + ω_s) = phase_gap exactly.
          * Legacy mode 0 offsets M per-perifocal-frame; with independent ω the
          * realized physical gap is uniform ±180° regardless of the knob
-         * (recon ANOM-4 — every e>0 phase curriculum stage was unstaged). */
-        tgt_M += env->sat.orbit.omega - env->target.omega;
+         * (recon ANOM-4 — every e>0 phase curriculum stage was unstaged).
+         *
+         * ext-3d: in 3D the knob goes inert again unless ϖ = ω + Ω replaces ω
+         * (measured realized-gap error p50 = 90.4°, max 180° unpatched — the
+         * ANOM-4 re-run). ϖ is taken in the target-plane gauge so the patch is
+         * exact at any i_t; at the design gauge i_t = Ω_t = 0 that is literally
+         * (ω_s + Ω_s) − (ω_t + Ω_t). ϖ_gauge does not depend on M, so writing
+         * tgt_M afterwards cannot disturb it. */
+        if (env->dim3_mode) {
+            PlaneGauge g;
+            gauge_from_orbit(&env->target, &g);
+            tgt_M += orb_varpi_gauge(&env->sat.orbit, &g)
+                   - orb_varpi_gauge(&env->target,    &g);
+        } else {
+            tgt_M += env->sat.orbit.omega - env->target.omega;
+        }
     }
     tgt_M = fmod(tgt_M, 2.0 * M_PI);
     if (tgt_M < 0.0) tgt_M += 2.0 * M_PI;
@@ -1302,6 +1895,8 @@ static inline void c_reset(Orbital* env) {
     env->bodies[0].orbit.M          = 0.0;
     env->bodies[0].orbit.theta      = 0.0;
     env->bodies[0].orbit.omega      = 0.0;
+    env->bodies[0].orbit.inc        = 0.0;   /* ext-3d: bodies are equatorial */
+    env->bodies[0].orbit.raan       = 0.0;
     env->bodies[0].hard_radius      = R_EARTH;
     env->bodies[0].keepout_radius   = EARTH_KEEPOUT;
     env->bodies[0].is_static        = 1;
@@ -1326,6 +1921,8 @@ static inline void c_reset(Orbital* env) {
         env->bodies[1 + i].orbit.M          = d_M;
         env->bodies[1 + i].orbit.theta      = d_theta;
         env->bodies[1 + i].orbit.omega      = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
+        env->bodies[1 + i].orbit.inc        = 0.0;   /* ext-3d: debris stay equatorial */
+        env->bodies[1 + i].orbit.raan       = 0.0;
         env->bodies[1 + i].hard_radius      = DEBRIS_HARD_R;
         env->bodies[1 + i].keepout_radius   = DEBRIS_KEEPOUT;
         env->bodies[1 + i].is_static        = 0;
@@ -1333,12 +1930,12 @@ static inline void c_reset(Orbital* env) {
 
     /* Seed dense-shaping cache: distance and phase offset at t=0. */
     {
-        double sx, sy, svx, svy;
-        orbit_to_cartesian(&env->sat.orbit, &sx, &sy, &svx, &svy);
-        double tx, ty, tvx, tvy;
-        orbit_to_cartesian(&env->target,     &tx, &ty, &tvx, &tvy);
-        double dx = sx - tx, dy = sy - ty;
-        env->dist_prev = sqrt(dx*dx + dy*dy);
+        double sx, sy, sz, svx, svy, svz;
+        orbit_to_cartesian(&env->sat.orbit, &sx, &sy, &sz, &svx, &svy, &svz);
+        double tx, ty, tz, tvx, tvy, tvz;
+        orbit_to_cartesian(&env->target,     &tx, &ty, &tz, &tvx, &tvy, &tvz);
+        double dx = sx - tx, dy = sy - ty, dz = sz - tz;
+        env->dist_prev = sqrt(dx*dx + dy*dy + dz*dz);
 
         double dp = env->sat.orbit.theta - env->target.theta;
         dp = dp - 2.0*M_PI * floor((dp + M_PI) / (2.0*M_PI));
@@ -1349,6 +1946,7 @@ static inline void c_reset(Orbital* env) {
     env->phi_prev      = compute_phi(env);
     env->last_tau      = 1;
     env->g_shape_accum = 0.0;
+    env->last_burn_valid = 0;   /* ext-3d: no burn has happened this episode */
 
     fill_observations(env);
 }
@@ -1356,6 +1954,7 @@ static inline void c_reset(Orbital* env) {
 static inline void c_step(Orbital* env) {
     env->rewards[0]   = 0.0f;
     env->terminals[0] = 0;
+    env->last_burn_valid = 0;   /* ext-3d: cleared before this decision's burn */
 
     /* Phase 5 env-fix F3: gave-up termination. If c_reset's rejection sampler
      * exhausted its attempt cap with a sub-keepout init AND gave_up_action=1
@@ -1548,14 +2147,14 @@ static inline void c_render(Orbital* env) {
 
     /* Draw debris */
     for (int i = 1; i < env->num_bodies; i++) {
-        double bx, by;
-        body_position(&env->bodies[i], &bx, &by);
+        double bx, by, bz;
+        body_position(&env->bodies[i], &bx, &by, &bz);
         GRID_SET(bx, by, '*');
     }
 
-    /* Draw satellite */
-    double sx, sy, svx, svy;
-    orbit_to_cartesian(&env->sat.orbit, &sx, &sy, &svx, &svy);
+    /* Draw satellite (z-projection is an acceptable 2D view) */
+    double sx, sy, sz, svx, svy, svz;
+    orbit_to_cartesian(&env->sat.orbit, &sx, &sy, &sz, &svx, &svy, &svz);
     GRID_SET(sx, sy, 'S');
 
     /* Print grid */

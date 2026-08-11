@@ -228,10 +228,10 @@ static void test_escape(void) {
     double dv = apply_impulse(&env, dv_needed, 0.0, 0.0);
 
     /* Check orbital energy */
-    double sx, sy, svx, svy;
-    orbit_to_cartesian(&env.sat.orbit, &sx, &sy, &svx, &svy);
-    double v2 = svx*svx + svy*svy;
-    double r2 = sqrt(sx*sx + sy*sy);
+    double sx, sy, sz, svx, svy, svz;
+    orbit_to_cartesian(&env.sat.orbit, &sx, &sy, &sz, &svx, &svy, &svz);
+    double v2 = svx*svx + svy*svy + svz*svz;
+    double r2 = sqrt(sx*sx + sy*sy + sz*sz);
     double E_orb = 0.5 * v2 - MU / r2;
 
     printf("  Δv_applied=%.2f m/s  orbital_energy=%.4e J/kg\n", dv, E_orb);
