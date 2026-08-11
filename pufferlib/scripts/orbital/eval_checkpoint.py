@@ -31,7 +31,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              rendezvous_radius_m=30000.0, rel_vel_tol_ms=50.0,
              shaping_mode=0, shape_w_lambda=1.0, shape_w_match=0.35,
              shape_dv_ref_ms=300.0, shape_gamma=0.995,
-             phase_gap_mode=0, phase_obs_mode=0, episode_cap_steps=2000):
+             phase_gap_mode=0, phase_obs_mode=0, episode_cap_steps=2000,
+             cap_terminal_reward=-10.0):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -74,6 +75,7 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         phase_gap_mode=phase_gap_mode,
         phase_obs_mode=phase_obs_mode,
         episode_cap_steps=episode_cap_steps,
+        cap_terminal_reward=cap_terminal_reward,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -265,6 +267,9 @@ def main():
     parser.add_argument('--episode-cap-steps', type=int, default=2000,
                         help='T3: runtime safety cap in 60 s sim sub-steps (max 3000). '
                              'Legacy 2000 = 33.3 h wall clock.')
+    parser.add_argument('--cap-terminal-reward', type=float, default=-10.0,
+                        help='T3: reward at the safety-cap terminal. Legacy -10; T3 runs 0.0 '
+                             '(red-team #1: -10 under per-decision gamma suppresses warps).')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
@@ -278,7 +283,8 @@ def main():
              args.rendezvous_radius_m, args.rel_vel_tol_ms,
              args.shaping_mode, args.shape_w_lambda, args.shape_w_match,
              args.shape_dv_ref_ms, args.shape_gamma,
-             args.phase_gap_mode, args.phase_obs_mode, args.episode_cap_steps)
+             args.phase_gap_mode, args.phase_obs_mode, args.episode_cap_steps,
+             args.cap_terminal_reward)
 
 
 if __name__ == '__main__':

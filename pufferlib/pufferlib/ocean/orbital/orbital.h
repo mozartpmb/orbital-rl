@@ -302,8 +302,12 @@ typedef struct {
     int              phase_gap_mode;     /* 0 = legacy per-perifocal M offset (inert at e>0,
                                           * recon ANOM-4); 1 = physical mean-longitude gap      */
     int              phase_obs_mode;     /* 0 = legacy true-anomaly obs[13-16] (teleports on
-                                          * burns, sign wrong 39% at e>0); 1 = mean-longitude   */
+                                          * burns, sign wrong 39% at e>0); 1 = mean-longitude
+                                          * Δλ in [13,14] + clock obs[15] + apsidal obs[16]     */
     int              episode_cap_steps;  /* runtime safety cap in sim sub-steps; <= MAX_STEPS   */
+    double           cap_terminal_reward;/* reward at TERM_SAFETY_CAP; −10 legacy, 0 for T3
+                                          * (red-team #1: −10 under per-decision γ makes warps
+                                          * a −7.8 bet until success rate ≈ 47%)                */
 
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
@@ -588,14 +592,25 @@ static inline void fill_observations(Orbital* env) {
         /* T3: mean-longitude phase channels. The legacy true-anomaly gap is a
          * per-body coordinate: its sign disagrees with the physical gap on 39%
          * of e>0 steps and a 1 m/s burn at e≈0 teleports it ~86° (recon
-         * ANOM-1/2). λ = M + ω is sign-correct and burn-continuous. */
+         * ANOM-1/2). λ = M + ω is sign-correct and burn-continuous.
+         *
+         * obs[15,16] (red-team #11): the legacy sin/cos(θ_t) — and sin/cos(λ_t)
+         * — are rotation-only phases carrying zero task information (env is
+         * rotation-invariant). Reused for the two things the policy actually
+         * lacks: the episode clock (bit-identical observations were measured
+         * 600 vs 1800 sub-steps from the cap — even the 99.2% expert fails
+         * clock-blind) and the apsidal alignment cos(ω_s − ω_t) (pairs with
+         * obs[9-12]; the driver of Δē-matching burn timing). */
         double lam_s = sat->orbit.M + sat->orbit.omega;
         double lam_t = env->target.M + env->target.omega;
         double dlam_phase = lam_s - lam_t;
+        double t_frac = (double)(env->episode_cap_steps - env->step)
+                        / (double)env->episode_cap_steps;
+        if (t_frac < 0.0) t_frac = 0.0;
         obs[13] = (float)sin(dlam_phase);
         obs[14] = (float)cos(dlam_phase);
-        obs[15] = (float)sin(lam_t);
-        obs[16] = (float)cos(lam_t);
+        obs[15] = (float)t_frac;
+        obs[16] = (float)cos(sat->orbit.omega - env->target.omega);
     } else {
         double dtheta_phase = sat->orbit.theta - env->target.theta;
         obs[13] = (float)sin(dtheta_phase);
@@ -832,6 +847,15 @@ static inline int check_termination(Orbital* env) {
      * Use macro to apply uniformly at each terminal branch. */
     #define R2_NHR_CLAMP()                                               \
         do {                                                             \
+            /* T3 red-team #5: under shaping_mode 1 the clamp is OFF at  \
+             * every terminal ("clamp-nowhere"). Paying +|Φ_prev| at a   \
+             * terminal rewards dying FAR from the goal (+0.54 mean /    \
+             * +1.21 max premium measured for collision/stranded vs a    \
+             * near-goal death). With the bounded S-R3 potential the     \
+             * telescoped total is Φ_T − Φ₀ for every episode — progress \
+             * credit with no perverse refunds. Legacy mode unchanged.   \
+             * c_reset re-derives phi_prev.                              */ \
+            if (env->shaping_mode == 1) break;                           \
             double _delta = BETA_SHAPE * (0.0 - env->phi_prev);          \
             env->rewards[0]   += (float)_delta;                          \
             env->g_shape_accum += fabs(_delta);                          \
@@ -888,7 +912,14 @@ static inline int check_termination(Orbital* env) {
      * from target; bound Φ (phi_orbit_scale_k) or use γ_shape=1 before
      * training with a_max − a_min ≳ 10,000 km. */
     if (env->step >= env->episode_cap_steps) {
-        env->rewards[0]   = -10.0f;
+        /* T3 red-team #1 (BLOCKER): under flat per-decision γ a −10 cap
+         * terminal prices warp-heavy play as a −7.8 bet while coast-to-cap
+         * discount-hides to −0.0 (3000 decisions, γ^3000 ≈ 0) — PPO suppresses
+         * warps before the first success is ever sampled, which alone
+         * reproduces the post-fix flatline. cap_terminal_reward = 0.0 for T3
+         * runs drops the warp break-even from 46.5% success to 0%. Default
+         * −10.0 (set by the Python binding) = legacy. */
+        env->rewards[0]   = (float)env->cap_terminal_reward;
         env->terminals[0] = 1;
         env->last_terminal_cause = TERM_SAFETY_CAP;
         env->phi_prev     = 0.0;   /* c_reset re-derives; keep state consistent */

@@ -114,9 +114,13 @@ def hohmann_dv(r1, r2):
 
 # ═════════════════════════════════════════════════════════════════════════════
 class ExpertController:
-    def __init__(self, verbose=False, trace=False):
+    def __init__(self, verbose=False, trace=False, cap_steps=None):
         self.verbose = verbose
         self.trace = trace
+        # T3: the episode cap is a runtime env kwarg now; the controller's
+        # horizon must match it (red-team #11: a clock-blind or wrong-clock
+        # controller times out on states a clock-aware one solves).
+        self.cap_steps = MAX_STEPS if cap_steps is None else int(cap_steps)
         self.reset()
 
     # ── episode lifecycle ───────────────────────────────────────────────────
@@ -139,7 +143,7 @@ class ExpertController:
     def act(self, obs):
         sat, tgt, fuel = om.decode_obs(obs)
         dv_left = max(0.0, om.dv_remaining(fuel) - DV_FLOOR)
-        t_rem = (MAX_STEPS - self.steps) * DT
+        t_rem = (self.cap_steps - self.steps) * DT
         a = self._decide(sat, tgt, dv_left, t_rem)
         dvp, dvr = om.ACTION_DV[a]
         self.dv_cmd += math.hypot(dvp, dvr)
@@ -406,8 +410,16 @@ def _meta(sat, tgt):
 
 def run(episodes=200, seed=42, same_orbit=0, verbose=False, out_csv=None,
         e_max=0.05, gap_max=math.pi, debris=False, tag='headline', trace=False,
-        rows=None, box_r=30000.0, box_v=50.0):
+        rows=None, box_r=30000.0, box_v=50.0, t3_mode=0):
     from pufferlib.ocean.orbital.orbital import Orbital
+
+    # T3 regression config (red-team #3): the exact env the recovery arms
+    # train in. decode_obs switches via om.DEFAULT_PHASE_OBS_MODE.
+    t3_kwargs = dict(
+        shaping_mode=1, shape_gamma=1.0, phase_gap_mode=1, phase_obs_mode=1,
+        episode_cap_steps=3000, cap_terminal_reward=0.0,
+    ) if t3_mode else {}
+    om.DEFAULT_PHASE_OBS_MODE = 1 if t3_mode else 0
 
     env = Orbital(
         num_envs=1,
@@ -421,12 +433,14 @@ def run(episodes=200, seed=42, same_orbit=0, verbose=False, out_csv=None,
         gave_up_action="terminate",
         rendezvous_radius_m=box_r,
         rel_vel_tol_ms=box_v,
+        **t3_kwargs,
     )
     # the controller aims for the inside of whatever box the env enforces
     global SAFE_R, SAFE_V
     SAFE_R, SAFE_V = 0.87 * box_r, 0.84 * box_v
     obs, _ = env.reset(seed=seed)
-    ctl = ExpertController(verbose=verbose, trace=trace)
+    ctl = ExpertController(verbose=verbose, trace=trace,
+                           cap_steps=3000 if t3_mode else None)
     if rows is None:
         rows = []
     out = []
@@ -528,6 +542,9 @@ def main():
     p.add_argument('--trace', action='store_true')
     p.add_argument('--csv', type=str, default=None)
     p.add_argument('--tag', type=str, default='headline')
+    p.add_argument('--t3', action='store_true',
+                   help='run against the T3 recovery env config '
+                        '(shaping_mode 1, phase_obs_mode 1, cap 3000, cap reward 0)')
     p.add_argument('--suite', action='store_true',
                    help='200 headline episodes + 100 same_orbit_init episodes')
     a = p.parse_args()
@@ -535,16 +552,17 @@ def main():
     if a.suite:
         allrows = []
         r1 = run(episodes=200, seed=a.seed, same_orbit=0, tag='headline',
-                 verbose=a.verbose, trace=a.trace, rows=allrows)
+                 verbose=a.verbose, trace=a.trace, rows=allrows, t3_mode=int(a.t3))
         summarize(r1, 'HEADLINE (LEO 300-800 km, e<=0.05 both, gap +-180 deg)')
         r2 = run(episodes=100, seed=a.seed, same_orbit=1, tag='same_orbit',
-                 verbose=a.verbose, trace=a.trace, rows=allrows, out_csv=a.csv)
+                 verbose=a.verbose, trace=a.trace, rows=allrows, out_csv=a.csv,
+                 t3_mode=int(a.t3))
         summarize(r2, 'SAME_ORBIT_INIT (identical a,e,omega; only theta differs)')
         return
 
     rows = run(episodes=a.episodes, seed=a.seed, same_orbit=int(a.same_orbit),
                verbose=a.verbose, out_csv=a.csv, e_max=a.e_max,
-               gap_max=a.gap_max, tag=a.tag, trace=a.trace)
+               gap_max=a.gap_max, tag=a.tag, trace=a.trace, t3_mode=int(a.t3))
     summarize(rows, a.tag)
 
 

@@ -163,7 +163,10 @@ static PyObject* vec_get_episode_result(PyObject* self, PyObject* args) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
-    env->log_enabled    = 1;  /* always log; Python controls whether to save */
+    /* T3 red-team #4: trajectory logging writes 352 B × every sub-step into a
+     * ~1 MB/env buffer (1 GB at num_envs=1024). Only enable when the Python
+     * side actually saves trajectories (traj_log_dir set). */
+    env->log_enabled    = (int)unpack(kwargs, "log_enabled");
     env->episode_id     = 0;
     env->num_debris_min     = (int)unpack(kwargs, "num_debris_min");
     env->num_debris_max     = (int)unpack(kwargs, "num_debris_max");
@@ -199,6 +202,7 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->phase_gap_mode          = (int)unpack(kwargs, "phase_gap_mode");
     env->phase_obs_mode          = (int)unpack(kwargs, "phase_obs_mode");
     env->episode_cap_steps       = (int)unpack(kwargs, "episode_cap_steps");
+    env->cap_terminal_reward     = (double)unpack(kwargs, "cap_terminal_reward");
     env->last_terminal_cause     = TERM_NONE;
     env->last_traj_records       = 0;
     return 0;

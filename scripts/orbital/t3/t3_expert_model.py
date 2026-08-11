@@ -17,7 +17,8 @@ G0 = 9.80665
 VE = ISP * G0                 # 2941.995 m/s
 FUEL_FRAC = 0.15
 DRY_MASS = 850.0
-MAX_STEPS = 2000
+MAX_STEPS = 2000          # legacy default episode cap (env kwarg episode_cap_steps)
+DEFAULT_PHASE_OBS_MODE = 0  # set to 1 when driving a phase_obs_mode=1 env
 EARTH_KEEPOUT = R_EARTH + 200e3
 
 TWO_PI = 2.0 * math.pi
@@ -127,7 +128,16 @@ def apply_impulse(el, dv_pro, dv_rad):
 
 
 # ── Observation decoding (obs-only; mirrors fill_observations) ────────────────
-def decode_obs(obs, obs_alt_scale_m=1.6e6):
+def decode_obs(obs, obs_alt_scale_m=1.6e6, phase_obs_mode=None):
+    """Invert fill_observations. phase_obs_mode MUST match the env kwarg:
+    mode 0 (legacy): obs[15,16] = sin/cos(theta_target)
+    mode 1 (T3):     obs[13,14] = sin/cos(lambda_s - lambda_t),
+                     obs[15]    = remaining_steps / episode_cap_steps (clock),
+                     obs[16]    = cos(omega_s - omega_t)
+    Under mode 1 the target anomaly is reconstructed via
+    lambda_t = lambda_s - dlambda, M_t = lambda_t - omega_t (red-team #3)."""
+    if phase_obs_mode is None:
+        phase_obs_mode = DEFAULT_PHASE_OBS_MODE
     sat = {
         'a': float(obs[0]) * obs_alt_scale_m + R_EARTH,
         'e': float(obs[1]),
@@ -140,12 +150,20 @@ def decode_obs(obs, obs_alt_scale_m=1.6e6):
     tgt = {
         'a': float(obs[7]) * obs_alt_scale_m + R_EARTH,
         'e': float(obs[8]),
-        'theta': math.atan2(float(obs[15]), float(obs[16])),
         'omega': math.atan2(float(obs[11]), float(obs[12])),
     }
-    tgt['M'] = true_to_mean(tgt['theta'], tgt['e'])
-    if tgt['M'] < 0.0:
-        tgt['M'] += TWO_PI
+    if phase_obs_mode == 1:
+        dlam = math.atan2(float(obs[13]), float(obs[14]))   # lambda_s - lambda_t
+        lam_s = sat['M'] + sat['omega']
+        tgt['M'] = (lam_s - dlam) - tgt['omega']
+        tgt['M'] %= TWO_PI
+        E_t = solve_kepler(tgt['M'], tgt['e'])
+        tgt['theta'] = eccentric_to_true(E_t, tgt['e'])
+    else:
+        tgt['theta'] = math.atan2(float(obs[15]), float(obs[16]))
+        tgt['M'] = true_to_mean(tgt['theta'], tgt['e'])
+        if tgt['M'] < 0.0:
+            tgt['M'] += TWO_PI
     fuel_frac = float(obs[6])          # fuel_mass / (dry + fuel)
     return sat, tgt, fuel_frac
 

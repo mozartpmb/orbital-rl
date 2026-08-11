@@ -126,6 +126,11 @@ class Orbital(pufferlib.PufferEnv):
         # Runtime safety cap in 60 s sim sub-steps (wall clock = cap minutes).
         # Legacy 2000 = 33.3 h. T3 recovery training uses 3000. Max 3000.
         episode_cap_steps=2000,
+        # Reward at the safety-cap terminal. Legacy −10. T3 recovery uses 0.0:
+        # under flat per-decision γ a −10 timeout prices warp-heavy play as a
+        # −7.8 bet vs −0.0 for coast-to-cap, so PPO suppresses warps before the
+        # first success is sampled (red-team #1, the flatline mechanism).
+        cap_terminal_reward=-10.0,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -196,6 +201,10 @@ class Orbital(pufferlib.PufferEnv):
             phase_gap_mode=phase_gap_mode,
             phase_obs_mode=phase_obs_mode,
             episode_cap_steps=episode_cap_steps,
+            cap_terminal_reward=cap_terminal_reward,
+            # Red-team #4: per-sub-step trajectory recording (352 B/record,
+            # ~1 MB/env buffer) only when trajectories are actually saved.
+            log_enabled=1 if traj_log_dir else 0,
         )
 
         # Pre-allocated trajectory buffer (reused every call).
