@@ -83,16 +83,17 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
     )
 
     # M2/M3 (phase5-5-env-mods): Phase 5b/5e ckpts have a 10-dim logits head.
-    # The env exposes Discrete(16); coerce env.single_action_space so policy
-    # construction produces a head matching the ckpt's state_dict shape.
-    # c_step still accepts any int in [0, NUM_ACTIONS); argmax over 10 logits
-    # produces only legacy actions 0-9.
-    if legacy_action_space is not None and legacy_action_space < env.single_action_space.n:
+    # The env exposes Discrete(16) by default; coerce env.single_action_space so
+    # policy construction produces a head matching the ckpt's state_dict shape.
+    # Works both ways: 10-head Phase-5b/5e ckpts shrink the view, 20-head T4
+    # ckpts (fine radial + 3h/6h warps) enlarge it. c_step accepts any int in
+    # [0, NUM_ACTIONS=20); an N-logit argmax only ever emits [0, N).
+    if legacy_action_space is not None and legacy_action_space != env.single_action_space.n:
         import gymnasium
         full_n = env.single_action_space.n
         env.single_action_space = gymnasium.spaces.Discrete(legacy_action_space)
         print(f"[legacy-action-space] policy head sized to {legacy_action_space}; "
-              f"env still accepts ints in [0, {full_n}).")
+              f"env exposed Discrete({full_n}), C env accepts ints in [0, 20).")
 
     # Load model — PufferLib wraps Default in LSTMWrapper
     device = torch.device("cpu")

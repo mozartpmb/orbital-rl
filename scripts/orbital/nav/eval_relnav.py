@@ -92,6 +92,47 @@ T3_ENV_KWARGS = dict(
     cap_terminal_reward=0.0,
 )
 
+# ── T4 wide-envelope config (--wide) ─────────────────────────────────────────
+# The WL4 rung of scripts/orbital/t3/t3_wide_envelope.sh. Same corrected-dynamics
+# observation *layout* as --t3 (phase_obs_mode=1, Discrete(16) head, so no
+# legacy_action_space), but a 5x wider altitude domain (300-8000 km alt), target
+# eccentricity to 0.30, and — the reason this needs its own flag — different
+# observation *normalizers*: obs_alt_scale_m=8e6 (vs 1.6e6) and lvlh_scale_m=1.5e7
+# (vs 6.371e6). The encode/decode layer must use the same constants the policy was
+# trained under, or every target-derived slot is mis-scaled by 5x (altitudes) /
+# 2.35x (LVLH) and the closed loop measures the wrong thing entirely.
+#
+# e_max_sat is deliberately absent: at WL3+ the chaser's eccentricity is set by
+# de_max (e-vector offset from the target), which overrides e_max_sat sampling.
+# This kwarg set is exactly what eval_checkpoint.py was invoked with for the
+# 200/200 held-out (seed 123) WL4 number.
+WIDE_CKPT = f"{ROOT}/models/t3/seed42_WL4_wide.pt"
+WIDE_PLOT_DIR = f"{ROOT}/plots/relnav_wl4"
+WIDE_RESULTS_CSV = f"{ROOT}/web_data/results/t4_relnav_wl4.csv"
+WIDE_ENV_KWARGS = dict(
+    num_envs=1,
+    num_debris_min=0,
+    num_debris_max=0,
+    e_max_target=0.30,
+    de_max=0.08,
+    da_max_m=600e3,
+    a_min_override=6.671e6,
+    a_max_override=14.371e6,
+    init_phase_gap_max=3.14159,
+    valid_init_only=1,
+    gave_up_action="terminate",
+    max_valid_init_attempts=4096,
+    obs_alt_scale_m=8e6,
+    lvlh_scale_m=1.5e7,
+    shaping_mode=1,
+    shape_gamma=1.0,
+    shape_dv_ref_ms=700.0,
+    phase_gap_mode=1,
+    phase_obs_mode=1,
+    episode_cap_steps=6000,
+    cap_terminal_reward=0.0,
+)
+
 # 0 = legacy true-anomaly obs[13-16]; 1 = T3 mean-longitude layout. Set by main().
 PHASE_OBS_MODE = 0
 
@@ -183,10 +224,26 @@ def build_obs_t3(o, sat_el, tgt_el, obs_alt_scale_m, lvlh_scale_m,
     return np.nan_to_num(out, nan=0.0, posinf=1.0, neginf=-1.0)
 
 
+def _obs_scales():
+    """(obs_alt_scale_m, lvlh_scale_m) actually in force for the selected config.
+
+    Policy-facing normalizers, not physics. A LEO checkpoint reads obs[0]/obs[7]
+    as (a - R_EARTH)/1.6e6 and the LVLH block in units of 6.371e6 m; the WL4
+    wide-envelope checkpoint reads 8e6 and 1.5e7. Decoding or re-encoding with
+    the wrong pair silently mis-scales every target slot, so both ends of the
+    layer read the constants from the live env config instead of from
+    orbital_math's LEO module defaults. The .get() fallbacks are inert for the
+    three shipped configs (all three name both keys explicitly).
+    """
+    return (ENV_KWARGS.get('obs_alt_scale_m', om.OBS_ALT_SCALE_M),
+            ENV_KWARGS.get('lvlh_scale_m', om.LVLH_SCALE_M))
+
+
 def recover_states(o):
+    alt_scale, _ = _obs_scales()
     if PHASE_OBS_MODE == 1:
-        return recover_states_t3(o, ENV_KWARGS['obs_alt_scale_m'])
-    return om.recover_states(o)
+        return recover_states_t3(o, alt_scale)
+    return om.recover_states(o, alt_scale)
 
 
 # Target-derived observation slots, grouped so a closed-loop loss can be
@@ -205,14 +262,30 @@ INJECT = None
 
 def build_obs(o, sat_el, tgt_el, tgt_cart=None):
     fn = build_obs_t3 if PHASE_OBS_MODE == 1 else om.build_obs
-    out = fn(o, sat_el, tgt_el, ENV_KWARGS['obs_alt_scale_m'],
-             ENV_KWARGS['lvlh_scale_m'], tgt_cart=tgt_cart)
+    alt_scale, lvlh_scale = _obs_scales()
+    out = fn(o, sat_el, tgt_el, alt_scale, lvlh_scale, tgt_cart=tgt_cart)
     if INJECT is not None:
         for g, slots in INJECT_GROUPS[PHASE_OBS_MODE].items():
             if g not in INJECT:
                 for i in slots:
                     out[i] = o[i]        # this group stays truth
     return out
+
+
+def _ulp_diff(a32, b32):
+    """Exact float32 ULP distance, elementwise.
+
+    A relative-error figure is meaningless for observation slots that legitimately
+    sit near zero (sin/cos channels at a zero crossing), so the reconstruction
+    residual is reported as a count of representable float32 values between the
+    two — 0 means bit-identical, 1 means adjacent, and anything larger is a real
+    disagreement rather than rounding.
+    """
+    ai = np.asarray(a32, dtype=np.float32).view(np.int32).astype(np.int64)
+    bi = np.asarray(b32, dtype=np.float32).view(np.int32).astype(np.int64)
+    ai = np.where(ai < 0, np.int64(0x80000000) - ai, ai)
+    bi = np.where(bi < 0, np.int64(0x80000000) - bi, bi)
+    return np.abs(ai - bi)
 
 
 def make_env():
@@ -233,7 +306,7 @@ def zero_state(policy):
 
 def run(num_episodes, mode="truth", noise_scale=1.0, q_a=Q_ACCEL_PSD,
         sigma_v0=SIGMA_V0, seed=42, meas_seed=1234, collect_traces=0,
-        max_episodes_traced=0, label="", verbose=True):
+        max_episodes_traced=0, label="", verbose=True, recon_check=0):
     """Roll out the policy for num_episodes.
 
     mode="truth"  policy sees the truth observation; the EKF still runs, so the
@@ -266,6 +339,19 @@ def run(num_episodes, mode="truth", noise_scale=1.0, q_a=Q_ACCEL_PSD,
     n_hyperbolic = 0     # steps whose *estimate* went non-elliptical
     ep_diverged = []     # per-episode: estimate left the elliptical regime
     hyp_this_ep = 0
+
+    # Flat (range, error) telemetry: the step-indexed dicts above answer "how does
+    # the filter behave over time", which is the wrong axis once the envelope is
+    # wide. A 1 mrad bearing sigma is a *transverse position* sigma of rho * 1e-3,
+    # so accuracy is a function of separation, not of step number — at WL4 drift
+    # legs the two differ by three orders of magnitude.
+    flat_rho, flat_pe, flat_ve, flat_sigp = [], [], [], []
+    # recon_check: dim-wise |recon - truth| and whether the policy's argmax moves.
+    recon_maxabs = np.zeros(38)
+    recon_exact = 0
+    recon_steps = 0
+    recon_action_mismatch = 0
+    recon_ulp_max = 0.0
 
     fresh = True
     k = 0
@@ -301,14 +387,19 @@ def run(num_episodes, mode="truth", noise_scale=1.0, q_a=Q_ACCEL_PSD,
         ve = math.hypot(err[2], err[3])
         nees = ekf.nees(tgt_cart)
 
+        rho_true = math.hypot(tgt_cart[0] - sat_cart[0], tgt_cart[1] - sat_cart[1])
         ep_pe.append(pe)
         ep_ve.append(ve)
         all_nees.append(nees)
         step_nees.setdefault(k, []).append(nees)
         step_perr.setdefault(k, []).append(pe)
         step_verr.setdefault(k, []).append(ve)
-        step_rho.setdefault(k, []).append(
-            math.hypot(tgt_cart[0] - sat_cart[0], tgt_cart[1] - sat_cart[1]))
+        step_rho.setdefault(k, []).append(rho_true)
+        flat_rho.append(rho_true)
+        flat_pe.append(pe)
+        flat_ve.append(ve)
+        sg = ekf.sigmas()
+        flat_sigp.append(math.hypot(sg[0], sg[1]))
         if nis is not None:
             all_nis.append(nis)
             step_nis.setdefault(k, []).append(nis)
@@ -331,10 +422,37 @@ def run(num_episodes, mode="truth", noise_scale=1.0, q_a=Q_ACCEL_PSD,
                 hyp_this_ep += 1
             pol_obs = build_obs(o, sat_el, est_el, tgt_cart=tuple(ekf.x))
 
+        # forward_eval mutates `state` in place, so the recon probe forward must
+        # run against a snapshot taken *before* the real one.
+        state_snapshot = ({'lstm_h': state['lstm_h'].clone(),
+                           'lstm_c': state['lstm_c'].clone()}
+                          if recon_check else None)
+
         with torch.no_grad():
             logits, _ = policy.forward_eval(
                 torch.from_numpy(pol_obs).float().unsqueeze(0).unsqueeze(0), state)
             action = int(torch.argmax(logits, dim=-1).item())
+
+        if recon_check:
+            # Zero-estimation-error control on the encode/decode layer alone:
+            # decode the truth obs into elements, re-encode, compare. Any scale
+            # constant that does not match the env shows up here as a gross,
+            # not a rounding, error — and the argmax comparison converts the
+            # residual into the only currency the closed loop cares about.
+            rec = build_obs(o, sat_el, tgt_el)
+            d = np.abs(rec.astype(np.float64) - o.astype(np.float64))
+            recon_maxabs = np.maximum(recon_maxabs, d)
+            recon_steps += 1
+            if not np.any(d):
+                recon_exact += 1
+            else:
+                recon_ulp_max = max(recon_ulp_max, float(_ulp_diff(rec, o).max()))
+            with torch.no_grad():
+                lg2, _ = policy.forward_eval(
+                    torch.from_numpy(rec).float().unsqueeze(0).unsqueeze(0),
+                    state_snapshot)
+                if int(torch.argmax(lg2, dim=-1).item()) != action:
+                    recon_action_mismatch += 1
 
         obs, rewards, terms, truncs, _ = env.step(np.array([action], dtype=np.int32))
         k += 1
@@ -404,6 +522,11 @@ def run(num_episodes, mode="truth", noise_scale=1.0, q_a=Q_ACCEL_PSD,
         step_perr=step_perr, step_verr=step_verr, step_rho=step_rho,
         v0_guess_err=np.array(v0_guess_err), traces=traces,
         n_hyperbolic=n_hyperbolic, diverged=np.array(ep_diverged),
+        flat_rho=np.array(flat_rho), flat_pe=np.array(flat_pe),
+        flat_ve=np.array(flat_ve), flat_sigp=np.array(flat_sigp),
+        recon_maxabs=recon_maxabs, recon_exact=recon_exact,
+        recon_steps=recon_steps, recon_action_mismatch=recon_action_mismatch,
+        recon_ulp_max=recon_ulp_max,
         wall_s=time.time() - t0,
     )
 
@@ -427,6 +550,87 @@ def bounds_split(v, lo, hi):
         return float('nan'), float('nan'), float('nan')
     return (float(np.mean((v >= lo) & (v <= hi))),
             float(np.mean(v < lo)), float(np.mean(v > hi)))
+
+
+RANGE_EDGES = (0.0, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9)
+
+
+def range_report(r, title="filter accuracy vs separation"):
+    """Bin the per-step filter error by true chaser-target range.
+
+    The point of the table is the `err/(sigma_b*rho)` column. The bearing channel
+    contributes a *transverse* position uncertainty of rho * sigma_beta, so a
+    filter that is doing nothing but inverting the current measurement sits at
+    ~1.0 there; a filter that is genuinely integrating a dynamics model over many
+    epochs sits well below 1. That ratio, not the raw metre count, is what says
+    whether the sensor suite is adequate at a given separation.
+    """
+    rho, pe, ve, sp = r['flat_rho'], r['flat_pe'], r['flat_ve'], r['flat_sigp']
+    if rho.size == 0:
+        return []
+    s_beta = SIGMA_BETA_RAD * r['noise_scale']
+    s_rho = SIGMA_RHO_M * r['noise_scale']
+    print(f"  {title} (sigma_rho={s_rho:.0f} m, sigma_beta={s_beta:.1e} rad):")
+    print("    range bin        n      med rho     med |dp|   sigma_b*rho  "
+          "err/(sb*rho)  med |dv|   med sigma_p")
+    rows = []
+    for lo, hi in zip(RANGE_EDGES[:-1], RANGE_EDGES[1:]):
+        m = (rho >= lo) & (rho < hi)
+        n = int(m.sum())
+        if n < 20:
+            continue
+        mr, mp = float(np.median(rho[m])), float(np.median(pe[m]))
+        trans = mr * s_beta
+        row = dict(lo=lo, hi=hi, n=n, med_rho=mr, med_pos=mp, trans=trans,
+                   ratio=mp / max(trans, 1e-12),
+                   med_vel=float(np.median(ve[m])),
+                   med_sig=float(np.median(sp[m])))
+        rows.append(row)
+        print(f"    {lo:8.0e}-{hi:<8.0e} {n:7d} {mr/1e3:10.1f} km "
+              f"{mp:11.1f} m {trans:11.1f} m {row['ratio']:11.3f} "
+              f"{row['med_vel']:10.4f} m/s {row['med_sig']:11.1f} m")
+    return rows
+
+
+def stage_reconcheck(args):
+    """Verify the encode/decode layer with zero estimation error.
+
+    Rebuild every target-derived slot from the states decoded out of the truth
+    observation and compare against that same truth observation, dim by dim, plus
+    the policy's argmax on both. This is the test that catches a wrong
+    obs_alt_scale_m / lvlh_scale_m: a 5x scale error is a ~0.5 absolute residual
+    on obs[7], four million times the float32 round-trip floor.
+    """
+    print("── Stage: reconcheck (encode/decode layer, zero estimation error) ──")
+    alt, lv = _obs_scales()
+    print(f"  scales in force: obs_alt_scale_m={alt:g}  lvlh_scale_m={lv:g}")
+    r = run(args.recon_eps, mode="truth", label="reconcheck", seed=args.seed,
+            q_a=args.q_a if args.q_a else Q_ACCEL_PSD,
+            sigma_v0=args.sigma_v0, recon_check=1, verbose=False)
+    ma = r['recon_maxabs']
+    worst = int(np.argmax(ma))
+    tgt_idx = INJECT_GROUPS[PHASE_OBS_MODE]
+    tgt_slots = sorted(i for v in tgt_idx.values() for i in v)
+    print(f"  episodes {len(r['success'])}, steps compared {r['recon_steps']}")
+    print(f"  bit-identical steps        {r['recon_exact']}/{r['recon_steps']} "
+          f"= {r['recon_exact']/max(r['recon_steps'],1):.3%}")
+    print(f"  max |recon - truth| any dim  {ma.max():.3e}  (dim {worst})")
+    print(f"  max |recon - truth| target   "
+          f"{max(ma[i] for i in tgt_slots):.3e}")
+    print(f"  max residual / eps_f32(1.0)  {ma.max()/float(np.spacing(np.float32(1.0))):.2f}")
+    print(f"  max residual, float32 ULP    {r['recon_ulp_max']:.0f}  "
+          f"(large only where the slot itself is ~0: a sin/cos channel at a "
+          f"zero crossing has ULPs of ~1e-45)")
+    print(f"  mean decisions/episode       "
+          f"{r['recon_steps']/max(len(r['success']),1):.1f}  "
+          f"(mean sim length {r['length'].mean():.0f} sub-steps)")
+    print(f"  policy argmax mismatches     {r['recon_action_mismatch']}/"
+          f"{r['recon_steps']}")
+    nz = [(i, ma[i]) for i in range(38) if ma[i] > 0]
+    if nz:
+        print("  non-zero dims: " +
+              ", ".join(f"[{i}]={v:.2e}" for i, v in nz))
+    return r
 
 
 # ── stages ───────────────────────────────────────────────────────────────────
@@ -506,6 +710,7 @@ def stage_validate(args, q_a):
           f"vel RMSE {np.mean(r['vel_rmse_s']):.4f} m/s")
     print(f"  terminal pos err mean {np.mean(r['term_pos']):.1f} m, "
           f"vel err mean {np.mean(r['term_vel']):.3f} m/s")
+    range_report(r)
     make_plots(r)
     return r
 
@@ -537,6 +742,8 @@ def stage_eval(args, q_a):
               f"vel RMSE med {np.median(r['vel_rmse']):7.3f} m/s   "
               f"diverged {dv:.1%}   ({r['wall_s']:.0f}s)")
         print(f"           causes: {causes}")
+        if mode == "ekf" and args.range_report:
+            range_report(r, title=f"{name}: filter accuracy vs separation")
     write_csv(out)
     plot_success(out)
     return out
@@ -700,9 +907,14 @@ def plot_success(runs):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--stage', default='all',
-                   choices=['sanity', 'qsweep', 'validate', 'eval', 'all'])
+                   choices=['sanity', 'reconcheck', 'qsweep', 'validate',
+                            'eval', 'all'])
     p.add_argument('--seed', type=int, default=42)
     p.add_argument('--sanity-eps', type=int, default=50)
+    p.add_argument('--recon-eps', type=int, default=10)
+    p.add_argument('--range-report', action='store_true',
+                   help='per-condition filter-accuracy-vs-separation table in '
+                        'the eval stage')
     p.add_argument('--qsweep-eps', type=int, default=30)
     p.add_argument('--validate-eps', type=int, default=100)
     p.add_argument('--eval-eps', type=int, default=200)
@@ -723,6 +935,11 @@ def main():
                         'shape_gamma=1, phase_gap_mode=1, phase_obs_mode=1, '
                         'cap 3000 @ reward 0, Discrete(16) head, and the '
                         'mean-longitude obs[13-16] injection layout')
+    p.add_argument('--wide', action='store_true',
+                   help='T4 wide-envelope WL4 config: same obs layout as --t3 '
+                        'but 300-8000 km altitudes, e_target<=0.30, de_max=0.08, '
+                        'da_max=600 km, cap 6000, and the WIDE observation '
+                        'normalizers obs_alt_scale_m=8e6 / lvlh_scale_m=1.5e7')
     p.add_argument('--results-csv', default=None)
     p.add_argument('--plot-dir', default=None)
     p.add_argument('--sensor-dt', type=float, default=0.0,
@@ -735,6 +952,8 @@ def main():
                         "from the estimate (a_e, omega, lam, anom, lvlh); the "
                         "rest stay truth. Default: all of them.")
     args = p.parse_args()
+    if args.t3 and args.wide:
+        p.error("--t3 and --wide are mutually exclusive (different obs scales)")
 
     global CKPT, ENV_KWARGS, PHASE_OBS_MODE, RESULTS_CSV, PLOT_DIR, SENSOR_DT
     global COND_SUFFIX, INJECT
@@ -748,15 +967,24 @@ def main():
         CKPT = T3_CKPT
         RESULTS_CSV = T3_RESULTS_CSV
         PLOT_DIR = T3_PLOT_DIR
+    if args.wide:
+        ENV_KWARGS = WIDE_ENV_KWARGS
+        PHASE_OBS_MODE = 1        # same corrected-dynamics obs layout as T3
+        CKPT = WIDE_CKPT
+        RESULTS_CSV = WIDE_RESULTS_CSV
+        PLOT_DIR = WIDE_PLOT_DIR
     if args.ckpt:
         CKPT = args.ckpt
     if args.results_csv:
         RESULTS_CSV = args.results_csv
     if args.plot_dir:
         PLOT_DIR = args.plot_dir
+    _cfg = ('T4 wide-envelope WL4' if args.wide else
+            'T3 corrected-dynamics' if args.t3 else 'legacy T2')
+    _alt, _lv = _obs_scales()
     print(f"  ckpt      {CKPT}")
-    print(f"  config    {'T3 corrected-dynamics' if args.t3 else 'legacy T2'} "
-          f"(phase_obs_mode={PHASE_OBS_MODE})")
+    print(f"  config    {_cfg} (phase_obs_mode={PHASE_OBS_MODE})")
+    print(f"  scales    obs_alt_scale_m={_alt:g}  lvlh_scale_m={_lv:g}")
     print(f"  sensor    {'1 measurement per decision (legacy)' if SENSOR_DT <= 0 else f'{SENSOR_DT:g} s cadence'}")
     if INJECT is not None:
         print(f"  inject    {sorted(INJECT)} (all other target slots stay truth)")
@@ -766,6 +994,8 @@ def main():
 
     if args.stage == 'sanity':
         stage_sanity(args); return
+    if args.stage == 'reconcheck':
+        stage_reconcheck(args); return
 
     q_a, sv0 = args.q_a, args.sigma_v0
     if args.stage in ('qsweep', 'all') and q_a is None:
