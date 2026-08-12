@@ -1,0 +1,163 @@
+config,n,metric,unit,median,p95,max,note
+X3_leo_e0.05,256,epoch_match_frac,frac,1.0,1.0,1.0,traj row == obs epoch
+X3_leo_e0.05,256,di_rel_err_deg,deg,1.2646183242627161e-08,5.285580838868084e-08,7.184731272079625e-08,"obs[21,22] -> |di_rel| vs truth inc (target gauge i_t=0)"
+X3_leo_e0.05,256,u_arglat_err_deg,deg,4.649796497236493e-06,1.5594066708935298e-05,2.244590576199815e-05,"obs[21,22] -> argument of latitude u = omega_s + theta_s"
+X3_leo_e0.05,256,rho_N_err_m,m,0.0009938869625329971,0.004712339490652084,0.008913546800613403,obs[24] -> cross-track separation
+X3_leo_e0.05,256,t3decode_tgt_pos_err_m,m,9733443.954738013,13973329.328675482,14296953.11651486,2D decoder target position error under dim3 (Omega_s absorbed into M_t)
+X3_leo_e0.05,256,t3decode_sat_theta_err_deg,deg,2.846944570703062e-06,1.0695349799108057e-05,1.2713661659761308e-05,"2D decoder chaser true anomaly (unaffected: obs[2,3] are node-referenced)"
+X3_leo_e0.05,256,getter_tgt_pos_err_m,m,0.4455312026900942,1.3835025269173848,1.6730563449042983,decode WITH chaser Omega_s from a C getter: residual = float32 obs quantisation
+X3_leo_e0.05,256,getter_sat_pos_err_m,m,0.43156299818531196,1.4024657431530931,1.8025223480782937,"chaser rebuilt from obs + (i from obs[21,22], Omega from getter)"
+X3_leo_e0.05,256,obsonly_raan0_lvlh_pos_err_m,m,264879.6193676891,938471.0590425447,1428315.4365029,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+X3_leo_e0.05,256,obsonly_raan0_lvlh_vel_err_ms,m/s,270.12505380030615,954.7809021063827,1329.392841233687,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+X3_leo_e0.05,256,getter_raan_lvlh_pos_err_m,m,0.1997976930152352,0.5577232100521171,0.8013971021943213,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+X3_leo_e0.05,256,getter_raan_lvlh_vel_err_ms,m/s,3.907579692739194e-05,0.0001217832484389158,0.00022000237234286516,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+X3_leo_e0.05,256,dLVLHpos_dOmega_m_per_rad,m/rad,230388.6075417471,594398.0657706129,727520.501548047,"sensitivity of obs[33,34] to the Omega_s<->M_t trade (the obs-only solve)"
+X3_leo_e0.05,256,dLVLHvel_dOmega_ms_per_rad,m/s/rad,265.6025335829446,640.2538452872088,712.3335339324128,"sensitivity of obs[35,36] to the same trade"
+X3_leo_e0.05,256,omega_resolution_rad,rad,3.4819115066555583e-06,3.0752652699702445e-05,0.00010179670810674114,obs float32 quantisation / sensitivity = best-case Omega_s solve accuracy
+X3_leo_e0.05,256,realized_e_target,-,0.025551985017955303,0.0473287608474493,0.049766846001148224,realized target eccentricity
+X3_leo_e0.05,256,realized_di_deg,deg,0.714697200969662,0.9687902432540534,0.9975452862989541,realized relative inclination
+X3_leo_e0.05,256,target_inc_raan_max,rad,0.0,0.0,0.0,target plane gauge (must be exactly 0)
+V5_wide_e0.30,256,epoch_match_frac,frac,1.0,1.0,1.0,traj row == obs epoch
+V5_wide_e0.30,256,di_rel_err_deg,deg,1.0418464847695678e-08,3.610935818902865e-08,4.8543440452511306e-08,"obs[21,22] -> |di_rel| vs truth inc (target gauge i_t=0)"
+V5_wide_e0.30,256,u_arglat_err_deg,deg,5.246451355039331e-06,1.5743292978535483e-05,2.575614646648753e-05,"obs[21,22] -> argument of latitude u = omega_s + theta_s"
+V5_wide_e0.30,256,rho_N_err_m,m,0.0010297074913978577,0.005018122494220734,0.011252284049987793,obs[24] -> cross-track separation
+V5_wide_e0.30,256,t3decode_tgt_pos_err_m,m,14817221.432478223,25326787.356612574,27524161.17258826,2D decoder target position error under dim3 (Omega_s absorbed into M_t)
+V5_wide_e0.30,256,t3decode_sat_theta_err_deg,deg,3.4123469292614967e-06,1.1608690018433784e-05,1.4487830631733051e-05,"2D decoder chaser true anomaly (unaffected: obs[2,3] are node-referenced)"
+V5_wide_e0.30,256,getter_tgt_pos_err_m,m,0.6066500644186038,2.5285725950419686,3.7996916589704215,decode WITH chaser Omega_s from a C getter: residual = float32 obs quantisation
+V5_wide_e0.30,256,getter_sat_pos_err_m,m,0.5967686097527177,2.392747295087477,3.9419798995564816,"chaser rebuilt from obs + (i from obs[21,22], Omega from getter)"
+V5_wide_e0.30,256,obsonly_raan0_lvlh_pos_err_m,m,1837453.124554717,9445750.683109071,15579326.41632914,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+V5_wide_e0.30,256,obsonly_raan0_lvlh_vel_err_ms,m/s,1221.3692964282973,4890.513648790475,6046.916445140592,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+V5_wide_e0.30,256,getter_raan_lvlh_pos_err_m,m,0.37217101289868026,1.2352548041032185,2.734239138270958,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+V5_wide_e0.30,256,getter_raan_lvlh_vel_err_ms,m/s,0.00013234884976941132,0.00042818612261968914,0.0006696625292718162,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+V5_wide_e0.30,256,dLVLHpos_dOmega_m_per_rad,m/rad,1930223.1513359689,6352886.331260028,10167535.749618962,"sensitivity of obs[33,34] to the Omega_s<->M_t trade (the obs-only solve)"
+V5_wide_e0.30,256,dLVLHvel_dOmega_ms_per_rad,m/s/rad,1157.5954363490923,2869.822869270418,3347.3654273627576,"sensitivity of obs[35,36] to the same trade"
+V5_wide_e0.30,256,omega_resolution_rad,rad,5.589922779184597e-07,8.672223216356446e-06,5.016627476311203e-05,obs float32 quantisation / sensitivity = best-case Omega_s solve accuracy
+V5_wide_e0.30,256,realized_e_target,-,0.12881696224212646,0.2775179445743561,0.2986499071121216,realized target eccentricity
+V5_wide_e0.30,256,realized_di_deg,deg,0.5345290836608905,0.7319574091674016,0.7499549843108116,realized relative inclination
+V5_wide_e0.30,256,target_inc_raan_max,rad,0.0,0.0,0.0,target plane gauge (must be exactly 0)
+X3_e0_control,256,epoch_match_frac,frac,1.0,1.0,1.0,traj row == obs epoch
+X3_e0_control,256,di_rel_err_deg,deg,1.4709462289087294e-08,5.1320537399368486e-08,8.256065076870376e-08,"obs[21,22] -> |di_rel| vs truth inc (target gauge i_t=0)"
+X3_e0_control,256,u_arglat_err_deg,deg,2.568185657145972e-06,1.1021485224700509e-05,1.3621077777937342e-05,"obs[21,22] -> argument of latitude u = omega_s + theta_s"
+X3_e0_control,256,rho_N_err_m,m,0.0010646581649780273,0.004565402865409851,0.00776323676109314,obs[24] -> cross-track separation
+X3_e0_control,256,t3decode_tgt_pos_err_m,m,9949120.191182967,14025745.985476643,14328999.803319577,2D decoder target position error under dim3 (Omega_s absorbed into M_t)
+X3_e0_control,256,t3decode_sat_theta_err_deg,deg,2.848409661411531e-06,1.1114862518927099e-05,1.3611010737148449e-05,"2D decoder chaser true anomaly (unaffected: obs[2,3] are node-referenced)"
+X3_e0_control,256,getter_tgt_pos_err_m,m,0.4301028103736103,1.5024683103253347,1.8212944382394305,decode WITH chaser Omega_s from a C getter: residual = float32 obs quantisation
+X3_e0_control,256,getter_sat_pos_err_m,m,0.38982814342319183,1.4772005693698014,1.6532400194801034,"chaser rebuilt from obs + (i from obs[21,22], Omega from getter)"
+X3_e0_control,256,obsonly_raan0_lvlh_pos_err_m,m,0.19243171446668067,0.5417051470081604,0.7316920470388125,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+X3_e0_control,256,obsonly_raan0_lvlh_vel_err_ms,m/s,2.535743813359684e-05,6.11795797221228e-05,7.690733179020404e-05,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+X3_e0_control,256,getter_raan_lvlh_pos_err_m,m,0.19243170711118213,0.5417051491137816,0.731692047078993,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+X3_e0_control,256,getter_raan_lvlh_vel_err_ms,m/s,2.5357436257929986e-05,6.117957783786193e-05,7.690733115215922e-05,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+X3_e0_control,256,dLVLHpos_dOmega_m_per_rad,m/rad,9.724363463858786e-06,3.163245018067675e-05,6.1764333442941e-05,"sensitivity of obs[33,34] to the Omega_s<->M_t trade (the obs-only solve)"
+X3_e0_control,256,dLVLHvel_dOmega_ms_per_rad,m/s/rad,9.103669696008072e-09,2.0279464122258825e-08,2.8173532485864747e-08,"sensitivity of obs[35,36] to the same trade"
+X3_e0_control,256,omega_resolution_rad,rad,67389.3194086631,1.2196077704429625e+30,1.661461353302002e+30,obs float32 quantisation / sensitivity = best-case Omega_s solve accuracy
+X3_e0_control,256,realized_e_target,-,0.0,0.0,0.0,realized target eccentricity
+X3_e0_control,256,realized_di_deg,deg,0.7077650658902015,0.9662601917750926,0.9976490197969737,realized relative inclination
+X3_e0_control,256,target_inc_raan_max,rad,0.0,0.0,0.0,target plane gauge (must be exactly 0)
+sweep_et0,128,epoch_match_frac,frac,1.0,1.0,1.0,traj row == obs epoch
+sweep_et0,128,di_rel_err_deg,deg,1.5074111044558908e-08,4.4361703338839727e-08,6.542655762078906e-08,"obs[21,22] -> |di_rel| vs truth inc (target gauge i_t=0)"
+sweep_et0,128,u_arglat_err_deg,deg,3.999528225056784e-06,1.5050759404215731e-05,2.5889398985422126e-05,"obs[21,22] -> argument of latitude u = omega_s + theta_s"
+sweep_et0,128,rho_N_err_m,m,0.0013414174318313599,0.005522878468036651,0.009226158261299133,obs[24] -> cross-track separation
+sweep_et0,128,t3decode_tgt_pos_err_m,m,10737336.564781882,15333639.613672374,15680523.631524505,2D decoder target position error under dim3 (Omega_s absorbed into M_t)
+sweep_et0,128,t3decode_sat_theta_err_deg,deg,3.2934211171118036e-06,1.1467229732099316e-05,1.3763085880465694e-05,"2D decoder chaser true anomaly (unaffected: obs[2,3] are node-referenced)"
+sweep_et0,128,getter_tgt_pos_err_m,m,0.485918274838707,1.6384783176447097,1.9061011023372736,decode WITH chaser Omega_s from a C getter: residual = float32 obs quantisation
+sweep_et0,128,getter_sat_pos_err_m,m,0.47342670567951844,1.4555168796730766,1.8544815341316938,"chaser rebuilt from obs + (i from obs[21,22], Omega from getter)"
+sweep_et0,128,obsonly_raan0_lvlh_pos_err_m,m,0.2199894486793136,0.6146054531194612,0.7576518078280261,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0,128,obsonly_raan0_lvlh_vel_err_ms,m/s,4.429332580066625e-05,0.000106269392863642,0.00013197259294596954,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0,128,getter_raan_lvlh_pos_err_m,m,0.21998944923168529,0.614605454364851,0.7576518078432626,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0,128,getter_raan_lvlh_vel_err_ms,m/s,4.429332378453414e-05,0.00010626939366451576,0.00013197259498304816,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0,128,dLVLHpos_dOmega_m_per_rad,m/rad,1.168064733158588e-05,3.536615444943436e-05,4.75802945953433e-05,"sensitivity of obs[33,34] to the Omega_s<->M_t trade (the obs-only solve)"
+sweep_et0,128,dLVLHvel_dOmega_ms_per_rad,m/s/rad,9.106513380065356e-09,1.8772088323033318e-08,2.7594264085364814e-08,"sensitivity of obs[35,36] to the same trade"
+sweep_et0,128,omega_resolution_rad,rad,63817.86133170902,1.1178916275501249e+30,1.8186383247375488e+30,obs float32 quantisation / sensitivity = best-case Omega_s solve accuracy
+sweep_et0,128,realized_e_target,-,0.0,0.0,0.0,realized target eccentricity
+sweep_et0,128,realized_di_deg,deg,0.7008851710857211,0.9753176522725935,0.9983368411907352,realized relative inclination
+sweep_et0,128,target_inc_raan_max,rad,0.0,0.0,0.0,target plane gauge (must be exactly 0)
+sweep_et0.005,128,epoch_match_frac,frac,1.0,1.0,1.0,traj row == obs epoch
+sweep_et0.005,128,di_rel_err_deg,deg,1.6288350311985563e-08,4.3459786336295656e-08,6.970325767374883e-08,"obs[21,22] -> |di_rel| vs truth inc (target gauge i_t=0)"
+sweep_et0.005,128,u_arglat_err_deg,deg,4.562763951599549e-06,1.6752205286006833e-05,1.9630807092987522e-05,"obs[21,22] -> argument of latitude u = omega_s + theta_s"
+sweep_et0.005,128,rho_N_err_m,m,0.0011649634689092636,0.0053707435727119385,0.009095937013626099,obs[24] -> cross-track separation
+sweep_et0.005,128,t3decode_tgt_pos_err_m,m,10868670.539471753,15336436.502998417,15697614.621227967,2D decoder target position error under dim3 (Omega_s absorbed into M_t)
+sweep_et0.005,128,t3decode_sat_theta_err_deg,deg,2.885261361783808e-06,1.0746405380876769e-05,1.2603809931951174e-05,"2D decoder chaser true anomaly (unaffected: obs[2,3] are node-referenced)"
+sweep_et0.005,128,getter_tgt_pos_err_m,m,0.45145908333235485,1.5240066314062415,1.8008639514602613,decode WITH chaser Omega_s from a C getter: residual = float32 obs quantisation
+sweep_et0.005,128,getter_sat_pos_err_m,m,0.37781149042425716,1.4939817200100192,1.8106497175947875,"chaser rebuilt from obs + (i from obs[21,22], Omega from getter)"
+sweep_et0.005,128,obsonly_raan0_lvlh_pos_err_m,m,59651.32517915355,121592.85889044705,158601.1272818615,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0.005,128,obsonly_raan0_lvlh_vel_err_ms,m/s,74.49511957937966,139.47525230038292,142.934042756416,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0.005,128,getter_raan_lvlh_pos_err_m,m,0.20894831132147967,0.6004171468801687,0.770842713121789,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0.005,128,getter_raan_lvlh_vel_err_ms,m/s,4.321190412592912e-05,0.00010229336164735912,0.00012835375029588794,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0.005,128,dLVLHpos_dOmega_m_per_rad,m/rad,60890.9448060009,79684.08403737066,83631.89511709294,"sensitivity of obs[33,34] to the Omega_s<->M_t trade (the obs-only solve)"
+sweep_et0.005,128,dLVLHvel_dOmega_ms_per_rad,m/s/rad,55.802839164724524,71.99588705954804,73.06109991983976,"sensitivity of obs[35,36] to the same trade"
+sweep_et0.005,128,omega_resolution_rad,rad,1.775981934442347e-05,5.7100736855929774e-05,0.00020506733206005463,obs float32 quantisation / sensitivity = best-case Omega_s solve accuracy
+sweep_et0.005,128,realized_e_target,-,0.004999999888241291,0.004999999888241291,0.004999999888241291,realized target eccentricity
+sweep_et0.005,128,realized_di_deg,deg,0.7133184365722449,0.969406742531841,0.9970625840237046,realized relative inclination
+sweep_et0.005,128,target_inc_raan_max,rad,0.0,0.0,0.0,target plane gauge (must be exactly 0)
+sweep_et0.02,128,epoch_match_frac,frac,1.0,1.0,1.0,traj row == obs epoch
+sweep_et0.02,128,di_rel_err_deg,deg,1.6288350311985563e-08,4.3459786336295656e-08,6.970325767374883e-08,"obs[21,22] -> |di_rel| vs truth inc (target gauge i_t=0)"
+sweep_et0.02,128,u_arglat_err_deg,deg,4.562763951599549e-06,1.6752205286006833e-05,1.9630807092987522e-05,"obs[21,22] -> argument of latitude u = omega_s + theta_s"
+sweep_et0.02,128,rho_N_err_m,m,0.0011649634689092636,0.0053707435727119385,0.009095937013626099,obs[24] -> cross-track separation
+sweep_et0.02,128,t3decode_tgt_pos_err_m,m,10918452.105024915,15314648.541998431,15681856.343543584,2D decoder target position error under dim3 (Omega_s absorbed into M_t)
+sweep_et0.02,128,t3decode_sat_theta_err_deg,deg,2.885261361783808e-06,1.0746405380876769e-05,1.2603809931951174e-05,"2D decoder chaser true anomaly (unaffected: obs[2,3] are node-referenced)"
+sweep_et0.02,128,getter_tgt_pos_err_m,m,0.46759347311752536,1.6140385762742508,1.9479732531238407,decode WITH chaser Omega_s from a C getter: residual = float32 obs quantisation
+sweep_et0.02,128,getter_sat_pos_err_m,m,0.37781149042425716,1.4939817200100192,1.8106497175947875,"chaser rebuilt from obs + (i from obs[21,22], Omega from getter)"
+sweep_et0.02,128,obsonly_raan0_lvlh_pos_err_m,m,241362.4665520782,488587.8738566962,632596.5538867725,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0.02,128,obsonly_raan0_lvlh_vel_err_ms,m/s,299.2386274080352,558.1126791355566,572.1703707202375,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0.02,128,getter_raan_lvlh_pos_err_m,m,0.22757914418203964,0.5575205043851411,0.7775237596062129,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0.02,128,getter_raan_lvlh_vel_err_ms,m/s,5.464795244554884e-05,0.00012048091179976327,0.00016461615743257855,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0.02,128,dLVLHpos_dOmega_m_per_rad,m/rad,240393.1448722558,318135.69741996285,333744.7978629675,"sensitivity of obs[33,34] to the Omega_s<->M_t trade (the obs-only solve)"
+sweep_et0.02,128,dLVLHvel_dOmega_ms_per_rad,m/s/rad,227.87794243502287,288.6556075793105,291.5608309187407,"sensitivity of obs[35,36] to the same trade"
+sweep_et0.02,128,omega_resolution_rad,rad,4.483142510808132e-06,1.4564825904917885e-05,6.444537817712275e-05,obs float32 quantisation / sensitivity = best-case Omega_s solve accuracy
+sweep_et0.02,128,realized_e_target,-,0.019999999552965164,0.019999999552965164,0.019999999552965164,realized target eccentricity
+sweep_et0.02,128,realized_di_deg,deg,0.7133184365722449,0.969406742531841,0.9970625840237046,realized relative inclination
+sweep_et0.02,128,target_inc_raan_max,rad,0.0,0.0,0.0,target plane gauge (must be exactly 0)
+sweep_et0.05,128,epoch_match_frac,frac,1.0,1.0,1.0,traj row == obs epoch
+sweep_et0.05,128,di_rel_err_deg,deg,1.6288350311985563e-08,4.3459786336295656e-08,6.970325767374883e-08,"obs[21,22] -> |di_rel| vs truth inc (target gauge i_t=0)"
+sweep_et0.05,128,u_arglat_err_deg,deg,4.562763951599549e-06,1.6752205286006833e-05,1.9630807092987522e-05,"obs[21,22] -> argument of latitude u = omega_s + theta_s"
+sweep_et0.05,128,rho_N_err_m,m,0.0011649634689092636,0.0053707435727119385,0.009095937013626099,obs[24] -> cross-track separation
+sweep_et0.05,128,t3decode_tgt_pos_err_m,m,10966133.419524878,15269889.824015789,15658123.794077503,2D decoder target position error under dim3 (Omega_s absorbed into M_t)
+sweep_et0.05,128,t3decode_sat_theta_err_deg,deg,2.885261361783808e-06,1.0746405380876769e-05,1.2603809931951174e-05,"2D decoder chaser true anomaly (unaffected: obs[2,3] are node-referenced)"
+sweep_et0.05,128,getter_tgt_pos_err_m,m,0.45168949935379316,1.6242104532614712,1.7695233304690814,decode WITH chaser Omega_s from a C getter: residual = float32 obs quantisation
+sweep_et0.05,128,getter_sat_pos_err_m,m,0.37781149042425716,1.4939817200100192,1.8106497175947875,"chaser rebuilt from obs + (i from obs[21,22], Omega from getter)"
+sweep_et0.05,128,obsonly_raan0_lvlh_pos_err_m,m,612892.4042805247,1231185.8720420299,1570800.738695205,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0.05,128,obsonly_raan0_lvlh_vel_err_ms,m/s,740.0803745427063,1396.4770261462897,1432.8503357242146,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0.05,128,getter_raan_lvlh_pos_err_m,m,0.24454870555648067,0.5427944728849003,0.68509679310854,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0.05,128,getter_raan_lvlh_vel_err_ms,m/s,7.537576065743315e-05,0.0002064387312673841,0.00024178628256702408,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0.05,128,dLVLHpos_dOmega_m_per_rad,m/rad,598769.21411735,802612.7584955154,861186.2882975197,"sensitivity of obs[33,34] to the Omega_s<->M_t trade (the obs-only solve)"
+sweep_et0.05,128,dLVLHvel_dOmega_ms_per_rad,m/s/rad,574.910545482596,725.165633146243,731.8543080155804,"sensitivity of obs[35,36] to the same trade"
+sweep_et0.05,128,omega_resolution_rad,rad,1.8633164221110376e-06,6.1270821558747054e-06,2.5974183511640683e-05,obs float32 quantisation / sensitivity = best-case Omega_s solve accuracy
+sweep_et0.05,128,realized_e_target,-,0.05000000074505806,0.05000000074505806,0.05000000074505806,realized target eccentricity
+sweep_et0.05,128,realized_di_deg,deg,0.7133184365722449,0.969406742531841,0.9970625840237046,realized relative inclination
+sweep_et0.05,128,target_inc_raan_max,rad,0.0,0.0,0.0,target plane gauge (must be exactly 0)
+sweep_et0.15,128,epoch_match_frac,frac,1.0,1.0,1.0,traj row == obs epoch
+sweep_et0.15,128,di_rel_err_deg,deg,1.7306034232171622e-08,4.054060558831721e-08,6.970325767374883e-08,"obs[21,22] -> |di_rel| vs truth inc (target gauge i_t=0)"
+sweep_et0.15,128,u_arglat_err_deg,deg,5.025713379481152e-06,1.4839217628485772e-05,1.884537944484171e-05,"obs[21,22] -> argument of latitude u = omega_s + theta_s"
+sweep_et0.15,128,rho_N_err_m,m,0.0013003051280975342,0.0055224440991878485,0.007778644561767578,obs[24] -> cross-track separation
+sweep_et0.15,128,t3decode_tgt_pos_err_m,m,11894749.684144724,15472222.299186649,15612172.409581508,2D decoder target position error under dim3 (Omega_s absorbed into M_t)
+sweep_et0.15,128,t3decode_sat_theta_err_deg,deg,3.094101887333911e-06,1.0788806820934956e-05,1.3232298427227594e-05,"2D decoder chaser true anomaly (unaffected: obs[2,3] are node-referenced)"
+sweep_et0.15,128,getter_tgt_pos_err_m,m,0.5319762334004849,1.6638054289685351,2.0789640336799997,decode WITH chaser Omega_s from a C getter: residual = float32 obs quantisation
+sweep_et0.15,128,getter_sat_pos_err_m,m,0.43781481205651307,1.4721521652189125,2.0081398488573807,"chaser rebuilt from obs + (i from obs[21,22], Omega from getter)"
+sweep_et0.15,128,obsonly_raan0_lvlh_pos_err_m,m,1946254.467875175,4493090.082021833,4920015.078358521,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0.15,128,obsonly_raan0_lvlh_vel_err_ms,m/s,2246.9356117984667,4119.032407710637,4265.009499526543,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0.15,128,getter_raan_lvlh_pos_err_m,m,0.23695590230877056,0.7153197831913123,1.2987794633875505,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0.15,128,getter_raan_lvlh_vel_err_ms,m/s,0.0001694474468591343,0.0004858501411955191,0.0006714247545476067,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0.15,128,dLVLHpos_dOmega_m_per_rad,m/rad,1709474.0090494845,2833323.322770638,3057077.4162018206,"sensitivity of obs[33,34] to the Omega_s<->M_t trade (the obs-only solve)"
+sweep_et0.15,128,dLVLHvel_dOmega_ms_per_rad,m/s/rad,1707.514759139127,2221.75037574018,2310.1999483918253,"sensitivity of obs[35,36] to the same trade"
+sweep_et0.15,128,omega_resolution_rad,rad,5.04734881835538e-07,1.7191322325238617e-06,3.6325618011212684e-06,obs float32 quantisation / sensitivity = best-case Omega_s solve accuracy
+sweep_et0.15,128,realized_e_target,-,0.15000000596046448,0.15000000596046448,0.15000000596046448,realized target eccentricity
+sweep_et0.15,128,realized_di_deg,deg,0.6866448403160528,0.9800650232799786,0.9995058707558652,realized relative inclination
+sweep_et0.15,128,target_inc_raan_max,rad,0.0,0.0,0.0,target plane gauge (must be exactly 0)
+sweep_et0.3,128,epoch_match_frac,frac,1.0,1.0,1.0,traj row == obs epoch
+sweep_et0.3,128,di_rel_err_deg,deg,1.2463421638014987e-08,4.2436310208586856e-08,6.866546673413205e-08,"obs[21,22] -> |di_rel| vs truth inc (target gauge i_t=0)"
+sweep_et0.3,128,u_arglat_err_deg,deg,5.442369681307428e-06,1.696413966431779e-05,2.5463863974369264e-05,"obs[21,22] -> argument of latitude u = omega_s + theta_s"
+sweep_et0.3,128,rho_N_err_m,m,0.0011873431503772736,0.004377973824739455,0.005172893404960632,obs[24] -> cross-track separation
+sweep_et0.3,128,t3decode_tgt_pos_err_m,m,9877031.722076617,14831171.83631621,15597979.25334585,2D decoder target position error under dim3 (Omega_s absorbed into M_t)
+sweep_et0.3,128,t3decode_sat_theta_err_deg,deg,4.2793682600389785e-06,1.2372787472530524e-05,1.3886152787532872e-05,"2D decoder chaser true anomaly (unaffected: obs[2,3] are node-referenced)"
+sweep_et0.3,128,getter_tgt_pos_err_m,m,0.5556133267692012,1.9043960951799654,2.3986139586606576,decode WITH chaser Omega_s from a C getter: residual = float32 obs quantisation
+sweep_et0.3,128,getter_sat_pos_err_m,m,0.44848194881068415,1.6680530110054232,1.901022446527718,"chaser rebuilt from obs + (i from obs[21,22], Omega from getter)"
+sweep_et0.3,128,obsonly_raan0_lvlh_pos_err_m,m,3627371.2122617536,8346932.232514845,9305230.585482605,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0.3,128,obsonly_raan0_lvlh_vel_err_ms,m/s,3876.9951261608703,8117.389812095446,9032.571965162671,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0.3,128,getter_raan_lvlh_pos_err_m,m,0.4115966561310661,1.0868555354059806,1.7035267772303324,"rebuilt obs[33,34] vs the C env's own obs[33,34]"
+sweep_et0.3,128,getter_raan_lvlh_vel_err_ms,m/s,0.0003197311089466741,0.0011208128026640092,0.0016104348866476618,"rebuilt obs[35,36] vs the C env's own obs[35,36]"
+sweep_et0.3,128,dLVLHpos_dOmega_m_per_rad,m/rad,3263461.9184576394,7277073.253542168,7570761.046387002,"sensitivity of obs[33,34] to the Omega_s<->M_t trade (the obs-only solve)"
+sweep_et0.3,128,dLVLHvel_dOmega_ms_per_rad,m/s/rad,3513.836142517042,5266.425003097853,5455.743057119261,"sensitivity of obs[35,36] to the same trade"
+sweep_et0.3,128,omega_resolution_rad,rad,3.1886517810971483e-07,1.2310759880253122e-06,1.986780893168964e-05,obs float32 quantisation / sensitivity = best-case Omega_s solve accuracy
+sweep_et0.3,128,realized_e_target,-,0.30000001192092896,0.30000001192092896,0.30000001192092896,realized target eccentricity
+sweep_et0.3,128,realized_di_deg,deg,0.6845754530800976,0.9657100413817891,0.9990783436025047,realized relative inclination
+sweep_et0.3,128,target_inc_raan_max,rad,0.0,0.0,0.0,target plane gauge (must be exactly 0)
