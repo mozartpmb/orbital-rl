@@ -125,6 +125,42 @@ class OrbitalNav(Orbital):
                  # ticks in a single step() for the MEO lineage. Discrete(16)
                  # tops out at 60, so this is inert for every shipped config.
                  nav_max_ticks=0,
+                 # ── NAV-F dual-control campaign ─────────────────────────────
+                 # T-BO+Sigma: expose the filter's OWN range uncertainty to the
+                 # policy on obs[21]. NAV-F §3.4 calls this the arm that makes a
+                 # null interpretable: the 38-dim layout has no uncertainty
+                 # channel, so without it the agent must infer nav uncertainty
+                 # from estimate jitter through the LSTM, and a null cannot be
+                 # separated from "it never saw the signal".
+                 #
+                 # obs[21..32] are identically zero in every nav/T3 config
+                 # (num_debris = 0 hard-zeroes three body blocks; measured
+                 # min = max = 0.00000 over 836 canonical decisions). The slot
+                 # is free, but NOT free of consequence: those weights got zero
+                 # gradient and sit at random init, so red-team NON-ISSUE-9
+                 # measured 0/836 argmax flips at magnitude 0.1 rising to
+                 # 26/836 (3.11%) at 1.0. Hence the 0.1 ceiling here AND zeroing
+                 # the encoder's column 21 at warm-start load
+                 # (scripts/orbital/nav/zero_obs_column.py), which makes the
+                 # channel provably inert at t=0 and learnable thereafter.
+                 nav_sigma_channel=0,
+                 nav_sigma_ref=1e-6,      # sigma_LOS/rho mapping to 0 (log floor)
+                 nav_sigma_gain=0.1,      # output magnitude ceiling
+                 # T-BO-act necessity ablation: inside this separation the fine
+                 # burns (12-15 = +/-1, +/-2 m/s prograde; 18-19 = radial
+                 # +/-1 m/s) execute as COAST.
+                 #
+                 # This is an env-variant DYNAMICS change, not a forced-action
+                 # substitution. PPO stores the action the policy sampled
+                 # (`pufferl.py:295` writes into its own experience buffer and
+                 # never reads back the env's shm), and the environment simply
+                 # makes those actions no-ops in that region — a wall in the
+                 # MDP, which is a perfectly well-defined transition function.
+                 # Red-team MAJOR-3's objection was to overriding the agent's
+                 # choice with a DIFFERENT action while storing the original;
+                 # here the stored action is the executed action, and only the
+                 # transition it induces has changed.
+                 nav_block_fine_below_m=0.0,
                  **kwargs):
         if nav_mode not in NAV_MODES:
             raise ValueError(f'nav_mode must be one of {NAV_MODES}, got {nav_mode!r}')
@@ -139,6 +175,10 @@ class OrbitalNav(Orbital):
         self._acq_min_ticks = int(nav_acq_min_ticks)
         self._cov_inflate = float(nav_cov_inflate)
         self._nav_clip = float(nav_clip)
+        self._sig_ch = int(nav_sigma_channel)
+        self._sig_ref = float(nav_sigma_ref)
+        self._sig_gain = float(nav_sigma_gain)
+        self._block_below = float(nav_block_fine_below_m)
         self._nees_every = max(1, int(nav_nees_every))
         self._nav_max_ticks = int(nav_max_ticks)
 
@@ -202,6 +242,9 @@ class OrbitalNav(Orbital):
         self._d_div = 0
         self._d_slr = []
         self._d_blind = 0
+        self._d_sig = []
+        self._d_block = 0
+        self._d_block_n = 0
 
     # ── decode / re-encode ───────────────────────────────────────────────────
     def _decode(self):
@@ -220,6 +263,8 @@ class OrbitalNav(Orbital):
         out = self._scratch
         nm.fill_target_obs_t3(out, sat, (a, e, om, th), est_x, sat_c,
                               self._alt_scale, self._lvlh_scale)
+        if self._sig_ch:
+            self._write_sigma_channel(est_x, sat_c)
         c = self._nav_clip
         v = out[:, self._slots]
         v = np.nan_to_num(v, nan=0.0, posinf=c, neginf=-c)
@@ -227,6 +272,62 @@ class OrbitalNav(Orbital):
         self._d_clip_n += v.size
         np.clip(v, -c, c, out=v)
         self.observations[:, self._slots] = v.astype(np.float32)
+
+    # ── T-BO+Sigma: the uncertainty channel ──────────────────────────────────
+    def _sigma_los_over_rho(self, est_x, sat_c):
+        """The filter's OWN 1-sigma range uncertainty, normalised by its OWN
+        estimated separation. Everything here is estimator-side — no truth — so
+        it is a legitimate observation."""
+        n = self.num_agents
+        idx = np.arange(n)
+        _, P = self._filt.mean_cov(idx)
+        d = est_x[:, :2] - sat_c[:, :2]
+        rho = np.maximum(np.hypot(d[:, 0], d[:, 1]), 1.0)
+        u = d / rho[:, None]
+        with np.errstate(all='ignore'):
+            s2 = np.einsum('ni,nij,nj->n', u, P[:, :2, :2], u)
+            s = np.sqrt(np.maximum(s2, 0.0)) / rho
+        return np.nan_to_num(s, nan=1.0, posinf=1.0, neginf=0.0)
+
+    def _write_sigma_channel(self, est_x, sat_c):
+        """obs[21] = gain * normalised log10(sigma_LOS / rho), bounded [0, gain].
+
+        LOG, not linear. The quantity spans four decades over the regime that
+        matters: NAV-F §2.6 measures sigma_range/rho ~ 5e-4 for a well-acquired
+        filter and 0.52 for a drift-only filter at the TB5 box — and the whole
+        dual-control tension lives in between, as the policy nulls delta-a and
+        observability collapses. A linear map with any single reference either
+        saturates across that band or resolves nothing at the bottom of it.
+        """
+        s = self._sigma_los_over_rho(est_x, sat_c)
+        lo, hi = self._sig_ref, 1.0
+        with np.errstate(all='ignore'):
+            t = np.log10(np.maximum(s, 1e-12) / lo) / np.log10(hi / lo)
+        v = self._sig_gain * np.clip(np.nan_to_num(t, nan=1.0), 0.0, 1.0)
+        self._d_sig.append(float(np.median(s)))
+        self.observations[:, 21] = v.astype(np.float32)
+
+    # ── T-BO-act: fine burns are no-ops inside the ablation radius ───────────
+    _FINE = np.array([12, 13, 14, 15, 18, 19])
+
+    def _apply_action_ablation(self, actions):
+        """Env-variant dynamics: fine burns coast inside `nav_block_fine_below_m`.
+
+        Uses the TRUE separation at the decision epoch (the state the action is
+        taken in), which is env-side information, exactly as a real actuator
+        interlock would be.
+        """
+        a = np.asarray(actions, dtype=np.int32).reshape(-1).copy()
+        if not self._nav_ready or self._prev_tgt is None:
+            return a
+        d = self._prev_tgt[:, :2] - self._prev_sat[:, :2]
+        rho = np.hypot(d[:, 0], d[:, 1])
+        blocked = np.isin(a, self._FINE) & (rho < self._block_below)
+        if blocked.any():
+            a[blocked] = 0
+            self._d_block += int(blocked.sum())
+        self._d_block_n += a.size
+        return a
 
     # ── filter mean, cheaply ─────────────────────────────────────────────────
     def _mean(self, idx=None):
@@ -449,6 +550,11 @@ class OrbitalNav(Orbital):
         if self._nav_mode == 'bearings_only':
             info['nav_blind_frac'] = float(self._d_blind / n)
             info['nav_acq_per_ep'] = float(self._acq.n_acq / max(self._acq.n_reset, 1))
+        if self._sig_ch:
+            info['nav_sigma_ch'] = (float(np.median(self._d_sig))
+                                    if self._d_sig else 0.0)
+        if self._block_below > 0.0:
+            info['nav_block_rate'] = float(self._d_block / max(self._d_block_n, 1))
         self._d_reset()
         return info
 
@@ -470,11 +576,15 @@ class OrbitalNav(Orbital):
         return obs, info
 
     def step(self, actions):
+        if self._block_below > 0.0 and self._nav_mode != 'truth':
+            actions = self._apply_action_ablation(actions)
         obs, rew, term, trunc, info = super().step(actions)
         if self._nav_mode == 'truth':
             return obs, rew, term, trunc, info
         if not self._nav_ready:
             self._nav_alloc()
+        # `actions` is the EXECUTED action set, so tau below is the tau the C
+        # env actually applied — required for the filter's propagation interval.
         self._nav_step(actions, np.logical_or(term, trunc))
         if self.tick % self.log_interval == 0:
             info = list(info)
