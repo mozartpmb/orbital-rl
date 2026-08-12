@@ -30,8 +30,16 @@ import time
 import numpy as np
 import torch
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, "/Users/pete/space_training/pufferlib")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+# Repository root of THIS checkout (works in the ext-nav worktree and in the
+# main tree). The pufferlib import, results and plots must resolve here so a
+# worktree run never writes into the main checkout; only `experiments/`
+# checkpoints, which are untracked, fall back to the main tree.
+ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
+MAIN = "/Users/pete/space_training"
+sys.path.insert(0, _HERE)
+sys.path.insert(0, os.path.join(ROOT, "pufferlib"))
+sys.path.insert(0, os.path.join(ROOT, "scripts", "orbital", "ext_recon"))
 
 from pufferlib.ocean.orbital.orbital import Orbital          # noqa: E402
 from pufferlib.models import Default, LSTMWrapper            # noqa: E402
@@ -40,9 +48,7 @@ import orbital_math as om                                    # noqa: E402
 from ekf import (TargetEKF, measure, wrap_pi, NEES_LO, NEES_HI,  # noqa: E402
                  NIS_LO, NIS_HI, SIGMA_RHO_M, SIGMA_BETA_RAD,
                  Q_ACCEL_PSD, SIGMA_V0)
-
-ROOT = "/Users/pete/space_training"
-CKPT = f"{ROOT}/pufferlib/experiments/puffer_orbital_177765503091/model_puffer_orbital_000325.pt"
+CKPT = f"{MAIN}/pufferlib/experiments/puffer_orbital_177765503091/model_puffer_orbital_000325.pt"
 PLOT_DIR = f"{ROOT}/plots/relnav"
 RESULTS_CSV = f"{ROOT}/web_data/results/relnav_results.csv"
 
@@ -68,7 +74,7 @@ ENV_KWARGS = dict(
 # head, so legacy_action_space is deliberately absent. Everything the filter
 # touches — the physical relative state — is unchanged; only the *encoding* of
 # the target into the observation moves.
-T3_CKPT = (f"{ROOT}/pufferlib/experiments/puffer_orbital_178642097817/"
+T3_CKPT = (f"{MAIN}/pufferlib/experiments/puffer_orbital_178642097817/"
            f"model_puffer_orbital_000382.pt")
 T3_PLOT_DIR = f"{ROOT}/plots/relnav_t3"
 T3_RESULTS_CSV = f"{ROOT}/web_data/results/t3_relnav_corrected.csv"
@@ -302,6 +308,504 @@ def load_policy(env):
 def zero_state(policy):
     return {'lstm_h': torch.zeros(1, policy.hidden_size),
             'lstm_c': torch.zeros(1, policy.hidden_size)}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Bearings-only (angles-only) closed loop — NAV-G's shipped filter, for real
+# ═════════════════════════════════════════════════════════════════════════════
+# The range row is deleted from the measurement. What is left is a scalar
+# inertial line-of-sight bearing, and the target's range must be recovered from
+# the nonlinearity of gravity over the separation plus whatever parallax the
+# chaser's own maneuvers generate.
+#
+# TRAINING uses a calibrated surrogate for the acquisition step, because the
+# batch solver is 17-90x the entire training step (red-team BLOCKER-1). EVAL —
+# this code — runs the REAL `bls_acquire_adaptive`: dense log-spaced range grid
+# over the analytic feasible set, binned multi-start Levenberg-damped
+# Gauss-Newton, arc grown x1.6 until a chi-square gate, an ambiguity-margin
+# gate and a covariance gate all pass. 200 episodes x ~0.55 s is ~2 minutes.
+#
+# Carry the red-team MAJOR-2 caveat with any number produced here: those three
+# gates test the self-consistency of the chosen range basin, NOT the
+# correctness of the basin choice. At reduced grid density the `minimal` config
+# passed 18/18 gates while returning a 2,951 km epoch solution at G2. The gates
+# are not an acceptance test; the grid knobs below are the shipped ones and
+# must not be tuned without re-measuring epoch error against truth.
+# Tsiolkovsky inversion of obs[6]. obs[6] is fuel_mass/(dry+fuel); the tank
+# starts at FUEL_FRAC = 0.15, so the cumulative delta-v ACTUALLY APPLIED is
+#     dv = VE * ln( (1 - obs[6]) / (1 - 0.15) ),   VE = ISP*G0 = 2942 m/s
+# This reads the mass the C env really burned rather than the delta-v the
+# policy commanded, so a fuel-limited burn is counted correctly, and it
+# saturates at 478 m/s — the documented budget.
+VE_MS = 300.0 * 9.80665
+FUEL_FRAC0 = 0.15
+
+
+def dv_spent(fuel_frac):
+    return VE_MS * math.log(max(1.0 - float(fuel_frac), 1e-9) / (1.0 - FUEL_FRAC0))
+
+
+def fuel_budget_left(fuel_frac):
+    """Remaining fraction of the delta-v BUDGET (1.0 = full tank)."""
+    f = max(min(float(fuel_frac), FUEL_FRAC0), 0.0)
+    return (f / max(1.0 - f, 1e-9)) / (FUEL_FRAC0 / (1.0 - FUEL_FRAC0))
+
+
+def _is_burn(a):
+    """Any tau==1 non-coast action — exactly c_step's own burn test."""
+    return a != 0 and om.ACTION_TAU[a] == 1
+
+
+BO_Q_A = 1.0e-13          # NAV-G's bearings-only covariance floor
+BO_W0 = 45                # initial batch window (observations)
+BO_ACQ_EVERY = 15         # retry cadence, in new observations
+BO_ARC_MAX = 400          # cap the batch arc (cost is superlinear in window)
+
+
+def _bo_env_annulus():
+    """Altitude annulus [r_min, r_max] the target is known to live in."""
+    a_min = ENV_KWARGS.get('a_min_override', -1.0)
+    a_max = ENV_KWARGS.get('a_max_override', -1.0)
+    a_min = a_min if a_min >= om.R_EARTH else om.R_EARTH + 300e3
+    a_max = a_max if a_max > a_min else om.R_EARTH + 800e3
+    e_max = max(float(ENV_KWARGS.get('e_max_target', 0.0)), 0.0)
+    return a_min * (1.0 - e_max), a_max * (1.0 + e_max)
+
+
+def _bo_sigma_v_ecc():
+    """Circular-velocity guess error. T4 §8.2: it scales with ECCENTRICITY
+    (~v_c*e), not with range."""
+    e_max = max(float(ENV_KWARGS.get('e_max_target', 0.0)), 0.0)
+    return max(7.7e3 * max(e_max, 0.02), 100.0)
+
+
+def _bo_blind_state(sat_cart, beta, r_min, r_max):
+    """The unacquired estimate: geometric mean of the analytic feasible range
+    set along the measured bearing, plus a prograde circular velocity.
+
+    This is exactly the object red-team `ext_rtnav_blind_window.py` injected to
+    measure what blindness costs (median injected range error 9,276 km; median
+    max target-slot obs perturbation 1.74 obs-units).
+    """
+    import ext_bo_filter as ebf
+    iv = ebf.range_prior_intervals(sat_cart, beta, r_min, r_max)
+    lo, hi = ebf.prior_span(iv)
+    rho0 = math.sqrt(max(lo, 1.0) * hi)
+    px = sat_cart[0] + rho0 * math.cos(beta)
+    py = sat_cart[1] + rho0 * math.sin(beta)
+    vx, vy = ebf.circular_state(px, py)
+    return np.array([px, py, vx, vy], dtype=float), iv, (lo, hi)
+
+
+def _bo_seed_mpc(mpc, x0, sat_cart, lo, hi, sigma_v_ecc, sigma_beta):
+    """Seed the modified-polar filter from the blind prior.
+
+    Seeded in MSC, not Cartesian: the 4-decade range ignorance then lives
+    entirely in ln rho where its variance is (ln(hi/lo))^2/12 <= ~10, instead
+    of being pushed through the encoding Jacobian as a (sig_rho/rho0)^2 ~ 1e3
+    term that the finite-difference transition Jacobian cannot survive.
+    """
+    import ext_bo_filter as ebf
+    y0 = ebf.msc_encode(sat_cart, x0)
+    rho0 = math.exp(min(y0[3], 25.0))
+    sig_lnr = min(max(math.log(hi / max(lo, 1.0)) / math.sqrt(12.0), 0.5), 4.0)
+    sig_rate = min(max(sigma_v_ecc / max(rho0, 1.0), 1e-5), 1e-1)
+    mpc.y = y0
+    mpc.Py = np.diag([sigma_beta ** 2, sig_rate ** 2, sig_rate ** 2,
+                      sig_lnr ** 2])
+    mpc.sat = tuple(sat_cart)
+    mpc.alive = True
+    return mpc
+
+
+def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
+           label="", blindclose_m=0.0, blind_all=0, verbose=True, collect=None,
+           sigma_channel=0):
+    """Closed loop on an angles-only estimate.
+
+    `collect`, if a list, receives one dict per decision epoch carrying the
+    truth states, the executed action and the state descriptors NAV-F §3.3
+    needs — so the counterfactual information sweep can be run afterwards as
+    one batched pass instead of 2 x horizon propagations inline.
+
+    blindclose_m > 0 reproduces red-team MAJOR-4: whenever the TRUE separation
+    is below the threshold, the policy is handed the *unacquired* prior
+    estimate instead of the filter's. That cell is the single most informative
+    one in the matrix — blindness at episode start is free (100/100 at every
+    depth to 4 decisions), blindness inside 200 km scores 45/100 and inside
+    1000 km scores 18/100, all by fuel exhaustion.
+
+    blind_all=1 is the permanently-blind control. It also retires the
+    "reward leaks truth" worry at inference time: if truth leaked usefully
+    through the reward, a permanently blind policy would not collapse.
+    """
+    import ext_bo_filter as ebf
+
+    env = make_env()
+    policy = load_policy(env)
+    obs, _ = env.reset(seed=seed)
+    rng = np.random.default_rng(meas_seed)
+    state = zero_state(policy)
+    s_beta = SIGMA_BETA_RAD * noise_scale
+    r_min, r_max = _bo_env_annulus()
+    sigma_v_ecc = _bo_sigma_v_ecc()
+
+    mpc = ebf.BearingMPC(sigma_beta=s_beta, q_a=q_a)
+    ep_success, ep_cause, ep_len = [], [], []
+    flat_rho, flat_pe, flat_ve, flat_slr, flat_acq = [], [], [], [], []
+    acq_latency, acq_epoch_err, n_acq_fail, n_diverge = [], [], 0, 0
+    ep_blind_dec, ep_dec, ep_minrho = [], [], []
+    # ── blind-window behaviour (the mechanism training is supposed to fix) ──
+    # Canonical baseline: fed a ~9,000 km-wrong prior, the truth-trained policy
+    # dumps its whole 478 m/s budget in ~16 min of sim time and strands itself
+    # BEFORE any angles-only solver could have converged (NAV-G's w0 is 45
+    # observations = 45 min). These counters measure exactly that.
+    acq_dv, acq_fuel_left = [], []          # at the acquisition instant
+    ep_blind_burns, ep_acq_burns = [], []   # burns, split by nav state
+    ep_blind_dv, ep_acq_dv = [], []         # delta-v applied, split by nav state
+    ep_acq_dec = []
+    ep_total_dv, ep_ever_acq, ep_blind_at_end = [], [], []
+    blind_burns = acq_burns = acq_dec = 0
+    blind_dv = acq_dv_ep = 0.0
+    fuel_prev = None
+    logged_acq = False
+
+    fresh, episodes, t0 = True, 0, time.time()
+    times, sats, betas = [], [], []
+    intervals, prior = None, (1.0, 1.0)
+    acquired, t_clock, blind_dec, dec, minrho = False, 0.0, 0, 0, float('inf')
+    next_try = BO_W0
+    prev_sat, prev_tgt, prev_tau = None, None, 1
+
+    while episodes < num_episodes:
+        o = np.array(obs[0], dtype=np.float32, copy=True)
+        sat_el, tgt_el = recover_states(o)
+        sat_cart = om.orbit_to_cartesian(sat_el)
+        tgt_cart = om.orbit_to_cartesian(tgt_el)
+        beta_t = math.atan2(tgt_cart[1] - sat_cart[1], tgt_cart[0] - sat_cart[0])
+        beta = wrap_pi(beta_t + rng.normal(0.0, s_beta))
+
+        if fresh:
+            t_clock = 0.0
+            times, sats, betas = [0.0], [sat_cart], [beta]
+            x0, intervals, prior = _bo_blind_state(sat_cart, beta, r_min, r_max)
+            _bo_seed_mpc(mpc, x0, sat_cart, prior[0], prior[1], sigma_v_ecc,
+                         s_beta)
+            acquired, next_try, fresh = False, BO_W0, False
+            blind_dec, dec, minrho = 0, 0, float('inf')
+            blind_burns = acq_burns = acq_dec = 0
+            blind_dv = acq_dv_ep = 0.0
+            fuel_prev = float(o[6])
+            logged_acq = False
+        else:
+            # Advance navigation from the PREVIOUS decision epoch to this one,
+            # at the fixed sensor cadence. Done here, not at the end of the
+            # previous iteration, because the last sub-interval's `sat_to` is
+            # the chaser state AFTER any impulse — and the modified-polar state
+            # is RELATIVE, so re-encoding against a pre-burn chaser silently
+            # attributes the chaser's own delta-v to the target. Measured: that
+            # single ordering error put 25 m/s into the target velocity
+            # estimate and 169 km of position error into the closed loop.
+            n_sub = max(1, int(prev_tau))
+            s_c, t_c = prev_sat, prev_tgt
+            for i in range(n_sub):
+                s_prev = s_c
+                s_c = om.propagate_cartesian(s_c, om.DT)
+                t_c = om.propagate_cartesian(t_c, om.DT)
+                t_clock += om.DT
+                if i == n_sub - 1:
+                    # the env's own epoch: pin truth to the observation
+                    s_c, t_c = sat_cart, tgt_cart
+                    b_i = beta
+                else:
+                    b_i = wrap_pi(math.atan2(t_c[1] - s_c[1], t_c[0] - s_c[0])
+                                  + rng.normal(0.0, s_beta))
+                mpc.predict(om.DT, s_prev, s_c)
+                mpc.sat = tuple(s_c)
+                mpc.update(s_c, b_i)
+                times.append(t_clock)
+                sats.append(s_c)
+                betas.append(b_i)
+
+        # ── real angles-only acquisition ────────────────────────────────────
+        if not acquired and len(times) >= next_try:
+            w = min(len(times), BO_ARC_MAX)
+            acq = ebf.bls_acquire_adaptive(
+                times[-w:], sats[-w:], betas[-w:],
+                ebf.range_prior_intervals(sats[-w], betas[-w], r_min, r_max),
+                s_beta, sigma_v_ecc, w0=min(BO_W0, w))
+            next_try = len(times) + BO_ACQ_EVERY
+            if acq is not None and acq[4]:
+                x_e, P_e = acq[0], acq[1]
+                dt_fwd = times[-1] - times[-w]
+                acq_latency.append(dt_fwd / 60.0 + BO_W0)
+                # epoch error against truth, the number MAJOR-2 says the gates
+                # do NOT certify
+                tgt_epoch = om.propagate_cartesian(tgt_cart, -dt_fwd)
+                acq_epoch_err.append(math.hypot(x_e[0] - tgt_epoch[0],
+                                                x_e[1] - tgt_epoch[1]))
+                F = om.stm_numerical(x_e, dt_fwd) if dt_fwd > 0 else np.eye(4)
+                x_n = (om.propagate_cartesian(x_e, dt_fwd) if dt_fwd > 0
+                       else x_e)
+                mpc.set_cart(np.asarray(x_n, dtype=float), F @ P_e @ F.T,
+                             sat_cart)
+                acquired = True
+                if not logged_acq:
+                    acq_dv.append(dv_spent(o[6]))
+                    acq_fuel_left.append(fuel_budget_left(o[6]))
+                    logged_acq = True
+            elif len(times) > BO_ARC_MAX:
+                n_acq_fail += 1
+
+        # ── divergence guard ────────────────────────────────────────────────
+        x_est = np.asarray(ebf.msc_decode(mpc.y, mpc.sat), dtype=float)
+        r_e = math.hypot(x_est[0], x_est[1])
+        v2 = x_est[2] ** 2 + x_est[3] ** 2
+        bad = (not np.all(np.isfinite(x_est))) or (not mpc.alive) \
+            or r_e < 1.0 or (2.0 / max(r_e, 1.0) - v2 / om.MU) <= 0.0
+        if bad:
+            n_diverge += 1
+            x0, intervals, prior = _bo_blind_state(sat_cart, beta, r_min, r_max)
+            _bo_seed_mpc(mpc, x0, sat_cart, prior[0], prior[1], sigma_v_ecc,
+                         s_beta)
+            acquired = False
+            times, sats, betas = [t_clock], [sat_cart], [beta]
+            next_try = BO_W0
+            x_est = x0
+
+        # ── telemetry ───────────────────────────────────────────────────────
+        rho_true = math.hypot(tgt_cart[0] - sat_cart[0],
+                              tgt_cart[1] - sat_cart[1])
+        minrho = min(minrho, rho_true)
+        _, P_c = mpc.mean_cov()
+        u = np.array([tgt_cart[0] - sat_cart[0], tgt_cart[1] - sat_cart[1]])
+        u = u / max(np.linalg.norm(u), 1e-12)
+        slr = math.sqrt(max(float(u @ P_c[:2, :2] @ u), 0.0)) / max(rho_true, 1.0)
+        flat_rho.append(rho_true)
+        flat_pe.append(math.hypot(x_est[0] - tgt_cart[0], x_est[1] - tgt_cart[1]))
+        flat_ve.append(math.hypot(x_est[2] - tgt_cart[2], x_est[3] - tgt_cart[3]))
+        flat_slr.append(slr)
+        flat_acq.append(1.0 if acquired else 0.0)
+
+        # ── policy observation ──────────────────────────────────────────────
+        show_blind = bool(blind_all) or (blindclose_m > 0.0
+                                         and rho_true < blindclose_m)
+        if show_blind:
+            xb, _, _ = _bo_blind_state(sat_cart, beta, r_min, r_max)
+            x_pol = xb
+        else:
+            x_pol = x_est
+        dec += 1
+        if show_blind or not acquired:
+            blind_dec += 1
+        est_el = om.cartesian_to_elements(*x_pol)
+        pol_obs = build_obs(o, sat_el, est_el, tgt_cart=tuple(x_pol))
+        if sigma_channel:
+            # Same bounded log map the wrapper writes during training. The
+            # policy for the T-BO+Sigma arm was trained with this channel live,
+            # so the eval must reproduce it or the arm is evaluated off-policy.
+            _P = mpc.mean_cov()[1]
+            _d = np.array([x_pol[0] - sat_cart[0], x_pol[1] - sat_cart[1]])
+            _rho = max(float(np.linalg.norm(_d)), 1.0)
+            _u = _d / _rho
+            with np.errstate(all='ignore'):
+                _s = math.sqrt(max(float(_u @ _P[:2, :2] @ _u), 0.0)) / _rho
+                _t = math.log10(max(_s, 1e-12) / 1e-6) / math.log10(1.0 / 1e-6)
+            pol_obs[21] = np.float32(0.1 * min(max(_t, 0.0), 1.0))
+
+        with torch.no_grad():
+            logits, _ = policy.forward_eval(
+                torch.from_numpy(pol_obs).float().unsqueeze(0).unsqueeze(0), state)
+            action = int(torch.argmax(logits, dim=-1).item())
+
+        if collect is not None:
+            _a_s, _e_s, _o_s, _t_s = (sat_el['a'], sat_el['e'],
+                                      sat_el['omega'], sat_el['theta'])
+            collect.append(dict(
+                ep=episodes, sat=np.asarray(sat_cart, dtype=float),
+                tgt=np.asarray(tgt_cart, dtype=float), action=action,
+                rho=rho_true, da=sat_el['a'] - tgt_el['a'],
+                fuel=float(o[6]), dv_left=478.0 - dv_spent(o[6]),
+                step=int(dec), acquired=int(acquired and not show_blind),
+                trP=float(np.trace(P_c)), slr=float(slr)))
+
+        obs, rewards, terms, truncs, _ = env.step(np.array([action], dtype=np.int32))
+        prev_sat, prev_tgt, prev_tau = sat_cart, tgt_cart, om.ACTION_TAU[action]
+
+        # Attribute this decision's realised delta-v to the nav state it was
+        # taken under. `blind` here means "the policy was flying an unacquired
+        # estimate", which is the condition the training arm is meant to change.
+        blind_now = show_blind or not acquired
+        f_now = float(obs[0][6]) if not terms[0] else 0.0
+        d_dv = max(dv_spent(f_now) - dv_spent(fuel_prev), 0.0) if not terms[0] else 0.0
+        if blind_now:
+            blind_burns += 1 if _is_burn(action) else 0
+            blind_dv += d_dv
+        else:
+            acq_dec += 1
+            acq_burns += 1 if _is_burn(action) else 0
+            acq_dv_ep += d_dv
+        if not terms[0]:
+            fuel_prev = f_now
+
+        if terms[0]:
+            episodes += 1
+            sim_steps, cause = env.last_episode_result(0)
+            ep_cause.append(int(cause))
+            ep_success.append(1 if cause == 1 else 0)
+            ep_len.append(int(sim_steps))
+            ep_blind_dec.append(blind_dec)
+            ep_dec.append(dec)
+            ep_minrho.append(minrho)
+            ep_blind_burns.append(blind_burns)
+            ep_acq_burns.append(acq_burns)
+            ep_acq_dec.append(acq_dec)
+            ep_blind_dv.append(blind_dv)
+            ep_acq_dv.append(acq_dv_ep)
+            ep_total_dv.append(dv_spent(fuel_prev))
+            ep_ever_acq.append(1 if logged_acq else 0)
+            ep_blind_at_end.append(1 if blind_now else 0)
+            fresh = True
+            state = zero_state(policy)
+            if verbose and episodes % 25 == 0:
+                print(f"    [{label}] ep {episodes}/{num_episodes} "
+                      f"success={np.mean(ep_success):.1%} "
+                      f"({time.time()-t0:.0f}s)", flush=True)
+
+    env.close()
+    return dict(
+        label=label, mode='bo', noise_scale=noise_scale,
+        success=np.array(ep_success), cause=np.array(ep_cause),
+        length=np.array(ep_len),
+        flat_rho=np.array(flat_rho), flat_pe=np.array(flat_pe),
+        flat_ve=np.array(flat_ve), flat_slr=np.array(flat_slr),
+        flat_acq=np.array(flat_acq),
+        acq_latency=np.array(acq_latency), acq_epoch_err=np.array(acq_epoch_err),
+        n_acq_fail=n_acq_fail, n_diverge=n_diverge,
+        blind_dec=np.array(ep_blind_dec), dec=np.array(ep_dec),
+        minrho=np.array(ep_minrho),
+        acq_dv=np.array(acq_dv), acq_fuel_left=np.array(acq_fuel_left),
+        blind_burns=np.array(ep_blind_burns), acq_burns=np.array(ep_acq_burns),
+        acq_dec=np.array(ep_acq_dec),
+        blind_dv=np.array(ep_blind_dv), acq_dv_ep=np.array(ep_acq_dv),
+        total_dv=np.array(ep_total_dv), ever_acq=np.array(ep_ever_acq),
+        blind_at_end=np.array(ep_blind_at_end),
+        wall=time.time() - t0)
+
+
+def behaviour_report(r, indent='  ', quiet=False):
+    """Blind-window behaviour block — the mechanism, not the score."""
+    if quiet:
+        import io
+        import contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            return behaviour_report(r, indent)
+    n = len(r['success'])
+    bd, ad = r['blind_dec'].sum(), r['acq_dec'].sum()
+    strand = r['cause'] == 5
+    strand_blind = strand & (r['blind_at_end'] == 1)
+    out = {}
+    print(f"{indent}blind-window behaviour")
+    if r['acq_dv'].size:
+        out['acq_dv_med'] = float(np.median(r['acq_dv']))
+        out['acq_fuel_med'] = float(np.median(r['acq_fuel_left']))
+        print(f"{indent}  dv spent BEFORE acquisition   median "
+              f"{np.median(r['acq_dv']):6.1f} m/s   p90 "
+              f"{np.percentile(r['acq_dv'], 90):6.1f}   max "
+              f"{r['acq_dv'].max():6.1f}   (budget 478)")
+        print(f"{indent}  fuel budget left AT acquisition median "
+              f"{np.median(r['acq_fuel_left']):.3f}   p10 "
+              f"{np.percentile(r['acq_fuel_left'], 10):.3f}")
+    else:
+        out['acq_dv_med'] = out['acq_fuel_med'] = float('nan')
+        print(f"{indent}  (no episode ever acquired)")
+    br_b = r['blind_burns'].sum() / max(bd, 1)
+    br_a = r['acq_burns'].sum() / max(ad, 1)
+    dv_b = r['blind_dv'].sum() / max(bd, 1)
+    dv_a = r['acq_dv_ep'].sum() / max(ad, 1)
+    out.update(burn_rate_blind=float(br_b), burn_rate_acq=float(br_a),
+               dv_per_dec_blind=float(dv_b), dv_per_dec_acq=float(dv_a),
+               strand_rate=float(strand.mean()),
+               strand_blind_rate=float(strand_blind.mean()),
+               total_dv_med=float(np.median(r['total_dv'])),
+               ever_acq=float(r['ever_acq'].mean()))
+    print(f"{indent}  burn rate   blind {br_b:.3f} burns/decision   "
+          f"acquired {br_a:.3f}   ratio {br_b/max(br_a,1e-9):5.2f}x")
+    print(f"{indent}  dv per decision  blind {dv_b:6.2f} m/s   "
+          f"acquired {dv_a:6.2f} m/s   ratio {dv_b/max(dv_a,1e-9):5.2f}x")
+    print(f"{indent}  stranded {int(strand.sum())}/{n} = {strand.mean():.1%}   "
+          f"of which BLIND at terminal {int(strand_blind.sum())} "
+          f"({strand_blind.mean():.1%} of all episodes)")
+    print(f"{indent}  total dv/episode median {np.median(r['total_dv']):.1f} m/s   "
+          f"episodes that ever acquired {r['ever_acq'].mean():.1%}")
+    return out
+
+
+def _bo_report(r):
+    n_gave = int(np.sum(r['cause'] == 7))
+    n_valid = len(r['success']) - n_gave
+    causes = ", ".join(f"{CAUSE_NAMES[c]}={int(np.sum(r['cause'] == c))}"
+                       for c in range(8) if np.sum(r['cause'] == c))
+    print(f"  {r['label']:22s} success {int(r['success'].sum())}/{n_valid} = "
+          f"{r['success'].sum()/max(n_valid,1):6.1%}   "
+          f"acquired {r['flat_acq'].mean():.3f}   "
+          f"diverge {r['n_diverge']}   acq_fail {r['n_acq_fail']}   "
+          f"({r['wall']:.0f}s)")
+    print(f"  {'':22s} causes: {causes}")
+    if r['acq_latency'].size:
+        print(f"  {'':22s} acquisition: latency median "
+              f"{np.median(r['acq_latency']):.0f} min "
+              f"(p90 {np.percentile(r['acq_latency'],90):.0f}), "
+              f"EPOCH error vs truth median "
+              f"{np.median(r['acq_epoch_err'])/1e3:.1f} km "
+              f"(p90 {np.percentile(r['acq_epoch_err'],90)/1e3:.1f} km, "
+              f"max {r['acq_epoch_err'].max()/1e3:.1f} km)")
+    blind_frac = r['blind_dec'].sum() / max(r['dec'].sum(), 1)
+    print(f"  {'':22s} blind decisions {blind_frac:.1%}; episodes never "
+          f"acquiring {int((r['blind_dec'] == r['dec']).sum())}/{len(r['dec'])}")
+    # close-range covariance gate, the MAJOR-4 first-class output
+    rho, slr, pe = r['flat_rho'], r['flat_slr'], r['flat_pe']
+    print(f"  {'':22s} {'sep bin':>16s} {'n':>7s} {'med sigLOS/rho':>16s} "
+          f"{'med |dp|':>12s} {'acq frac':>9s}")
+    for lo, hi in ((0, 5e4), (5e4, 2e5), (2e5, 1e6), (1e6, 1e7), (1e7, 1e9)):
+        m = (rho >= lo) & (rho < hi)
+        if m.sum() < 10:
+            continue
+        print(f"  {'':22s} {lo:7.0e}-{hi:<7.0e} {int(m.sum()):7d} "
+              f"{np.median(slr[m]):16.4f} {np.median(pe[m]):10.1f} m "
+              f"{r['flat_acq'][m].mean():9.3f}")
+    close = r['minrho'] < 2e5
+    if close.any():
+        print(f"  {'':22s} conditional success | min separation < 200 km: "
+              f"{int(r['success'][close].sum())}/{int(close.sum())}")
+    behaviour_report(r, indent='  ' + ' ' * 22)
+
+
+def stage_bearings(args):
+    print("── Stage: bearings-only (angles-only, real BLS acquisition) ────")
+    print(f"  annulus r in [{_bo_env_annulus()[0]/1e3:.0f}, "
+          f"{_bo_env_annulus()[1]/1e3:.0f}] km   sigma_v_ecc "
+          f"{_bo_sigma_v_ecc():.0f} m/s   sigma_beta "
+          f"{SIGMA_BETA_RAD*args.bo_noise:.1e} rad")
+    out = []
+    r = run_bo(args.eval_eps, noise_scale=args.bo_noise, seed=args.seed,
+               label=f"bo_{args.bo_noise:g}x")
+    _bo_report(r)
+    out.append(r)
+    for km in args.blindclose:
+        rb = run_bo(args.blindclose_eps, noise_scale=args.bo_noise,
+                    seed=args.seed, blindclose_m=km * 1e3,
+                    label=f"blindclose<{int(km)}km", verbose=False)
+        _bo_report(rb)
+        out.append(rb)
+    if args.blindall:
+        ra = run_bo(args.blindclose_eps, noise_scale=args.bo_noise,
+                    seed=args.seed, blind_all=1, label="blindall",
+                    verbose=False)
+        _bo_report(ra)
+        out.append(ra)
+    return out
 
 
 def run(num_episodes, mode="truth", noise_scale=1.0, q_a=Q_ACCEL_PSD,
@@ -908,7 +1412,15 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--stage', default='all',
                    choices=['sanity', 'reconcheck', 'qsweep', 'validate',
-                            'eval', 'all'])
+                            'eval', 'bearings', 'all'])
+    p.add_argument('--bo-noise', type=float, default=1.0,
+                   help='bearings-only sigma_beta multiplier')
+    p.add_argument('--blindclose', type=float, nargs='*', default=[],
+                   help='blindclose ablation thresholds in km (red-team '
+                        'MAJOR-4); e.g. --blindclose 50 200 1000')
+    p.add_argument('--blindclose-eps', type=int, default=100)
+    p.add_argument('--blindall', action='store_true',
+                   help='permanently-blind control cell')
     p.add_argument('--seed', type=int, default=42)
     p.add_argument('--sanity-eps', type=int, default=50)
     p.add_argument('--recon-eps', type=int, default=10)
@@ -996,6 +1508,8 @@ def main():
         stage_sanity(args); return
     if args.stage == 'reconcheck':
         stage_reconcheck(args); return
+    if args.stage == 'bearings':
+        stage_bearings(args); return
 
     q_a, sv0 = args.q_a, args.sigma_v0
     if args.stage in ('qsweep', 'all') and q_a is None:

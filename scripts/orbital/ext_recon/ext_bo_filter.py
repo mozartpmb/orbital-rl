@@ -346,21 +346,40 @@ class BearingUKF:
 
 
 # ── BO-MPC: modified polar coordinates ───────────────────────────────────────
+RHO_FLOOR_M = 1.0     # 1 m: 4 decades below the tightest shipped success box
+
+
 def msc_encode(sat, tgt):
-    """[beta, betadot, rhodot/rho, ln rho] from absolute Cartesian states."""
+    """[beta, betadot, rhodot/rho, ln rho] from absolute Cartesian states.
+
+    GUARDED (red-team BLOCKER-1). The original divided by rho2 and took
+    math.log(rho) unguarded, so a finite-difference iterate that lands on the
+    chaser raises `ValueError: math domain error` (or emits nan through the
+    rho2 divides) and kills the run. Reproduced live in the ext-nav
+    bearings-only closed loop on the very first episode. Flooring rho at 1 m
+    cannot fire for a physical geometry and turns a crash into a bounded
+    number.
+    """
     dx, dy = tgt[0] - sat[0], tgt[1] - sat[1]
     dvx, dvy = tgt[2] - sat[2], tgt[3] - sat[3]
     rho2 = dx * dx + dy * dy
-    rho = math.sqrt(rho2)
+    if not (rho2 > RHO_FLOOR_M ** 2) or not math.isfinite(rho2):
+        rho2 = RHO_FLOOR_M ** 2
+        if not (math.isfinite(dx) and math.isfinite(dy)):
+            dx, dy = RHO_FLOOR_M, 0.0
+        if not (math.isfinite(dvx) and math.isfinite(dvy)):
+            dvx = dvy = 0.0
     return np.array([math.atan2(dy, dx),
                      (dx * dvy - dy * dvx) / rho2,
                      (dx * dvx + dy * dvy) / rho2,
-                     math.log(rho)])
+                     0.5 * math.log(rho2)])
 
 
 def msc_decode(y, sat):
     beta, bdot, rr, lr = y
-    rho = math.exp(min(lr, 25.0))
+    if not math.isfinite(lr):
+        lr = math.log(RHO_FLOOR_M)
+    rho = max(math.exp(min(lr, 25.0)), RHO_FLOOR_M)
     c, s = math.cos(beta), math.sin(beta)
     dx, dy = rho * c, rho * s
     rdot = rr * rho
