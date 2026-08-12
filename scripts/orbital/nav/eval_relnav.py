@@ -419,8 +419,14 @@ def _bo_seed_mpc(mpc, x0, sat_cart, lo, hi, sigma_v_ecc, sigma_beta):
 
 
 def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
-           label="", blindclose_m=0.0, blind_all=0, verbose=True):
+           label="", blindclose_m=0.0, blind_all=0, verbose=True, collect=None,
+           sigma_channel=0):
     """Closed loop on an angles-only estimate.
+
+    `collect`, if a list, receives one dict per decision epoch carrying the
+    truth states, the executed action and the state descriptors NAV-F §3.3
+    needs — so the counterfactual information sweep can be run afterwards as
+    one batched pass instead of 2 x horizon propagations inline.
 
     blindclose_m > 0 reproduces red-team MAJOR-4: whenever the TRUE separation
     is below the threshold, the policy is handed the *unacquired* prior
@@ -594,11 +600,34 @@ def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
             blind_dec += 1
         est_el = om.cartesian_to_elements(*x_pol)
         pol_obs = build_obs(o, sat_el, est_el, tgt_cart=tuple(x_pol))
+        if sigma_channel:
+            # Same bounded log map the wrapper writes during training. The
+            # policy for the T-BO+Sigma arm was trained with this channel live,
+            # so the eval must reproduce it or the arm is evaluated off-policy.
+            _P = mpc.mean_cov()[1]
+            _d = np.array([x_pol[0] - sat_cart[0], x_pol[1] - sat_cart[1]])
+            _rho = max(float(np.linalg.norm(_d)), 1.0)
+            _u = _d / _rho
+            with np.errstate(all='ignore'):
+                _s = math.sqrt(max(float(_u @ _P[:2, :2] @ _u), 0.0)) / _rho
+                _t = math.log10(max(_s, 1e-12) / 1e-6) / math.log10(1.0 / 1e-6)
+            pol_obs[21] = np.float32(0.1 * min(max(_t, 0.0), 1.0))
 
         with torch.no_grad():
             logits, _ = policy.forward_eval(
                 torch.from_numpy(pol_obs).float().unsqueeze(0).unsqueeze(0), state)
             action = int(torch.argmax(logits, dim=-1).item())
+
+        if collect is not None:
+            _a_s, _e_s, _o_s, _t_s = (sat_el['a'], sat_el['e'],
+                                      sat_el['omega'], sat_el['theta'])
+            collect.append(dict(
+                ep=episodes, sat=np.asarray(sat_cart, dtype=float),
+                tgt=np.asarray(tgt_cart, dtype=float), action=action,
+                rho=rho_true, da=sat_el['a'] - tgt_el['a'],
+                fuel=float(o[6]), dv_left=478.0 - dv_spent(o[6]),
+                step=int(dec), acquired=int(acquired and not show_blind),
+                trP=float(np.trace(P_c)), slr=float(slr)))
 
         obs, rewards, terms, truncs, _ = env.step(np.array([action], dtype=np.int32))
         prev_sat, prev_tgt, prev_tau = sat_cart, tgt_cart, om.ACTION_TAU[action]
