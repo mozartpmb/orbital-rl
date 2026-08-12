@@ -32,9 +32,14 @@ static PyObject* vec_get_episode_result(PyObject* self, PyObject* args);
  * num_bodies(1)                                          = 1
  * body_x[16](16) body_y[16](16)                         = 32
  * body_hard_r[16](16) body_keepout_r[16](16)            = 32
- * TOTAL = 5+4+5+3+4+1+32+32 = 86
+ * SUBTOTAL (pre-ext-3d) = 5+4+5+3+4+1+32+32 = 86
+ * ext-3d APPENDED (every pre-existing column index is unchanged):
+ * sat_z sat_vz sat_inc sat_raan                          = 4
+ * target_z target_vz target_inc target_raan              = 4
+ * burn_post_{x,y,z,vx,vy,vz}                             = 6
+ * TOTAL = 86 + 14 = 100
  */
-#define TRAJ_FLOATS 86
+#define TRAJ_FLOATS 100
 
 static void fill_traj_row(const TrajectoryRecord* r, float* out) {
     int k = 0;
@@ -64,7 +69,22 @@ static void fill_traj_row(const TrajectoryRecord* r, float* out) {
     for (int i = 0; i < MAX_BODIES; i++) out[k++] = r->body_y[i];
     for (int i = 0; i < MAX_BODIES; i++) out[k++] = r->body_hard_r[i];
     for (int i = 0; i < MAX_BODIES; i++) out[k++] = r->body_keepout_r[i];
-    /* k == TRAJ_FLOATS == 86 */
+    /* ── ext-3d, appended ── */
+    out[k++] = r->sat_z;
+    out[k++] = r->sat_vz;
+    out[k++] = r->sat_inc;
+    out[k++] = r->sat_raan;
+    out[k++] = r->target_z;
+    out[k++] = r->target_vz;
+    out[k++] = r->target_inc;
+    out[k++] = r->target_raan;
+    out[k++] = r->burn_post_x;
+    out[k++] = r->burn_post_y;
+    out[k++] = r->burn_post_z;
+    out[k++] = r->burn_post_vx;
+    out[k++] = r->burn_post_vy;
+    out[k++] = r->burn_post_vz;
+    /* k == TRAJ_FLOATS == 100 */
 }
 
 static PyObject* vec_get_trajectory(PyObject* self, PyObject* args) {
@@ -205,6 +225,14 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->cap_terminal_reward     = (double)unpack(kwargs, "cap_terminal_reward");
     env->de_max                  = (double)unpack(kwargs, "de_max");
     env->da_max_m                = (double)unpack(kwargs, "da_max_m");
+    /* ext-3d kwargs (defaults = legacy 2D behavior, bit-exact) */
+    env->dim3_mode               = (int)unpack(kwargs, "dim3_mode");
+    env->di_max_rad              = (double)unpack(kwargs, "di_max_rad");
+    env->i_target_rad            = (double)unpack(kwargs, "i_target_rad");
+    env->raan_target_rad         = (double)unpack(kwargs, "raan_target_rad");
+    env->obs_di_scale_rad        = (double)unpack(kwargs, "obs_di_scale_rad");
+    env->obs_de_scale            = (double)unpack(kwargs, "obs_de_scale");
+    env->shape_match_squash      = (int)unpack(kwargs, "shape_match_squash");
     env->last_terminal_cause     = TERM_NONE;
     env->last_traj_records       = 0;
     return 0;

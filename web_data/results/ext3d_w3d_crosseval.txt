@@ -1,0 +1,7 @@
+CROSSEVAL W3ck@W3cfg_di1.0_(reference) = 140/200
+CROSSEVAL W3ck@W3cfg_di0.0_(knob-honoured) = 199/200
+CROSSEVAL W3ck@W3cfg_di0.4 = 144/200
+CROSSEVAL W4ck@W3cfg_di1.0_(REGRESSION) = 5/200
+CROSSEVAL W3ck@W4cfg_di1.0_(parent-on-child) = 21/200
+CROSSEVAL W4ck@W4cfg_di0.0_(knob-honoured) = 52/200
+CROSSEVAL W3ck@W4cfg_di0.0_(knob-honoured) = 55/200

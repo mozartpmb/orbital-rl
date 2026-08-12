@@ -1,0 +1,198 @@
+
+====================================================================================================
+W3  n=200  success=140 (70.0%)
+====================================================================================================
+
+-- cause histogram --
+        success   140   70.0%
+     safety_cap    60   30.0%
+
+-- successes vs failures --
+           field |               SUCCESS mean (p50/p90) |                  FAIL mean (p50/p90)
+      di_rel_deg |              0.687 (  0.735/  0.945) |              0.670 (  0.711/  0.973)
+          e_tgt0 |              0.050 (  0.041/  0.111) |              0.104 (  0.102/  0.144)
+          e_sat0 |              0.059 (  0.052/  0.102) |              0.106 (  0.105/  0.139)
+             de0 |              0.062 (  0.059/  0.110) |              0.182 (  0.179/  0.232)
+          da0_km |            222.083 (228.681/365.645) |            220.541 (233.277/364.320)
+        a_sat_km |         1371.590 (1414.046/1866.944) |         1530.392 (1554.862/1925.340)
+        a_tgt_km |         1322.320 (1412.589/1830.425) |         1492.066 (1521.307/1844.278)
+        band_pos |              0.630 (  0.655/  0.922) |              0.724 (  0.738/  0.956)
+       rp_sat_km |           914.397 (939.716/1403.347) |           692.819 (693.252/1167.719)
+       dlam0_deg |              2.759 (  4.641/139.925) |              0.590 (  7.607/139.437)
+        dv_spent |            365.108 (375.178/450.000) |            456.431 (461.000/465.711)
+  dv_frac_budget |              0.764 (  0.785/  0.941) |              0.955 (  0.964/  0.974)
+        fuel_end |              0.037 (  0.034/  0.068) |              0.007 (  0.006/  0.009)
+       exhausted |              0.007 (  0.000/  0.000) |              0.000 (  0.000/  0.000)
+     n_decisions |             32.479 ( 29.500/ 48.000) |            243.183 (188.500/478.000)
+         n_plane |              4.450 (  5.000/  7.000) |              5.383 (  2.000/ 17.000)
+        n_normal |              3.064 (  3.000/  6.000) |              4.967 (  0.500/ 17.000)
+      n_combined |              1.386 (  1.000/  4.000) |              0.417 (  0.000/  2.000)
+      frac_plane |              0.279 (  0.261/  0.462) |              0.069 (  0.031/  0.214)
+       frac_warp |              0.453 (  0.455/  0.554) |              0.400 (  0.396/  0.573)
+   dv_normal_cmd |             96.786 (100.000/150.000) |             15.983 (  5.500/ 50.100)
+        need_seq |            409.600 (416.060/551.479) |           825.746 (806.743/1014.560)
+       need_comb |            347.488 (351.992/474.556) |            753.809 (730.339/944.015)
+     margin_comb |            130.642 (126.138/279.042) |         -275.679 (-252.209/-100.093)
+      di_end_deg |              0.137 (  0.118/  0.270) |              0.558 (  0.579/  0.872)
+          de_end |              0.003 (  0.003/  0.006) |              0.062 (  0.057/  0.114)
+       da_end_km |             12.240 (  9.218/ 25.176) |              8.281 (  4.338/ 19.829)
+        r_min_km |             27.244 ( 29.246/ 29.898) |            291.449 (216.816/651.223)
+           steps |         1327.493 (1336.500/2102.000) |         3000.000 (3000.000/3000.000)
+
+-- feasibility screen on the ACTUAL eval draws --
+   sequential: feasible  97/200 ( 48.5%)   succ|feasible 100.0%   succ|infeasible  41.7%
+     combined: feasible 126/200 ( 63.0%)   succ|feasible 100.0%   succ|infeasible  18.9%
+
+-- success rate by di_rel bin --
+   di [0.0,0.2)°  n=  8  succ  62.5%  need_comb p50    416  feas_comb  62.5%
+   di [0.2,0.4)°  n= 16  succ  62.5%  need_comb p50    406  feas_comb  62.5%
+   di [0.4,0.6)°  n= 43  succ  72.1%  need_comb p50    443  feas_comb  60.5%
+   di [0.6,0.8)°  n= 61  succ  70.5%  need_comb p50    401  feas_comb  60.7%
+   di [0.8,1.0)°  n= 72  succ  70.8%  need_comb p50    409  feas_comb  66.7%
+
+-- success rate by e_target bin --
+   e_t [0.000,0.030)  n= 49  succ 100.0%
+   e_t [0.030,0.060)  n= 47  succ  95.7%
+   e_t [0.060,0.090)  n= 42  succ  57.1%
+   e_t [0.090,0.120)  n= 34  succ  32.4%
+   e_t [0.120,0.150)  n= 28  succ  39.3%
+
+-- success rate by altitude bin (sat) --
+   alt [300,800) km  n= 14  succ  92.9%  need_comb p50    299
+   alt [800,1400) km  n= 74  succ  75.7%  need_comb p50    432
+   alt [1400,2000) km  n=112  succ  63.4%  need_comb p50    435
+
+-- success rate by |da0| bin --
+   |da| [0,100) km  n= 35  succ  65.7%
+   |da| [100,200) km  n= 48  succ  77.1%
+   |da| [200,300) km  n= 67  succ  67.2%
+   |da| [300,400) km  n= 50  succ  70.0%
+
+-- marginal-success surface: di x need_comb --
+     di\need       <150       <250       <350       <450 <1000000000
+    [0,0.35)   100%/1     100%/1     100%/3     100%/6      11%/9  
+  [0.35,0.6)     -/0      100%/8     100%/8     100%/9      41%/22 
+   [0.6,0.8)   100%/1     100%/11    100%/12    100%/12     28%/25 
+   [0.8,1.0)     -/0      100%/10    100%/12    100%/24     19%/26 
+
+-- plane-action usage --
+        all: n_plane mean    4.73 (normal   3.63, combined   1.09); episodes with >=1 plane action:  88.0%; di_end p50 0.1626°
+    success: n_plane mean    4.45 (normal   3.06, combined   1.39); episodes with >=1 plane action:  98.6%; di_end p50 0.1176°
+       fail: n_plane mean    5.38 (normal   4.97, combined   0.42); episodes with >=1 plane action:  63.3%; di_end p50 0.5786°
+
+-- fuel --
+   exhausted: 1/200 (0.5%)  succ|exhausted 100.0%
+   dv_spent p50 410.0 p90 464.0 max 478.1 (budget 478.1)
+   cap-timeout episodes: dv_spent p50 461.0, exhausted 0.0%, r_min p50 217 km, di_end p50 0.5786°, da_end p50 4.3 km, de_end p50 0.0568
+
+====================================================================================================
+W4  n=200  success=14 (7.0%)
+====================================================================================================
+
+-- cause histogram --
+     safety_cap   186   93.0%
+        success    14    7.0%
+
+-- successes vs failures --
+           field |               SUCCESS mean (p50/p90) |                  FAIL mean (p50/p90)
+      di_rel_deg |              0.571 (  0.583/  0.874) |              0.678 (  0.732/  0.959)
+          e_tgt0 |              0.092 (  0.074/  0.196) |              0.154 (  0.159/  0.266)
+          e_sat0 |              0.094 (  0.068/  0.199) |              0.161 (  0.153/  0.265)
+             de0 |              0.044 (  0.043/  0.077) |              0.216 (  0.184/  0.425)
+          da0_km |            310.959 (335.100/556.955) |            351.620 (382.559/534.633)
+        a_sat_km |         4286.597 (4029.722/7295.290) |         4962.553 (5124.967/7520.335)
+        a_tgt_km |         4289.104 (3989.586/6990.968) |         4988.963 (5325.146/7506.019)
+        band_pos |              0.518 (  0.484/  0.908) |              0.606 (  0.627/  0.938)
+       rp_sat_km |         3265.598 (2886.976/6236.477) |         3107.769 (2883.771/5641.680)
+       dlam0_deg |             42.820 ( 66.925/140.185) |             -9.719 (-11.750/128.199)
+        dv_spent |            335.120 (347.711/407.207) |            424.273 (441.500/456.000)
+  dv_frac_budget |              0.701 (  0.727/  0.852) |              0.887 (  0.923/  0.954)
+        fuel_end |              0.047 (  0.043/  0.077) |              0.018 (  0.012/  0.039)
+       exhausted |              0.000 (  0.000/  0.000) |              0.000 (  0.000/  0.000)
+     n_decisions |           606.857 (546.500/1073.900) |         2678.828 (2461.000/4643.000)
+         n_plane |             16.786 (  7.000/ 46.900) |             24.301 ( 21.000/ 51.500)
+        n_normal |             15.643 (  6.500/ 46.200) |             23.774 ( 20.000/ 50.000)
+      n_combined |              1.143 (  1.000/  2.000) |              0.527 (  0.000/  2.000)
+      frac_plane |              0.230 (  0.164/  0.549) |              0.181 (  0.155/  0.379)
+       frac_warp |              0.294 (  0.296/  0.546) |              0.117 (  0.040/  0.397)
+   dv_normal_cmd |             75.071 ( 82.500/115.500) |             48.253 ( 35.500/102.000)
+        need_seq |            289.863 (262.002/417.226) |           804.692 (721.974/1450.746)
+       need_comb |            248.192 (226.109/379.146) |           746.973 (666.869/1384.866)
+     margin_comb |            229.938 (252.021/338.120) |          -268.843 (-188.739/199.384)
+      di_end_deg |              0.077 (  0.081/  0.162) |              0.406 (  0.399/  0.756)
+          de_end |              0.007 (  0.007/  0.009) |              0.134 (  0.067/  0.372)
+       da_end_km |             20.685 ( 15.633/ 36.591) |            141.011 ( 66.105/370.004)
+        r_min_km |             22.998 ( 29.044/ 29.718) |            275.112 (169.952/694.889)
+           steps |         4803.929 (5133.500/5673.500) |         6000.000 (6000.000/6000.000)
+
+-- feasibility screen on the ACTUAL eval draws --
+   sequential: feasible  64/200 ( 32.0%)   succ|feasible  20.3%   succ|infeasible   0.7%
+     combined: feasible  77/200 ( 38.5%)   succ|feasible  18.2%   succ|infeasible   0.0%
+
+-- success rate by di_rel bin --
+   di [0.0,0.2)°  n=  8  succ  12.5%  need_comb p50    956  feas_comb  12.5%
+   di [0.2,0.4)°  n= 26  succ  11.5%  need_comb p50    436  feas_comb  53.8%
+   di [0.4,0.6)°  n= 41  succ   7.3%  need_comb p50    624  feas_comb  34.1%
+   di [0.6,0.8)°  n= 52  succ   7.7%  need_comb p50    546  feas_comb  40.4%
+   di [0.8,1.0)°  n= 73  succ   4.1%  need_comb p50    675  feas_comb  37.0%
+
+-- success rate by e_target bin --
+   e_t [0.000,0.060)  n= 39  succ  17.9%
+   e_t [0.060,0.120)  n= 42  succ   7.1%
+   e_t [0.120,0.180)  n= 38  succ   5.3%
+   e_t [0.180,0.240)  n= 46  succ   2.2%
+   e_t [0.240,0.300)  n= 35  succ   2.9%
+
+-- success rate by altitude bin (sat) --
+   alt [800,1400) km  n=  7  succ  14.3%  need_comb p50    477
+   alt [1400,2000) km  n= 10  succ  10.0%  need_comb p50    572
+   alt [2000,4000) km  n= 55  succ   9.1%  need_comb p50    733
+   alt [4000,6000) km  n= 56  succ   5.4%  need_comb p50    609
+   alt [6000,8000) km  n= 72  succ   5.6%  need_comb p50    588
+
+-- success rate by |da0| bin --
+   |da| [0,150) km  n= 29  succ  10.3%
+   |da| [150,300) km  n= 48  succ   6.2%
+   |da| [300,450) km  n= 61  succ   8.2%
+   |da| [450,600) km  n= 62  succ   4.8%
+
+-- marginal-success surface: di x need_comb --
+     di\need       <150       <250       <350       <450 <1000000000
+    [0,0.35)    50%/2      50%/2       0%/1      25%/4       6%/18 
+  [0.35,0.6)     -/0       43%/7       0%/8       0%/3       0%/30 
+   [0.6,0.8)   100%/1      40%/5      14%/7       0%/7       0%/32 
+   [0.8,1.0)     -/0       17%/6      17%/12      0%/8       0%/47 
+
+-- plane-action usage --
+        all: n_plane mean   23.77 (normal  23.20, combined   0.57); episodes with >=1 plane action:  94.5%; di_end p50 0.3582°
+    success: n_plane mean   16.79 (normal  15.64, combined   1.14); episodes with >=1 plane action: 100.0%; di_end p50 0.0811°
+       fail: n_plane mean   24.30 (normal  23.77, combined   0.53); episodes with >=1 plane action:  94.1%; di_end p50 0.3986°
+
+-- fuel --
+   exhausted: 0/200 (0.0%)  succ|exhausted nan%
+   dv_spent p50 440.0 p90 455.4 max 472.0 (budget 478.1)
+   cap-timeout episodes: dv_spent p50 441.5, exhausted 0.0%, r_min p50 170 km, di_end p50 0.3986°, da_end p50 66.1 km, de_end p50 0.0675
+
+====================================================================================================
+W4 REGRESSION TEST — success on draws inside W3's own envelope
+====================================================================================================
+  W3 policy on W3 draws       W3-envelope subset n= 74 succ 100.0%   | outside n=126 succ  52.4%
+  W4 policy on W4 draws       W3-envelope subset n=  3 succ  33.3%   | outside n=197 succ   6.6%
+
+  Strictly-easy subset (di<0.5°, e_t<0.08, |da|<250 km, alt<2000 km):
+    W3: n= 13 succ  84.6%  feas_comb  84.6%  dv_spent p50  336.1  n_plane p50     3  frac_warp p50  0.44
+    W4: n=  1 succ 100.0%  feas_comb 100.0%  dv_spent p50  417.0  n_plane p50     3  frac_warp p50  0.15
+
+  Feasible-only success (comb screen) by rung, and by feasible margin:
+    W3 margin [0,50) m/s: n= 23 succ 100.0%
+    W3 margin [50,100) m/s: n= 16 succ 100.0%
+    W3 margin [100,200) m/s: n= 50 succ 100.0%
+    W3 margin [200,inf) m/s: n= 37 succ 100.0%
+    W4 margin [0,50) m/s: n=  9 succ  11.1%
+    W4 margin [50,100) m/s: n= 12 succ   8.3%
+    W4 margin [100,200) m/s: n= 28 succ  10.7%
+    W4 margin [200,inf) m/s: n= 28 succ  32.1%
+
+  Action-mix comparison (all episodes):
+    W3: decisions p50     35  frac_warp p50 0.441  n_plane p50     4  n_inplane p50    15  dv_spent p50  410.0  steps p50   1660
+    W4: decisions p50   2250  frac_warp p50 0.043  n_plane p50    20  n_inplane p50   101  dv_spent p50  440.0  steps p50   6000
