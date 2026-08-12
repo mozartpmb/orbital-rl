@@ -30,8 +30,19 @@ ACTION_DV = [
     (0.0, 10.0), (0.0, -10.0),
     (0.0, 0.0), (0.0, 0.0), (0.0, 0.0),
     (1.0, 0.0), (-1.0, 0.0), (2.0, 0.0), (-2.0, 0.0),
+    # 16-19: T4 warps (no dv) + radial +-1
+    (0.0, 0.0), (0.0, 0.0), (0.0, 1.0), (0.0, -1.0),
+    # 20-29: ext-3d. This 2D replica stores (prograde, radial) only; pure-
+    # normal burns 20-25 have ZERO in-plane component (correct to first
+    # order), combined rows 26-29 carry their tangential part. Do NOT use
+    # this table to reconstruct 3D burn vectors — read the traj log's
+    # burn_post_* columns instead.
+    (0.0, 0.0), (0.0, 0.0), (0.0, 0.0), (0.0, 0.0), (0.0, 0.0), (0.0, 0.0),
+    (25.0, 0.0), (25.0, 0.0), (-25.0, 0.0), (-25.0, 0.0),
 ]
-ACTION_TAU = [1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 30, 60, 1, 1, 1, 1]
+ACTION_TAU = [1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 30, 60, 1, 1, 1, 1,
+              180, 360, 1, 1,   # 16-19: T4 warps 3h/6h + radial +-1
+              1, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # 20-29: ext-3d normal/combined (tau=1)
 
 COAST = 0
 WARP5, WARP30, WARP60 = 9, 10, 11
