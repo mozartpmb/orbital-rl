@@ -54,6 +54,7 @@ capture, is what the 30.5 pp gap is made of.
 | canonical (reference) | 139/200 = 69.5% | 200/200 = 100.0% | 0.0 pp | — | `models/t3/seed42_L2_headline.pt` |
 | **NB1-warm** (seed 42, warm) | **196/200 = 98.0%** (+28.5 pp) | **200/200 = 100.0%** | **0.0 pp** | **PASS** | `models/t3/extnav_nb1_warm.pt` |
 | **NB1-fresh-42** (seed 42, fresh) | **198/200 = 99.0%** (+29.5 pp) | **200/200 = 100.0%** | **0.0 pp** | **PASS** | `models/t3/extnav_nb1_fresh_42.pt` |
+| **NB1-fresh-7** (seed 7, fresh) | **199/200 = 99.5%** (+30.0 pp) | **200/200 = 100.0%** | **0.0 pp** | **PASS** | `models/t3/extnav_nb1_fresh_7.pt` |
 
 ### NB1-warm — 50M steps, `nav_mode=bearings_only`, warm from `seed42_L2_headline.pt`
 
@@ -123,3 +124,24 @@ wandb group `t5-nav-nb1-fresh-42`; final checkpoint epoch 382 (epoch-200 screens
 | Δv/decision blind ÷ acquired | **2.04×** | **0.40×** (4.04 vs 10.02) |
 | stranded | 11.0% | 0.5% |
 | total Δv/episode | 322.5 m/s | **257.5 m/s** |
+
+### NB1-fresh-7 — 50M steps, `nav_mode=bearings_only`, fresh nets, seed 7
+
+wandb group `t5-nav-nb1-fresh-7`; final checkpoint epoch 382 (epoch-200 screens
+identically at 100/100). Training: 26.6K SPS, `perf` 0.997.
+
+| metric | canonical | NB1-fresh-7 |
+|---|---|---|
+| native success | 139/200 = 69.5% | **199/200 = 99.5%** (+30.0 pp) |
+| native causes | collision 38, stranded 22, cap 1 | cap 1 |
+| truth | 200/200 | 200/200 (**0.0 pp tax**) |
+| never acquiring | 44/200 | **0/200** |
+| blind decisions | 30.7% | 5.5% |
+| divergences | 56 | **4** |
+| conditional \| min sep < 200 km | 131/136 | **190/190** |
+| Δv before acquisition | median 75.0 m/s | **median 0.0 m/s** (p90 50, max 100) |
+| fuel left at acquisition | 0.832 | **1.000** (p10 0.888) |
+| burn rate blind ÷ acquired | **1.94×** | **0.52×** (0.241 vs 0.468) |
+| Δv/decision blind ÷ acquired | **2.04×** | **0.60×** (6.03 vs 10.00) |
+| stranded | 11.0% | **0.0%** |
+| total Δv/episode | 322.5 m/s | 275.0 m/s |
