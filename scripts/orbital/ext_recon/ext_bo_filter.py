@@ -443,7 +443,11 @@ class BearingMPC:
     def predict(self, dt, sat_from, sat_to):
         if not self.alive:
             return
-        rho = math.exp(min(self.y[3], 25.0))
+        # Same guard as msc_encode/msc_decode (red-team BLOCKER-1): ln rho can
+        # underflow to exp(-inf) = 0 once a trained bearings-only policy drives
+        # the filter somewhere the prototype's own scenarios never went, and an
+        # unguarded 1/rho then kills the run.
+        rho = max(math.exp(min(self.y[3], 25.0)), RHO_FLOOR_M)
         h = (1.0 / rho, 1e-3 / rho, 1e-3 / rho, 1.0 / rho)
         y0 = self._trans(self.y, sat_from, sat_to, dt)
         F = np.empty((4, 4))

@@ -420,7 +420,7 @@ def _bo_seed_mpc(mpc, x0, sat_cart, lo, hi, sigma_v_ecc, sigma_beta):
 
 def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
            label="", blindclose_m=0.0, blind_all=0, verbose=True, collect=None,
-           sigma_channel=0):
+           sigma_channel=0, block_fine_below_m=0.0):
     """Closed loop on an angles-only estimate.
 
     `collect`, if a list, receives one dict per decision epoch carrying the
@@ -624,13 +624,21 @@ def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
             collect.append(dict(
                 ep=episodes, sat=np.asarray(sat_cart, dtype=float),
                 tgt=np.asarray(tgt_cart, dtype=float), action=action,
+                exec_action=action,
                 rho=rho_true, da=sat_el['a'] - tgt_el['a'],
                 fuel=float(o[6]), dv_left=478.0 - dv_spent(o[6]),
                 step=int(dec), acquired=int(acquired and not show_blind),
                 trP=float(np.trace(P_c)), slr=float(slr)))
 
-        obs, rewards, terms, truncs, _ = env.step(np.array([action], dtype=np.int32))
-        prev_sat, prev_tgt, prev_tau = sat_cart, tgt_cart, om.ACTION_TAU[action]
+        # T-BO-act: env-variant dynamics — fine burns are no-ops inside the
+        # ablation radius. Must be applied at EVAL too, or the arm is scored in
+        # an environment it was never trained in.
+        exec_action = action
+        if block_fine_below_m > 0.0 and rho_true < block_fine_below_m \
+                and action in (12, 13, 14, 15, 18, 19):
+            exec_action = 0
+        obs, rewards, terms, truncs, _ = env.step(np.array([exec_action], dtype=np.int32))
+        prev_sat, prev_tgt, prev_tau = sat_cart, tgt_cart, om.ACTION_TAU[exec_action]
 
         # Attribute this decision's realised delta-v to the nav state it was
         # taken under. `blind` here means "the policy was flying an unacquired

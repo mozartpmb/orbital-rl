@@ -53,7 +53,7 @@ def box_kwargs(box):
     return kw
 
 
-def run_box(ckpt, label, box, eps, seed, sigma_channel=0):
+def run_box(ckpt, label, box, eps, seed, sigma_channel=0, block_fine=0.0):
     kw = box_kwargs(box)
     ER.ENV_KWARGS = kw
     ER.PHASE_OBS_MODE = 1
@@ -61,7 +61,8 @@ def run_box(ckpt, label, box, eps, seed, sigma_channel=0):
     ER.SENSOR_DT = 60.0
     rec = []
     b = ER.run_bo(eps, noise_scale=1.0, seed=seed, label=f'{label}/{box}',
-                  collect=rec, sigma_channel=sigma_channel)
+                  collect=rec, sigma_channel=sigma_channel,
+                  block_fine_below_m=block_fine)
     ER._bo_report(b)
     beh = ER.behaviour_report(b, quiet=True)
     met = NM.analyse(rec, f'{label}/{box}')
@@ -96,6 +97,7 @@ def main():
     p.add_argument('--eps', type=int, default=200)
     p.add_argument('--seed', type=int, default=123)
     p.add_argument('--sigma-channel', action='store_true')
+    p.add_argument('--block-fine-below-m', type=float, default=0.0)
     p.add_argument('--json-out', default=None)
     a = p.parse_args()
     torch.set_num_threads(1)
@@ -110,7 +112,7 @@ def main():
               f'{BOXES[box]["rel_vel_tol_ms"]:.0f} m/s), bearings-only, '
               f'real acquisition --')
         res['boxes'][box] = run_box(a.ckpt, a.label, box, a.eps, a.seed,
-                                    int(a.sigma_channel))
+                                    int(a.sigma_channel), a.block_fine_below_m)
         # truth control at the same box
         t = rollout(Orbital(**box_kwargs(box)), a.ckpt, a.eps, a.seed,
                     f'{a.label}/{box} truth', verbose=False)
