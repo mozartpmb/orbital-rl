@@ -55,6 +55,11 @@ capture, is what the 30.5 pp gap is made of.
 | **NB1-warm** (seed 42, warm) | **196/200 = 98.0%** (+28.5 pp) | **200/200 = 100.0%** | **0.0 pp** | **PASS** | `models/t3/extnav_nb1_warm.pt` |
 | **NB1-fresh-42** (seed 42, fresh) | **198/200 = 99.0%** (+29.5 pp) | **200/200 = 100.0%** | **0.0 pp** | **PASS** | `models/t3/extnav_nb1_fresh_42.pt` |
 | **NB1-fresh-7** (seed 7, fresh) | **199/200 = 99.5%** (+30.0 pp) | **200/200 = 100.0%** | **0.0 pp** | **PASS** | `models/t3/extnav_nb1_fresh_7.pt` |
+| **NB1-fresh-1337** (seed 1337, fresh) | **197/200 = 98.5%** (+29.0 pp) | **200/200 = 100.0%** | **0.0 pp** | **PASS** | `models/t3/extnav_nb1_fresh_1337.pt` |
+
+**4/4 arms pass both gates** (native ≥ 85%, truth-tax ≤ 2 pp). Pooled across the
+three fresh seeds: **594/600 = 99.0%**. Pooled across all four arms:
+**790/800 = 98.75%**.
 
 ### NB1-warm — 50M steps, `nav_mode=bearings_only`, warm from `seed42_L2_headline.pt`
 
@@ -145,3 +150,83 @@ identically at 100/100). Training: 26.6K SPS, `perf` 0.997.
 | Δv/decision blind ÷ acquired | **2.04×** | **0.60×** (6.03 vs 10.00) |
 | stranded | 11.0% | **0.0%** |
 | total Δv/episode | 322.5 m/s | 275.0 m/s |
+
+### NB1-fresh-1337 — 50M steps, `nav_mode=bearings_only`, fresh nets, seed 1337
+
+The seed that historically flatlined on fresh T3 Stage-1 training. wandb group
+`t5-nav-nb1-fresh-1337`; final checkpoint epoch 382 (epoch-200 screens
+identically at 100/100). Training: 25.6K SPS, `perf` 0.998,
+`nav_acq_per_ep` 0.987, `nav_diverge_rate` 0.000.
+
+| metric | canonical | NB1-fresh-1337 |
+|---|---|---|
+| native success | 139/200 = 69.5% | **197/200 = 98.5%** (+29.0 pp) |
+| native causes | collision 38, stranded 22, cap 1 | cap 3 |
+| truth | 200/200 | 200/200 (**0.0 pp tax**) |
+| never acquiring | 44/200 | **0/200** |
+| blind decisions | 30.7% | **3.8%** |
+| conditional \| min sep < 200 km | 131/136 | **190/192** |
+| Δv before acquisition | median 75.0 m/s | **median 0.0 m/s** |
+| burn rate blind ÷ acquired | **1.94×** | **0.42×** (0.110 vs 0.264) |
+| Δv/decision blind ÷ acquired | **2.04×** | **0.38×** (2.21 vs 5.80) |
+| stranded | 11.0% | **0.0%** |
+| total Δv/episode | 322.5 m/s | **235.0 m/s** (lowest of all arms) |
+
+---
+
+## Campaign summary — 4 arms
+
+| arm | native | truth | tax | never-acq | stranded | burn ratio blind÷acq | Δv ratio blind÷acq | Δv before acq | total Δv/ep |
+|---|---|---|---|---|---|---|---|---|---|
+| canonical (zero-shot) | 69.5% | 100.0% | — | 44/200 | 22/200 | **1.94×** | **2.04×** | 75.0 m/s | 322.5 m/s |
+| NB1-warm | 98.0% | 100.0% | 0.0 pp | 0/200 | 0/200 | 0.26× | 0.25× | 0.0 m/s | 285.0 m/s |
+| NB1-fresh-42 | 99.0% | 100.0% | 0.0 pp | 0/200 | 1/200 | 0.41× | 0.40× | 0.0 m/s | 257.5 m/s |
+| NB1-fresh-7 | 99.5% | 100.0% | 0.0 pp | 0/200 | 0/200 | 0.52× | 0.60× | 0.0 m/s | 275.0 m/s |
+| NB1-fresh-1337 | 98.5% | 100.0% | 0.0 pp | 0/200 | 0/200 | 0.42× | 0.38× | 0.0 m/s | 235.0 m/s |
+
+### Did estimate-training change blind-window behaviour?
+
+**Yes, and it inverted the sign.** Every arm crossed from burning *harder* while
+blind to burning *less*: the blind÷acquired burn-rate ratio goes 1.94× →
+0.26–0.52×, a 3.7–7.5× swing, and all four arrive at acquisition with a **full
+tank** (median Δv-before-acquisition 75 → 0 m/s). Total Δv per episode fell in
+every arm (322.5 → 235–285 m/s), so this is waste removed, not spend deferred.
+
+**It is not the maneuver NAV-G predicted.** NAV-G's headline was that training
+on the estimate should teach the 1 m/s observability burn, since a drifting
+chaser has a singular Fisher information for range below ~50 km. No arm learned
+that. They learned the complementary policy: *coast through the blind window,
+then maneuver.* That is the correct answer for this envelope — bearings accrue
+during a coast regardless, so the information arrives anyway, and what was
+actually killing the canonical was not a lack of information but the expenditure
+of propellant on wrong information. Acquisition **latency is unchanged**
+(105 min vs the canonical's 109), which is the direct evidence: the arms did not
+acquire *faster*, they survived the wait.
+
+**Warm vs fresh.** Both routes reach the same qualitative behaviour and the same
+truth-tax (0.0 pp), but they are not identical:
+- Fresh is slightly *better* on capability (99.0% mean over 3 seeds vs 98.0%
+  warm) and clearly better on economy (235–275 vs 285 m/s).
+- Warm is the *most* conservative (0.26× burn ratio) yet scores lowest of the
+  four. Maximal timidity is not the optimum; the fresh arms keep a little blind
+  maneuvering and do better with it.
+- **The T3 fresh-seed fragility did not reproduce.** All 3 fresh seeds
+  bootstrapped, including 1337, which historically flatlined at fresh T3
+  Stage-1. NAV-H recommended fresh arms specifically because dropping range
+  changes observability structure rather than noise scale; that concern was
+  sound but the pessimism was not warranted — bootstrap-ability here is governed
+  by the reward/curriculum context (the T3 flag set), not by the observation
+  channel.
+
+### What training did NOT fix
+
+- **REDTEAM MAJOR-2 stands.** Acquisition epoch error against truth still peaks
+  at 2,350–3,855 km across the arms with all three acceptance gates passing.
+  Training made the closed loop *robust* to a confidently-wrong acquisition; it
+  did not make the acquisition correct. The gates remain a self-consistency
+  test, not an acceptance test.
+- **Acquisition latency is unchanged** (~105 min). Nothing here accelerates
+  initial orbit determination.
+- Filter consistency is essentially unchanged (σ_LOS/ρ ≈ 0.001 in the
+  100 km–1 Mm bin for every arm, canonical included) — the *filter* was never
+  the problem; the *guidance response to it* was.
