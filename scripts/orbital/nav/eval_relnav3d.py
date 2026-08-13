@@ -108,7 +108,8 @@ class RealAcq3D:
 
     def __init__(self, n, sigma_beta, dt_tick, gate=0.20,
                  min_sec=2700.0, cov_inflate=4.0, r_min=None, r_max=None,
-                 arc_max=400, retry_every=15):
+                 arc_max=400, retry_every=15, retry_growth=1.6,
+                 retry_max=240):
         self.n = n
         self.sigma_beta = float(sigma_beta)
         self.dt = float(dt_tick)
@@ -117,7 +118,27 @@ class RealAcq3D:
         self.cov_inflate = float(cov_inflate)
         self.w0 = max(2, int(round(self.min_sec / max(self.dt, 1e-9))))
         self.arc_max = int(arc_max)
+        # Retry cadence GROWS after each failure, and it has to. The 2D
+        # harness retries every 15 observations, which is affordable there
+        # (4 states, 1 angle, a cheap scalar solver). Here each attempt is a
+        # 4320-node grid plus binned multi-start Gauss-Newton over an arc that
+        # `bls_acquire_adaptive3` itself already grows x1.6 internally, so a
+        # fixed 15-observation retry re-runs almost the same computation on
+        # almost the same arc. Measured on the floor arm: a failing episode
+        # that runs to the 3000-substep cap would attempt acquisition ~200
+        # times at seconds apiece — tens of minutes for ONE episode, and the
+        # bearings-only evals are 200 episodes x 3 arms.
+        #
+        # Growing the interval by the same 1.6 the solver uses means a failure
+        # is retried only once the arc is MATERIALLY longer, which is the only
+        # condition under which the answer can change. ~8-10 attempts per
+        # capped episode instead of ~200, with no change to WHEN a solvable
+        # geometry first solves (the first attempt is still at the 45-minute
+        # floor).
         self.retry_every = int(retry_every)
+        self.retry_growth = float(retry_growth)
+        self.retry_max = int(retry_max)
+        self.n_attempt = 0
         self.r_min, self.r_max = r_min, r_max
         self.acquired = np.zeros(n, dtype=bool)
         self.elapsed = np.zeros(n)
@@ -129,8 +150,8 @@ class RealAcq3D:
         self.n_chol_fallback = 0
         self.acq_latency_s = []
         self.acq_epoch_err_m = []
-        self._arc = [dict(t=[], sat=[], az=[], el=[], next_try=self.w0)
-                     for _ in range(n)]
+        self._arc = [dict(t=[], sat=[], az=[], el=[], next_try=self.w0,
+                          tries=0) for _ in range(n)]
         self._Rp = np.tile(np.eye(3), (n, 1, 1))
         self._pending = {}
 
@@ -138,7 +159,7 @@ class RealAcq3D:
     def reset_rows(self, idx, sat_cart, tgt_cart, period_s, a_ref=None):
         for i in np.atleast_1d(idx):
             self._arc[int(i)] = dict(t=[], sat=[], az=[], el=[],
-                                     next_try=self.w0)
+                                     next_try=self.w0, tries=0)
         self.acquired[idx] = False
         self.elapsed[idx] = 0.0
         self.ticks[idx] = 0
@@ -187,7 +208,12 @@ class RealAcq3D:
                                   ca * math.sin(a['az'][-w]), se])
             iv = bls3d.range_prior_intervals3(a['sat'][-w][:3], u0,
                                               self.r_min, self.r_max)
-            a['next_try'] = len(a['t']) + self.retry_every
+            step = min(self.retry_max,
+                       int(round(self.retry_every
+                                 * self.retry_growth ** a['tries'])))
+            a['tries'] += 1
+            self.n_attempt += 1
+            a['next_try'] = len(a['t']) + step
             if not iv:
                 continue
             res = bls3d.bls_acquire_adaptive3(
@@ -336,6 +362,7 @@ def rollout(env, ckpt, episodes, seed, label='', verbose=True):
         out['acq_latency_p90_s'] = (float(np.percentile(lat, 90))
                                     if lat else None)
         out['acq_fail'] = int(getattr(acq, 'n_fail', 0))
+        out['acq_attempts'] = int(getattr(acq, 'n_attempt', 0))
         out['chol_fallback'] = int(getattr(acq, 'n_chol_fallback', 0))
         ee = list(getattr(acq, 'acq_epoch_err_m', []))
         if ee:
