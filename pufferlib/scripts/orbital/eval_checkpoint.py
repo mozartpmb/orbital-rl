@@ -34,7 +34,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              phase_gap_mode=0, phase_obs_mode=0, episode_cap_steps=2000,
              cap_terminal_reward=-10.0, de_max=-1.0, da_max_m=-1.0,
              dim3_mode=0, di_max_rad=-1.0, i_target_rad=0.0, raan_target_rad=0.0,
-             obs_di_scale_rad=-1.0, obs_de_scale=-1.0, shape_match_squash=0):
+             obs_di_scale_rad=-1.0, obs_de_scale=-1.0, shape_match_squash=0,
+             j2_mode=0):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -87,6 +88,7 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         obs_di_scale_rad=obs_di_scale_rad,
         obs_de_scale=obs_de_scale,
         shape_match_squash=shape_match_squash,
+        j2_mode=j2_mode,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -307,6 +309,12 @@ def main():
     parser.add_argument('--shape-match-squash', type=int, default=0,
                         help='ext-3d: Phi match squash. 0 = min(1, x) (legacy, A2 anchor); '
                              '1 = x/(1+x) (no dead zone).')
+    # ── ext-j2 (default = legacy propagator, bit-exact) ─────────────────────
+    parser.add_argument('--j2-mode', type=int, default=0,
+                        help='ext-j2: 1 = secular mean-element J2 (Omega-dot, omega-dot, '
+                             'M-dot corrections; exact under warps). Requires dim3-mode 1 '
+                             'and num_debris 0. Writes obs[29]=cos i_sat, obs[30]=cos i_tgt. '
+                             'Default 0 = verbatim legacy propagator.')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
@@ -323,7 +331,8 @@ def main():
              args.phase_gap_mode, args.phase_obs_mode, args.episode_cap_steps,
              args.cap_terminal_reward, args.de_max, args.da_max_m,
              args.dim3_mode, args.di_max_rad, args.i_target_rad, args.raan_target_rad,
-             args.obs_di_scale_rad, args.obs_de_scale, args.shape_match_squash)
+             args.obs_di_scale_rad, args.obs_de_scale, args.shape_match_squash,
+             args.j2_mode)
 
 
 if __name__ == '__main__':

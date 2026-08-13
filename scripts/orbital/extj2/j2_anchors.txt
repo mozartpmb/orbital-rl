@@ -1,0 +1,225 @@
+ext-j2 validation record
+date: 2026-08-13T11:47:57Z   branch ext-j2 @ aa21c26
+build: cd pufferlib && python3 setup.py build_ext --inplace --force   (-O2 -flto)
+worktree: /Users/pete/space_training-j2     MAIN checkout untouched
+
+Why this file exists: same reason as scripts/orbital/nav/n3dnav_anchors.txt.
+The build is -O2 -flto, so adding a function to the translation unit can change
+cross-TU inlining and therefore FP codegen inside fill_observations and compute_phi.
+Anchors are RE-RUN after any change to orbital.h / binding.c, never assumed.
+
+EXPECTED (pre-change lineage values, from scripts/orbital/nav/n3dnav_anchors.txt):
+  legacy       26/200  (success=26, collision=1, safety_cap=142, stranded=31)  md5 f8a2388f0992
+  T3 canonical 100/100                                                          md5 68b267bed369
+  X3 3D        100/100
+
+==============================================================================
+C GATES   cc -O2 -flto -lm -I pufferlib/pufferlib/ocean/orbital \
+             scripts/orbital/extj2/j2_gates.c -o /tmp/j2gates && /tmp/j2gates
+==============================================================================
+=== ext-j2 validation gates (shipped orbital.h functions) ===
+    J2_COEF = 1.082626680e-03   J2_R_EQ = 6.3781370e+06   R_EARTH = 6.3710e+06   DT = 60
+
+== J-G0  j2_mode=0 bit-exactness vs propagate_orbit (20000 draws) ==
+  [PASS] J-A1 j2_mode=0 == legacy propagate_orbit, bitwise          double mismatches = 0 / 20000
+
+== J-G1  secular rates: shipped propagator vs published / recon ==
+  source    alt km i deg |      Om meas       Om ref |      om meas       om ref |    rel err
+  recon        400  28.5 |    -7.103569    -7.103591 |    11.565293    11.565329 |   3.07e-06
+  recon        400  51.6 |    -5.020801    -5.020817 |     3.755098     3.755109 |   3.07e-06
+  recon        400  97.4 |     1.041068     1.041071 |    -3.706339    -3.706350 |   3.07e-06
+  recon       8000  51.6 |    -0.360457    -0.360458 |     0.269589     0.269589 |   3.07e-06
+  recon      20200  51.6 |    -0.041940    -0.041940 |     0.031367     0.031367 |   3.07e-06
+  [PASS] rates match the independent recon implementation           worst rel err vs recon table = 3.067e-06 (expect ~3.1e-6 = the J2 constant delta)
+  [PASS] sun-synchronous rate at i = 98.6 deg, 800 km               i=98.6 deg, 800 km -> Om_dot = +0.98873 deg/day (SSO needs +0.98565, err 0.31%)
+  [PASS] inverting for the SSO inclination recovers ~98.6 deg       solved i_SSO = 98.5730 deg (textbook ~98.6 deg at 800 km)
+  [PASS] ISS-like nodal regression ~ -5 deg/day                     i=51.6 deg, 400 km -> Om_dot = -5.0208 deg/day (textbook ~ -5 deg/day)
+  [PASS] omega_dot vanishes at the critical inclination 63.4349 deg i_crit = 63.4349 deg -> om_dot = +0.000e+00 deg/day (0.00e+00 of the i=0 magnitude 8.083)
+  [PASS] ...and does not vanish 1 deg away (teeth check)            at i_crit + 1 deg, |om_dot| = 0.2784 deg/day (must be O(0.1))
+
+== J-G2  warp additivity: 1 x (tau*DT) vs tau x DT ==
+
+  -- X3 band  300-800 km e<=0.05 --
+     tau |  |dpos| j2=1  |dpos| j2=0      ratio | max|dang| j2=1 max|dang| j2=0
+       1 |    0.000e+00    0.000e+00       1.00 |    0.000e+00    0.000e+00
+       5 |    3.378e-08    2.462e-08       1.37 |    1.776e-15    1.776e-15
+      30 |    1.465e-07    8.588e-08       1.71 |    1.332e-14    1.202e-14
+      60 |    2.753e-07    1.119e-07       2.46 |    2.665e-14    1.554e-14
+     180 |    8.500e-07    2.127e-07       4.00 |    7.994e-14    3.064e-14
+     360 |    1.976e-06    4.214e-07       4.69 |    1.581e-13    6.084e-14
+    3000 |    1.220e-05    3.372e-06       3.62 |    1.317e-12    4.841e-13
+
+  -- wide     300-8000 km e<=0.30 --
+     tau |  |dpos| j2=1  |dpos| j2=0      ratio | max|dang| j2=1 max|dang| j2=0
+       1 |    0.000e+00    0.000e+00       1.00 |    0.000e+00    0.000e+00
+       5 |    4.591e-08    3.897e-08       1.18 |    1.776e-15    1.776e-15
+      30 |    3.121e-07    1.912e-07       1.63 |    1.332e-14    1.332e-14
+      60 |    5.333e-07    3.680e-07       1.45 |    2.665e-14    2.620e-14
+     180 |    1.693e-06    5.568e-07       3.04 |    7.905e-14    3.730e-14
+     360 |    2.745e-06    9.870e-07       2.78 |    1.590e-13    6.573e-14
+    3000 |    2.412e-05    7.494e-06       3.22 |    1.313e-12    4.832e-13
+  [PASS] J-A4 (restated) warp additivity: angle residual <= 1e-12 rad worst angle residual over tau in ACTION_TAU = 1.59e-13 rad (~114 ulp of 2pi over 360 accumulations); worst |dpos| = 1.98e-06 m at the X3 band
+  [PASS] J2 additivity residual stays in the two-body baseline's class (<=10x) worst j2=1 / j2=0 residual ratio on identical draws = 4.69x => same FP-accumulation class (3 accumulating angles + 2 extra fmod, vs 1), not a J2 defect
+  [NOTE] design's absolute 1e-6 m form of J-A4                      worst |dpos| across the X3 band = 1.976e-06 m vs the design's single-draw 2.3e-8 m; DESIGN THRESHOLD 1e-6 m IS EXCEEDED BY SAMPLING (see J2_DESIGN_NOTES.md)
+
+== J-G3  physics sanity under j2_mode=1 (6000 steps = 100 h) ==
+  case                            d a (m)        d e  d i (deg)   d energy rel Om drift deg
+  circular LEO-500 i=51.6         0.0e+00    0.0e+00    0.0e+00      1.027e-15     -19.8736
+  eccentric LEO-500 e=0.02        0.0e+00    0.0e+00    0.0e+00      1.284e-15     -19.8895
+  retrograde LEO-800 e=0.05       0.0e+00    0.0e+00    0.0e+00      1.206e-15       3.5661
+  WIDE-8000 i=45 e=0.30           0.0e+00    0.0e+00    0.0e+00      1.880e-15      -2.0647
+  [PASS] secular J2 moves only Omega/omega/M; a, e, i and energy invariant a, e, i BITWISE unchanged in all cells; worst |E - (-mu/2a)|/|E| = 1.880e-15
+  [PASS] circular orbit stays exactly circular (e == 0.0 bitwise, 6000 steps) e == 0.0 at every step
+
+== J-G4  equatorial closure: raan pinned, varpi_dot = +k ==
+  [PASS] J-A3 raan stays exactly 0.0 (identity gauge never disengages) raan == 0.0 bitwise at every one of 6000 steps: yes
+  [PASS] equatorial varpi_dot == Om_dot + om_dot (not 2x, not -k)   measured varpi_dot = 1.552402e-06 rad/s vs (Om_dot + om_dot) = 1.552402e-06 (rel 1.37e-13); the WRONG answer 2k would be 3.104804e-06
+
+== J-G5  shaping ledger and drift-leg monotonicity ==
+
+  -- shaping_mode 2 (w_match 0.8167, dv_ref 700) --
+  leg                     dPhi j2=0  dPhi j2=1      delta
+  L1a coast-to-node          0.0000     0.0002     0.0002
+  L1b plane crank x6         0.1236     0.1237     0.0001
+  L2 drift-open x5          -0.1735    -0.1739    -0.0004
+  L3 drift                   0.9913     0.9464    -0.0449
+  L4 drift-close x5         -0.0317    -0.0325    -0.0008
+  TOTAL                      0.9098     0.8639    -0.0458
+  worst adverse step        -0.0354    -0.0354    -0.0000
+  di_rel after crank (deg)     0.2037     0.2028    -0.0009
+  di_rel after drift (deg)     0.2037     0.4898     0.2860
+  drift steps                  1110       1110
+  drift slices (30 steps each): j2=0 n=36 min +0.01512 max +0.02712 neg=0 | j2=1 n=36 min +0.01249 max +0.02610 neg=0
+  [PASS] drift-leg monotonicity preserved under J2 (zero sign flips) mode 2: 36/36 slices strictly positive under J2 (min +0.01249); two-body 36/36 (min +0.01512)
+  [PASS] worst adverse step set by the burn quantum, not by J2      mode 2: worst adverse step -0.0354 (j2=0) vs -0.0354 (j2=1); terminal is +10 => margin 283x
+
+  -- shaping_mode 1 (w_match 0.3500, dv_ref 300) --
+  leg                     dPhi j2=0  dPhi j2=1      delta
+  L1a coast-to-node          0.0000     0.0001     0.0001
+  L1b plane crank x6         0.0002    -0.0001    -0.0003
+  L2 drift-open x5          -0.1734    -0.1734    -0.0000
+  L3 drift                   0.9900     0.9880    -0.0020
+  L4 drift-close x5         -0.0316    -0.0320    -0.0004
+  TOTAL                      0.7851     0.7826    -0.0026
+  worst adverse step        -0.0354    -0.0354     0.0000
+  di_rel after crank (deg)     0.2037     0.2028    -0.0009
+  di_rel after drift (deg)     0.2037     0.4898     0.2860
+  drift steps                  1110       1110
+  drift slices (30 steps each): j2=0 n=36 min +0.01375 max +0.02712 neg=0 | j2=1 n=36 min +0.00964 max +0.02718 neg=0
+  [PASS] drift-leg monotonicity preserved under J2 (zero sign flips) mode 1: 36/36 slices strictly positive under J2 (min +0.00964); two-body 36/36 (min +0.01375)
+  [PASS] worst adverse step set by the burn quantum, not by J2      mode 1: worst adverse step -0.0354 (j2=0) vs -0.0354 (j2=1); terminal is +10 => margin 283x
+
+== J-G6  do-nothing leak over a full cap, and the i_t=0 inertness guard ==
+  alt km    i_t    di |       total         ref |    max gain         ref |     d dv_pl    di_rel_T
+     500    0.0  1.00 |   -0.000132   -0.000132 |   +0.000000   +0.000000 |     +0.0000      1.0000
+     500   28.5  1.00 |   +0.000972   +0.000975 |   +0.000972   +0.000975 |     -7.7207      0.9419
+     500   51.6  1.00 |   +0.005364   +0.005370 |   +0.005558   +0.005564 |    -13.1681      0.9009
+     500   97.4  1.00 |   -0.032906   -0.032918 |   +0.000000   +0.000000 |    +25.1633      1.1893
+     500   51.6  0.00 |   -0.000000   -0.000000 |   +0.000000   +0.000000 |     +0.0000      0.0000
+    8000   51.6  1.00 |   +0.000424   +0.000425 |   +0.000424   +0.000425 |     -0.9649      0.9895
+    8000   97.4  1.00 |   -0.000727   -0.000727 |   +0.000000   +0.000000 |     +0.4841      1.0053
+  [PASS] do-nothing ledger reproduces the recon reference table     worst |shipped - recon| over 7 cells = 1.23e-05 (both dPhi_total and max gain)
+  [PASS] do-nothing leak stays inside the restated gate (positive branch) worst farmable gain over a full cap = +0.00556 (gate <= 0.006; 0.06% of the +10 terminal, 16% of one adverse step)
+  [PASS] J-A5 inertness guard: J2 cannot move the plane term at i_t = 0 i_t=0: d(dv_pl) = +0.000000000 m/s EXACTLY inert; total dPhi = -0.000132 moves only through the lambda term (differential M-dot at i_s != i_t)
+
+== J-G7  mutation matrix: do the gates actually fire? ==
+  checks: C1 SSO rate @98.6deg  C2 i_SSO inversion  C3 ISS Om_dot
+          C4 om_dot zero at i_crit  C5 rates vs closed form (LEO e=0.02)
+          C6 same at WIDE-8000 i=45 e=0.30  C7 equatorial closure
+  seeded error                               C1 C2 C3 C4 C5 C6 C7   verdict
+  (correct)                                   .   .   .   .   .   .   .    clean (as required)
+  Om_dot sign flipped                        FIRE FIRE FIRE  .  FIRE FIRE FIRE   caught by 6 check(s)
+  Om_dot factor 0.75 not 1.5                 FIRE FIRE FIRE  .  FIRE FIRE FIRE   caught by 6 check(s)
+  Om_dot uses sin i not cos i                FIRE FIRE FIRE  .  FIRE  .  FIRE   caught by 5 check(s)
+  om_dot sign flipped                         .   .   .   .  FIRE FIRE FIRE   caught by 3 check(s)
+  om_dot factor 2x                            .   .   .   .  FIRE FIRE FIRE   caught by 3 check(s)
+  om_dot uses the M-dot bracket (2-3s^2)      .   .   .  FIRE FIRE FIRE FIRE   caught by 4 check(s)
+  M-dot correction omitted                    .   .   .   .  FIRE FIRE  .    caught by 2 check(s)
+  M-dot correction sign flipped               .   .   .   .  FIRE FIRE  .    caught by 2 check(s)
+  M-dot uses the om_dot bracket (4-5s^2)      .   .   .   .  FIRE FIRE  .    caught by 2 check(s)
+  R_EARTH (mean) instead of R_EQ              .   .   .   .  FIRE FIRE FIRE   caught by 3 check(s)
+  a instead of p in (R/p)^2                   .   .   .   .  FIRE FIRE FIRE   caught by 3 check(s)
+  sqrt(1-e^2) missing from M-dot              .   .   .   .  FIRE FIRE  .    caught by 2 check(s)
+  equatorial: propagate Omega normally        .   .   .   .   .   .  FIRE   caught by 1 check(s)
+  equatorial: skip Om_dot, keep om_dot (2x)   .   .   .   .   .   .  FIRE   caught by 1 check(s)
+  [PASS] mutation matrix: correct model is clean                    the correct model passes all 7 checks: yes
+
+  Reading the matrix: C1-C4 and C7 are VALUE checks (published constants,
+  independent of how the rate is written); C5/C6 are CONSISTENCY checks against a
+  longhand transcription of the same equations. Every M-dot mutation is caught only
+  by C5/C6 — no published constant in this battery constrains M-dot on its own. The
+  independent constraint on M-dot is J-G1's recon-table row ((M-dot - n)/n agrees
+  with j2a_core.py to 3.07e-6); the design's Cowell orbit-averaging oracle (§3.1)
+  would be the stronger one and was NOT ported — see J2_DESIGN_NOTES.md.
+  R_EARTH-vs-R_EQ fires here where the design's oracle could barely see it (2.6e-3
+  vs a 2.5e-3 floor): an analytic comparand has no noise floor, so a 0.22% error is
+  a 2000x violation of the 1e-6 tolerance rather than a marginal one.
+
+  [PASS] mutation matrix: at most the one documented blind spot     0 of 14 seeded errors escaped every check (the design's §3.2 blind spots do not apply: its oracle had a 2.5e-3 Cowell noise floor, this battery's comparand is analytic)
+
+=== 22/22 checks pass ===
+
+==============================================================================
+PYTHON LADDER   PYTHONPATH=<worktree>/pufferlib python3 \
+                  scripts/orbital/extj2/verify_extj2.py --stage all --eps 100
+==============================================================================
+[orbital/j2] WARNING: j2_mode=1 with i_target_rad=0. The J2 plane channel is provably INERT at an equatorial target (j2_A_design §2.2: d(dv_pl) = 0.00 m/s over a full cap at every di). Fine for the J-A3/J-A5 anchors; wrong for training.
+[orbital/j2] WARNING: j2_mode=1 with i_target_rad=0. The J2 plane channel is provably INERT at an equatorial target (j2_A_design §2.2: d(dv_pl) = 0.00 m/s over a full cap at every di). Fine for the J-A3/J-A5 anchors; wrong for training.
+== A1  build identity, kwarg plumbing, preconditions, obs[29-32] ===
+  [PASS] imported pufferlib is the WORKTREE build
+         /Users/pete/space_training-j2/pufferlib/pufferlib/__init__.py
+         /Users/pete/space_training-j2/pufferlib/pufferlib/ocean/orbital/binding.cpython-312-darwin.so
+  [PASS] j2_mode defaults to 0; obs[29-32] all zero
+         obs[29:33] = [0. 0. 0. 0.]
+  [PASS] j2_mode=1: obs[29]=cos i_sat, obs[30]=cos i_tgt, obs[31,32]=0
+         obs[29]=0.616318643 (cos i_sat = 0.616318627), obs[30]=0.621609986 (cos i_tgt = 0.621609968), obs[31,32]=0.0, 0.0
+  [PASS] precondition j2_mode=1 requires dim3_mode=1 (hard error)
+         ValueError: j2_mode=1 requires dim3_mode=1 (j2_A_design §1.4/§4.1): at dim3_mode=0 every orbit is exactly equatorial and J2 would apply an unanchored varpi-dot precession to the 2D lineage.
+  [PASS] precondition j2_mode=1 requires num_debris=0 (hard error)
+         ValueError: j2_mode=1 requires num_debris_max=0 (inherited from dim3_mode: the 3D/J2 obs block occupies body slots 21-32).
+  [PASS] i_target_rad=0 under j2_mode=1 warns but does NOT raise
+         constructed; C emits a stderr warning (plane channel inert)
+  [PASS] j2_mode=0: obs[29-32] stay identically 0 over 120 steps x 32 envs
+         max|obs[29:33]| = 0.000e+00   obs-stream md5 = 59ac7617143393aa718978ccfcfa8456
+
+== A2  closed-loop dynamics under j2_mode=1 (real c_step) =========
+  [PASS] a, e, i unchanged over 3000 coast sub-steps in the real env
+         da = 0.000e+00 m, de = 0.000e+00, di = 6.361e-15 deg
+  [PASS] Omega/omega/M drift at the closed-form secular rates
+         Om -4.689015 vs -4.689015 deg/day, om +3.506952 vs +3.506952, worst rel err 2.71e-12
+  [PASS] warp action 17 (tau=360) == 360 coast sub-steps, bitwise
+         max |diff| over the 36-element state vector = 0.000e+00
+  [PASS] equatorial target stays exactly equatorial (h_t = z-hat) under J2
+         max |h_t.x|, |h_t.y| over 3000 sub-steps = 0.000e+00
+
+== A3  regression anchors on the WORKTREE build, default flags =====
+    legacy         26/200   decisions 193570   md5 f8a2388f0992   8s
+                   causes: success=26, collision=1, safety_cap=142, stranded=31
+  [PASS] legacy anchor unchanged under j2_mode=0 default
+         expected 26/200 [success=26, collision=1, safety_cap=142, stranded=31], got 26/200 [success=26, collision=1, safety_cap=142, stranded=31]
+    T3 canonical   100/100   decisions 2324   md5 68b267bed369   0s
+                   causes: success=100
+  [PASS] T3 canonical anchor unchanged under j2_mode=0 default
+         expected 100/100 [success=100], got 100/100 [success=100]
+    X3 3D          100/100   decisions 1627   md5 003105f29898   0s
+                   causes: success=100
+  [PASS] X3 3D anchor unchanged under j2_mode=0 default
+         expected 100/100 [success=100], got 100/100 [success=100]
+
+== SUMMARY ========================================================
+  [PASS] imported pufferlib is the WORKTREE build
+  [PASS] j2_mode defaults to 0; obs[29-32] all zero
+  [PASS] j2_mode=1: obs[29]=cos i_sat, obs[30]=cos i_tgt, obs[31,32]=0
+  [PASS] precondition j2_mode=1 requires dim3_mode=1 (hard error)
+  [PASS] precondition j2_mode=1 requires num_debris=0 (hard error)
+  [PASS] i_target_rad=0 under j2_mode=1 warns but does NOT raise
+  [PASS] j2_mode=0: obs[29-32] stay identically 0 over 120 steps x 32 envs
+  [PASS] a, e, i unchanged over 3000 coast sub-steps in the real env
+  [PASS] Omega/omega/M drift at the closed-form secular rates
+  [PASS] warp action 17 (tau=360) == 360 coast sub-steps, bitwise
+  [PASS] equatorial target stays exactly equatorial (h_t = z-hat) under J2
+  [PASS] legacy anchor unchanged under j2_mode=0 default
+  [PASS] T3 canonical anchor unchanged under j2_mode=0 default
+  [PASS] X3 3D anchor unchanged under j2_mode=0 default
+
+  14/14 checks pass

@@ -44,6 +44,18 @@
 #define RENDEZVOUS_RADIUS   30000.0 /* 30 km — rendezvous position tolerance (default; see rendezvous_radius_m kwarg) */
 #define REL_VEL_TOL         50.0    /* 50 m/s — relative velocity tolerance (default; see rel_vel_tol_ms kwarg) */
 
+/* ── ext-j2: secular mean-element J2 (j2_A_design.md §1.1) ────────────────────
+ * J2_R_EQ is the EQUATORIAL radius and is deliberately NOT R_EARTH. R_EARTH
+ * (6371 km) is the MEAN radius the env uses for altitudes and the keepout;
+ * J2's reference radius is 6378.137 km. Substituting the env constant would
+ * bias every rate by (6371/6378.137)² = −0.22%. The 7 km inconsistency in the
+ * altitude bookkeeping is pre-existing and is NOT laundered into the dynamics.
+ * J2_COEF is the WGS-84 / EGM96 value (the design memo quoted the 6-digit
+ * 1.08263e-3; the extra digits are a 3.1e−6 relative change, below every
+ * measurement floor in the oracle table). */
+#define J2_COEF     1.08262668e-3   /* Earth J2 zonal harmonic (WGS-84)        */
+#define J2_R_EQ     6.378137e6      /* equatorial radius (m) — NOT R_EARTH     */
+
 /* Terminal-cause codes. Set at every episode end so success classification can
  * key on which branch fired instead of the terminal reward's sign — the sign
  * is corrupted by the Φ-clamp at wide altitude bands (Φ-clamp leak,
@@ -150,15 +162,20 @@ static const double ACTION_DV[NUM_ACTIONS][3] = {
  *     exactly in the endgame. If longer warps are wanted at MEO, add a plain
  *     warp-12hr so the ablation stays separable (3d_REDTEAM m1).
  *
- * (2) J2 is DEFERRED and `j2_mode` is NOT accepted as a kwarg — a dead kwarg
- *     that every caller in the plumbing chain must thread (unpack() hard-fails
- *     on a missing key) is a maintenance cost with no offsetting benefit, and
- *     obs[29-32] are already reserved for it. J2 is a fidelity upgrade, not a
- *     task-enrichment one: at i = 51.6° a 200 km δa buys ΔΩ̇ = 0.485°/day, so
- *     1° of ΔΩ costs 49.5 h and 222 m/s versus 104 m/s and ~0 h for a direct
- *     plane change; it only wins above ~2° of ΔΩ, past the episode cap. It
- *     also breaks the plane term's exact invariance under coasting (V5 L0),
- *     so it needs its own shaping re-audit (3d_C §4.6). */
+ * (2) J2 was deferred here; ext-j2 (2026-08-13) LANDED it as `j2_mode`, default
+ *     0 = bit-exact legacy. See `propagate_orbit_j2` below and
+ *     `J2_DESIGN_NOTES.md`. The verdict quoted in this note — "fidelity
+ *     upgrade, not task-enrichment", priced as an alternative way to BUY a
+ *     plane change (49.5 h + 222 m/s per 1° of ΔΩ vs 104 m/s direct) — was
+ *     re-measured and holds only at MEO/wide. At LEO J2 is a DISTURBANCE
+ *     coupled to the leg the policy already flies: ΔΩ per radian of phase
+ *     closed is −3.5·J2·(R_EQ/p)²·cos i, independent of the drift δa, i.e.
+ *     0.286° of relative inclination injected by one 180° phasing drift at
+ *     LEO-500 / i = 51.6° — 76% of the free-plane zone at the 30 km / 50 m/s
+ *     box (j2_A_design §0, §2.3). The shaping re-audit the note asks for was
+ *     done: drift-leg monotonicity is preserved 36/36 and the worst adverse
+ *     step is unchanged (§2.1); only "do-nothing ΔΦ ≡ 0" is lost, becoming
+ *     |ΔΦ| ≤ 0.006 over a full cap (§2.2). */
 
 /* M2 (phase5-5-env-mods): per-action sub-step count. τ=1 → single-step burn or
  * coast; τ>1 → warp action (no burn). Replaces the single WARP_TAU constant for
@@ -439,6 +456,16 @@ typedef struct {
     int              shape_match_squash; /* Φ match squash: 0 = min(1, x) (legacy, and the
                                           * A2 bit-exact anchor), 1 = x/(1+x) (no dead zone) */
 
+    /* ── ext-j2 (2026-08-13). Binding spec: j2_A_design.md. Default 0 is the
+     * verbatim legacy propagator, reached by branching, not by a zero term. */
+    int              j2_mode;            /* 0 = off (bit-exact anchor); 1 = secular
+                                          * mean-element J2 on Ω, ω, M. Requires
+                                          * dim3_mode = 1 (asserted in my_init):
+                                          * under dim3_mode = 0 every orbit is
+                                          * exactly equatorial and J2 would silently
+                                          * become a ϖ̇ = +k precession on the 2D
+                                          * lineage's ω, which no 2D anchor covers. */
+
     /* Rendezvous phase-gap curriculum (set from Python; 0.0 → target co-phased). */
     double           init_phase_gap_max;    /* max initial |θ_sat − θ_target| (rad)  */
 
@@ -520,6 +547,87 @@ static inline double true_to_mean(double theta, double e) {
 static inline void propagate_orbit(Orbit* o, double dt) {
     double n = sqrt(MU / (o->a * o->a * o->a));  /* mean motion (rad/s) */
     o->M += n * dt;
+    o->M = fmod(o->M, 2.0 * M_PI);
+    if (o->M < 0.0) o->M += 2.0 * M_PI;
+    double E = solve_kepler(o->M, o->e);
+    o->theta = eccentric_to_true(E, o->e);
+}
+
+/* Wrap an angle into [0, 2π). Used only on the J2 path — the legacy propagator
+ * open-codes the same two lines on M and must stay byte-identical. */
+static inline double wrap_2pi(double x) {
+    x = fmod(x, 2.0 * M_PI);
+    if (x < 0.0) x += 2.0 * M_PI;
+    return x;
+}
+
+/* ── ext-j2: propagate under SECULAR mean-element J2 ──────────────────────────
+ * Binding spec: scripts/orbital/ext_recon/reports/j2_A_design.md §1.1-§1.3.
+ *
+ *   n  = sqrt(MU/a³)      p = a(1−e²)      k = 1.5·n·J2·(R_EQ/p)²
+ *   Ω̇  = −k·cos i
+ *   ω̇  = +0.5·k·(4 − 5 sin²i)
+ *   Ṁ  =  n + 0.5·k·√(1−e²)·(2 − 3 sin²i)
+ *   ȧ  = ė = i̇ = 0        (secular J2 has NO secular rate on a, e or i)
+ *
+ * WHY THIS FORM AND NOTHING MORE (§1.4). All short-period, m-daily and
+ * long-period osculating terms are omitted, as are J2², J3+, drag, third-body
+ * and SRP. Keeping only the secular rates is what buys the property this
+ * project actually needs: the rates depend only on (a, e, i), which secular J2
+ * leaves invariant, so they are CONSTANT for the life of an element set and the
+ * map is closed-form at any dt. One warp of τ·DT therefore equals τ steps of DT
+ * to float64 noise (measured ≤ 2.3e−8 m at every τ in the action table — the
+ * same fmod-accumulation class the two-body path already shows), and the warp
+ * actions stay exact instead of becoming an integration-error budget.
+ *
+ * TRUTH STATEMENT (§1.4), stated rather than corrected: under j2_mode = 1 the
+ * env's state IS the mean element set. No mean↔osculating conversion happens
+ * anywhere — not at reset, not at a burn, not at the success test. A burn is
+ * applied to the mean state through the osculating Gauss response
+ * (orbit_to_cartesian → +Δv → cartesian_to_elements), an O(J2) inconsistency.
+ * Re-flown through a full-J2 Cowell integrator that reads these as osculating,
+ * the RELATIVE state error is 83 m / 0.094 m/s per orbit at a 5 km separation
+ * (1.66% of separation per orbit; the 30 km absolute divergence is common-mode
+ * along-track and cancels) — benign where the success classifier looks, but at
+ * the 5 km / 1 m/s box the velocity term is 9.4% of tolerance per orbit, so a
+ * tight-box J2 rung must not also claim osculating-grade terminal fidelity.
+ *
+ * THE EQUATORIAL SPECIAL CASE (§1.3) is load-bearing, not tidiness. At i = 0, Ω
+ * is a gauge coordinate but Ω̇ = −k is MAXIMAL; the physical rate is
+ * ϖ̇ = Ω̇ + ω̇ = +k. Propagating Ω normally drives target.raan off 0.0 after one
+ * step, which silently disengages gauge_from_orbit's `identity` fast path and
+ * switches λ from the bit-exact M+ω form to the cartesian round trip mid-
+ * episode. Conversely, "skip Ω̇ because Ω is gauge" while keeping ω̇ = 2k gives
+ * ϖ̇ = 2k — wrong by exactly 2×. So: fold both rates into ω and leave raan at
+ * 0.0. Cross-checked against a Cowell integrator that resolves the degeneracy
+ * independently (1.5713e−6 vs 1.5586e−6 rad/s, 0.8%).
+ *
+ * j2_mode = 0 delegates to the verbatim legacy path by BRANCHING, never by
+ * adding a zero — that is what makes the 2D/3D anchors bit-exact. */
+static inline void propagate_orbit_j2(Orbit* o, double dt, int j2_mode) {
+    if (!j2_mode) { propagate_orbit(o, dt); return; }
+
+    double n   = sqrt(MU / (o->a * o->a * o->a));
+    double p   = o->a * (1.0 - o->e * o->e);
+    double rp  = J2_R_EQ / p;
+    double k   = 1.5 * n * J2_COEF * rp * rp;
+    double si  = sin(o->inc);
+    double si2 = si * si;
+    double Om  = -k * cos(o->inc);
+    double om  =  0.5 * k * (4.0 - 5.0 * si2);
+    double Md  =  n + 0.5 * k * sqrt(1.0 - o->e * o->e) * (2.0 - 3.0 * si2);
+
+    if (o->inc == 0.0) {
+        /* §1.3: Ω is gauge, ϖ̇ = Ω̇ + ω̇. raan MUST stay exactly 0.0 so the
+         * identity gauge never disengages. */
+        o->omega = wrap_2pi(o->omega + (om + Om) * dt);
+    } else {
+        o->raan  = wrap_2pi(o->raan  + Om * dt);
+        o->omega = wrap_2pi(o->omega + om * dt);
+    }
+
+    /* Same ordering as the legacy path from here down. */
+    o->M += Md * dt;
     o->M = fmod(o->M, 2.0 * M_PI);
     if (o->M < 0.0) o->M += 2.0 * M_PI;
     double E = solve_kepler(o->M, o->e);
@@ -1143,10 +1251,35 @@ static inline void fill_observations(Orbital* env) {
         obs[26] = obs_clamp2(dv_pl  / dv_ref);
         obs[27] = obs_clamp2(dv_rem / dv_ref);
         obs[28] = obs_clamp2((dv_rem - dv_pl - dv_in) / dv_ref);
-        obs[29] = 0.0f;  /* reserved */
-        obs[30] = 0.0f;
-        obs[31] = 0.0f;
-        obs[32] = 0.0f;
+        /* ── ext-j2 obs (j2_A_design §4.3, correcting 3d_C §2's stale "obs
+         * 28-29 reserved" — obs[28] is the Δv feasibility margin, so the free
+         * reserved block is 29-32).
+         *
+         * J2 is AXISYMMETRIC, so Ω remains a gauge coordinate and the ONLY new
+         * physical information the equator adds is cos i. Two slots, not four:
+         * the absolute Ω of either body is still unobservable-by-design, and
+         * feeding it would reintroduce the rotation-variance the target-plane
+         * gauge exists to remove.
+         *
+         * Written only under j2_mode = 1 so the X3 / T3 / legacy checkpoint
+         * anchors stay bit-exact at the default (these columns are random-init
+         * and zero-gradient in every shipped checkpoint — n3d_REDTEAM
+         * MAJOR-14/NON-ISSUE-9 — so a nonzero write at j2_mode = 0 would be a
+         * silent perturbation of a trained encoder).
+         *
+         * obs[31], obs[32] STAY RESERVED. The design flags Ω̇_s/|Ω̇|_ref as the
+         * exact quantity the go-around decision keys on, but recommends
+         * deferring it to a second arm so the attribution of any J2 result
+         * stays clean; obs[32] has no assignment at all. */
+        if (env->j2_mode) {
+            obs[29] = obs_clamp2(cos(sat->orbit.inc));
+            obs[30] = obs_clamp2(cos(env->target.inc));
+        } else {
+            obs[29] = 0.0f;
+            obs[30] = 0.0f;
+        }
+        obs[31] = 0.0f;  /* reserved (J2 rate channel, deferred) */
+        obs[32] = 0.0f;  /* reserved */
     }
 
     /* [33-37] LVLH-frame relative state — primary observation for rendezvous.
@@ -2090,14 +2223,19 @@ static inline void c_step(Orbital* env) {
     int actual_tau = 0;
     int warped_terminated = 0;
     for (int k = 0; k < tau; k++) {
+        /* ext-j2: the ONLY three propagation call sites. j2_mode = 0 dispatches
+         * to the verbatim legacy propagate_orbit inside propagate_orbit_j2, so
+         * the default path is unchanged instruction-for-instruction. Warps are
+         * this same loop run τ times; the J2 rates are constants of the element
+         * set, so τ×DT here ≡ one call of τ·DT (anchor J-A4). */
         /* Propagate all orbiting bodies (not Earth) */
         for (int i = 1; i < env->num_bodies; i++) {
-            propagate_orbit(&env->bodies[i].orbit, DT);
+            propagate_orbit_j2(&env->bodies[i].orbit, DT, env->j2_mode);
         }
         /* Propagate the target body — Phase 3 rendezvous requires a moving target. */
-        propagate_orbit(&env->target, DT);
+        propagate_orbit_j2(&env->target, DT, env->j2_mode);
         /* Propagate satellite */
-        propagate_orbit(&env->sat.orbit, DT);
+        propagate_orbit_j2(&env->sat.orbit, DT, env->j2_mode);
 
         env->step++;
         actual_tau++;
