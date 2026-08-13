@@ -106,10 +106,23 @@ the rung-1 result is 3/3 seeds at 100% — including seed 1337, the seed that
 failed Phase 4's Stage-1 fresh training outright. Checkpoints
 `models/t3/n3dnav_T-BO3-X3-s{7,1337}.pt`.
 
-## Caveats
+## Multi-seed — tight-box treatment replicated 3/3 (stage 5)
 
-- Tight-box arms are single-seed (42) as of this table; TB5-3D multi-seed
-  (seeds 7/1337) staged as campaign stage 5.
+T-BO3D-TB5 re-trained from the same warm start at seeds 7 and 1337:
+
+| seed | TB5-3D bo | TB5-3D truth | TB4-3D bo | TB4-3D truth |
+|---|---|---|---|---|
+| 42 | 196/200 = 98.0% | 99.5% | 199/200 = 99.5% | 100% |
+| 7 | 196/200 = 98.0% | 99.0% | 199/200 = 99.5% | 100% |
+| 1337 | 197/200 = 98.5% | 98.5% | 198/200 = 99.0% | 100% |
+
+**Pooled: 589/600 (98.2%) at TB5-3D, 596/600 (99.3%) at TB4-3D; spread
+0.5 pp.** The tight-box number is a capability, not a seed artifact —
+and seed 1337 (which failed Phase 4 Stage-1 fresh training outright) is
+indistinguishable from the others here. Checkpoints
+`models/t3/n3dnav_T-BO3D-TB5-s{7,1337}.pt`.
+
+## Caveats
 - Both boxes share eval seed 123 (paired scenarios across arms — valid for
   arm-vs-arm deltas).
 - The IOD acceptance gates still certify large epoch errors (max 465.9 km
