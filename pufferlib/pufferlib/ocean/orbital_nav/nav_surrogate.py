@@ -100,10 +100,19 @@ if not os.path.exists(FILT_CSV):
 MU = nm.MU
 
 # NAV-G's shipped acquisition gate (`bls_acquire_adaptive(gate=0.20)`) and its
-# initial window w0=45 observations at 60 s = 45 min. Reproducing the floor is
-# what makes the surrogate's best-case latency 44-45 min, as measured.
+# initial window w0 = 45 observations at 60 s = 45 min.
+#
+# n3d_REDTEAM BLOCKER-2: the floor is now SIM TIME, never a tick count.
+# `nav_acq_min_ticks = 45` was an observation COUNT, and every proposed cost
+# lever divides observations — they are the same knob. Composed, N3D-C 6b's own
+# `K = 12` turns a 45-minute acquisition floor into a 9.7-HOUR one against a
+# 22.2-hour episode (44% of the episode), and the failure would present as
+# "bearings-only does not work in 3D" — a false negative on the campaign's
+# central claim, produced entirely by a cost knob. A sim-time floor is
+# invariant under every cadence change by construction, and it has to be, since
+# acquisition latency IS the headline metric.
 ACQ_GATE = 0.20
-ACQ_MIN_TICKS = 45
+ACQ_MIN_SEC = 2700.0            # 45 min. Re-derive nothing; this IS the floor.
 
 # rel_sigma placeholder for a numerically singular FIM.
 _INF_REL = 1.0e3
@@ -230,32 +239,69 @@ class BLSRatioTable:
 
 
 class AcquisitionSurrogate:
-    """Per-row acquisition state machine + calibrated error draw."""
+    """Per-row acquisition state machine + calibrated error draw.
 
-    def __init__(self, n, sigma_beta, gate=ACQ_GATE, min_ticks=ACQ_MIN_TICKS,
+    `dim` is the Cartesian state width: 4 for the 2D lineage (frozen — the
+    bit-exactness anchors run through this path) and 6 under `dim3_mode`.
+    """
+
+    def __init__(self, n, sigma_beta, gate=ACQ_GATE, min_sec=ACQ_MIN_SEC,
                  cov_inflate=4.0, mode='crlb_online',
-                 obs_csv=OBS_CSV, filt_csv=FILT_CSV):
+                 obs_csv=OBS_CSV, filt_csv=FILT_CSV, dim=4, allow_table=False):
         if mode not in ('crlb_online', 'table'):
             raise ValueError(f"acq mode must be crlb_online|table, got {mode!r}")
+        if dim not in (4, 6):
+            raise ValueError(f'dim must be 4 or 6, got {dim}')
+        # MAJOR-11: under dim3 `crlb_online` is the ENFORCED default, not the
+        # preferred one. Sigma = ratio^2 Phi inv(F) Phi^T carries the realized
+        # arc's full correlation structure; N3D-B measured corr(range, plane)
+        # = 0.999-1.000 wherever di_rel > 0 and exactly 0.0000 at di_rel = 0,
+        # and validated the rank-1 model component-by-component over 1800
+        # cells. The table branch builds the VELOCITY block as a pure diagonal,
+        # which in 3D is exactly the channel N3D-B names the new binding
+        # constraint (out-of-plane velocity, sigma_vplane = sigma_k v_c sin
+        # di_rel) — drawing it independently hands the policy averaging gain
+        # the real filter never delivers.
+        if dim == 6 and mode == 'table' and not allow_table:
+            raise ValueError(
+                'acq_mode="table" under dim3 destroys the rank-1 correlation '
+                'structure that IS the observability claim (n3d_REDTEAM '
+                'MAJOR-11). Pass allow_table=True only for a reporting run.')
         self.n = n
+        self.dim = int(dim)
+        self.pos = self.dim // 2
         self.mode = mode
         self.sigma_beta = float(sigma_beta)
         self.gate = float(gate)
-        self.min_ticks = int(min_ticks)
+        self.min_sec = float(min_sec)
         self.cov_inflate = float(cov_inflate)
         self.ratios = BLSRatioTable(filt_csv)
         self.map = ObservabilityMap(obs_csv) if mode == 'table' else None
 
         self.acquired = np.zeros(n, dtype=bool)
         self.ticks = np.zeros(n, dtype=np.int64)
+        # BLOCKER-2: the floor runs on THIS, not on `ticks`. Sim seconds since
+        # the arc began, accumulated from the actual tick interval.
+        self.elapsed = np.zeros(n)
         self.dv = np.zeros(n)                # commanded |dv| inside the arc
         self.sep0 = np.ones(n)               # epoch separation (m)
-        self.u0 = np.zeros((n, 2))           # epoch LOS unit vector
+        self.u0 = np.zeros((n, self.pos))    # epoch LOS unit vector
+        self.a0 = np.full(n, nm.R_EARTH + 5e5)   # scale for the D-nondim
+        self.vc0 = np.full(n, 7.6e3)
         self.period = np.full(n, 5545.0)     # chaser orbital period (s)
-        self.Phi = np.tile(np.eye(4), (n, 1, 1))
-        self.FIM = np.zeros((n, 4, 4))
+        self.Phi = np.tile(np.eye(self.dim), (n, 1, 1))
+        self.FIM = np.zeros((n, self.dim, self.dim))
         self.n_acq = 0
         self.n_reset = 0
+        # BLOCKER-2: latency is pre-registered in SIM SECONDS, never in
+        # decisions and never in ticks. The 3D policy packs 2.45x more sim-time
+        # into each decision than the 2D one (tau-bar 79.61 vs 32.50), so a
+        # decision-counted latency would show 3D winning by 2.45x from the tau
+        # mix alone, with zero contribution from observability.
+        self.acq_latency_s = []
+        # MAJOR-11: the Cholesky diagonal fallback destroys exactly the
+        # structure that is the claim, silently. Count it and gate on zero.
+        self.n_chol_fallback = 0
         self.last_sigma_los = np.full(n, np.inf)
         # Set to a list to record (sigma_LOS, predicted sigma_pos, realised
         # |dpos|, rho, n_obs) at every handoff. None in training (the list
@@ -263,18 +309,26 @@ class AcquisitionSurrogate:
         self.log_draws = None
 
     # -- episode boundaries ---------------------------------------------------
-    def reset_rows(self, idx, sat_cart, tgt_cart, period_s):
+    def reset_rows(self, idx, sat_cart, tgt_cart, period_s, a_ref=None):
         if idx.size == 0:
             return
-        d = tgt_cart[:, :2] - sat_cart[:, :2]
-        sep = np.maximum(np.hypot(d[:, 0], d[:, 1]), 1.0)
+        p = self.pos
+        d = tgt_cart[:, :p] - sat_cart[:, :p]
+        sep = np.maximum(np.sqrt(np.einsum('ni,ni->n', d, d)), 1.0)
         self.acquired[idx] = False
         self.ticks[idx] = 0
+        self.elapsed[idx] = 0.0
         self.dv[idx] = 0.0
         self.sep0[idx] = sep
         self.u0[idx] = d / sep[:, None]
         self.period[idx] = np.maximum(period_s, 60.0)
-        self.Phi[idx] = np.eye(4)
+        if a_ref is None:
+            a_ref = np.maximum(np.sqrt(np.einsum('ni,ni->n',
+                                                 sat_cart[:, :p],
+                                                 sat_cart[:, :p])), 1.0)
+        self.a0[idx] = a_ref
+        self.vc0[idx] = np.sqrt(MU / np.maximum(a_ref, 1.0))
+        self.Phi[idx] = np.eye(self.dim)
         self.FIM[idx] = 0.0
         self.last_sigma_los[idx] = np.inf
         self.n_reset += int(idx.size)
@@ -302,7 +356,12 @@ class AcquisitionSurrogate:
             return
         pend = idx[sel]
         self.ticks[pend] += 1
+        self.elapsed[pend] += float(dt)
         if self.mode != 'crlb_online':
+            return
+        if self.dim == 6:
+            self._accumulate6(pend, sat_now[sel], tgt_now[sel], tgt_prev[sel],
+                              dt, first)
             return
         if not first:
             F, _, _ = nm.stm_fd(tgt_prev[sel], dt)
@@ -317,8 +376,50 @@ class AcquisitionSurrogate:
         H = Hr @ self.Phi[pend]
         self.FIM[pend] += (np.swapaxes(H, 1, 2) @ H) / self.sigma_beta ** 2
 
+    def _accumulate6(self, pend, sat, tgt, tgt_prev, dt, first):
+        """MAJOR-12: the BASIS-FREE information kernel.
+
+            H^T R^-1 H = (sigma_beta rho)^-2 [P_perp 0; 0 0],  P_perp = I - uu^T
+
+        Two focal-plane angles with isotropic-on-the-sphere noise give exactly
+        this, and it depends only on `P_perp` — independent of focal-plane roll,
+        so there is no az/el pole and no guard here at all. Writing az/el with
+        an isotropic R = sigma_beta^2 I instead inflates the information by
+        1/cos^2 el: 1.26x at el = 27 deg, 2.0x at 45, 4.0x at 60.
+        """
+        from . import nav_math3d as n3
+        if not first:
+            F, _, _ = n3.stm_analytic_nd(tgt_prev, dt)
+            self.Phi[pend] = F @ self.Phi[pend]
+        d = tgt[:, :3] - sat[:, :3]
+        rho = np.maximum(np.sqrt(np.einsum('ni,ni->n', d, d)), 1.0)
+        u = d / rho[:, None]
+        P_perp = np.eye(3) - u[:, :, None] * u[:, None, :]
+        M = np.zeros((pend.size, 6, 6))
+        M[:, :3, :3] = P_perp / ((self.sigma_beta * rho) ** 2)[:, None, None]
+        Phi = self.Phi[pend]
+        self.FIM[pend] += np.swapaxes(Phi, 1, 2) @ M @ Phi
+
+    def _D(self, idx):
+        """N3D-B 4.1's nondimensionaliser D = diag(a,a,a,v_c,v_c,v_c).
+
+        NOT cosmetic: it is the fix for the NAV-G/NAV-F "exactly singular"
+        disagreement — the scaled 6x6 returns a finite bound where the raw
+        pipeline trips its own conditioning guard and reports inf, or worse
+        slips under it and reports ZERO (the `sigma_los_bo_m = 0.0` row in
+        `ext_bo_observability.csv`, which asserts PERFECT range observability
+        in one of the least observable cells in the table).
+        """
+        p = self.pos
+        d = np.empty((idx.size, self.dim))
+        d[:, :p] = self.a0[idx][:, None]
+        d[:, p:] = self.vc0[idx][:, None]
+        return d
+
     # -- gate -----------------------------------------------------------------
     def _sigma_los_online(self, pend):
+        if self.dim == 6:
+            return self._sigma_los_online6(pend)
         F = self.FIM[pend]
         w = np.linalg.eigvalsh(F)
         wmin = np.abs(w).min(axis=1)
@@ -332,6 +433,29 @@ class AcquisitionSurrogate:
         sig = np.sqrt(np.maximum(v, 0.0))
         return np.where(bad, np.inf, sig)
 
+    def _sigma_los_online6(self, pend):
+        """Same quantity, on the SCALED FIM, with the tightened guard.
+
+        MAJOR-12: `cond > 1e14` on the scaled matrix, not `cond > 1e16` on the
+        raw one — about two decades more usable range, and it closes the
+        sigma = 0.0 hole.
+        """
+        D = self._D(pend)
+        Fs = self.FIM[pend] * D[:, :, None] * D[:, None, :]
+        w = np.linalg.eigvalsh(0.5 * (Fs + np.swapaxes(Fs, 1, 2)))
+        wmin = np.abs(w).min(axis=1)
+        wmax = np.abs(w).max(axis=1)
+        bad = (wmin <= 0.0) | (wmax / np.maximum(wmin, 1e-300) > 1e14) \
+            | ~np.isfinite(w).all(axis=1)
+        Fg = np.where(bad[:, None, None], np.eye(6), Fs)
+        C = np.linalg.inv(Fg + 1e-30 * np.eye(6))
+        u = self.u0[pend]
+        # C_phys = D C_scaled D, so the position block picks up a0^2.
+        v = (np.einsum('ni,nij,nj->n', u, C[:, :3, :3], u)
+             * self.a0[pend] ** 2)
+        sig = np.sqrt(np.maximum(v, 0.0))
+        return np.where(bad, np.inf, sig)
+
     def ready(self, idx, dt=60.0):
         """Rows whose angles-only batch solver would have converged by now.
 
@@ -340,7 +464,9 @@ class AcquisitionSurrogate:
         if idx.size == 0:
             return idx[:0], np.zeros(0)
         pend = idx[~self.acquired[idx]]
-        pend = pend[self.ticks[pend] >= self.min_ticks]
+        # BLOCKER-2: SIM TIME, not tick count. Invariant under every cadence
+        # change by construction.
+        pend = pend[self.elapsed[pend] >= self.min_sec]
         if pend.size == 0:
             return pend, np.zeros(0)
         if self.mode == 'crlb_online':
@@ -372,10 +498,12 @@ class AcquisitionSurrogate:
         total sigma reproduces all six measured geometries within 1.0-1.2x.
         """
         m = idx.size
-        dx = x_true[:, 0] - sat_cart[:, 0]
-        dy = x_true[:, 1] - sat_cart[:, 1]
-        rho_now = np.maximum(np.hypot(dx, dy), 1.0)
-        r_t = np.maximum(np.hypot(x_true[:, 0], x_true[:, 1]), 1.0)
+        p = self.pos
+        dvec = x_true[:, :p] - sat_cart[:, :p]
+        rho_now = np.maximum(np.sqrt(np.einsum('ni,ni->n', dvec, dvec)), 1.0)
+        r_t = np.maximum(np.sqrt(np.einsum('ni,ni->n', x_true[:, :p],
+                                           x_true[:, :p])), 1.0)
+        dx, dy = dvec[:, 0], dvec[:, 1]
 
         has_burn = self.dv[idx] > 0.0
         ratio = self.ratios.ratio(self.sep0[idx] / r_t, has_burn)
@@ -406,7 +534,7 @@ class AcquisitionSurrogate:
 
         # Correlated draw via Cholesky, with a jitter ladder: inv(F) on a short
         # arc can be numerically indefinite.
-        z = rng.standard_normal((m, 4))
+        z = rng.standard_normal((m, self.dim))
         L = self._chol(Sig)
         x_hat = x_true + np.einsum('nij,nj->ni', L, z)
 
@@ -422,9 +550,24 @@ class AcquisitionSurrogate:
 
         self.acquired[idx] = True
         self.n_acq += m
+        self.acq_latency_s.extend(float(v) for v in self.elapsed[idx])
         return x_hat, self.cov_inflate * Sig, sig_los
 
     def _sigma_from_fim(self, idx, ratio):
+        if self.dim == 6:
+            # Invert in the SCALED coordinates (MAJOR-12), then map back:
+            # C_phys = D C_scaled D.
+            D = self._D(idx)
+            Fs = self.FIM[idx] * D[:, :, None] * D[:, None, :]
+            w, V = np.linalg.eigh(0.5 * (Fs + np.swapaxes(Fs, 1, 2)))
+            wmax = np.maximum(w.max(axis=1, keepdims=True), 1e-300)
+            w = np.maximum(w, 1e-14 * wmax)
+            Cs = (V * (1.0 / w)[:, None, :]) @ np.swapaxes(V, 1, 2)
+            C = Cs * D[:, :, None] * D[:, None, :]
+            Phi = self.Phi[idx]
+            S = Phi @ C @ np.swapaxes(Phi, 1, 2)
+            S = 0.5 * (S + np.swapaxes(S, 1, 2)) * (ratio ** 2)[:, None, None]
+            return S
         F = self.FIM[idx]
         w, V = np.linalg.eigh(0.5 * (F + np.swapaxes(F, 1, 2)))
         # Floor the spectrum at 1e-12 of the largest eigenvalue: a direction
@@ -438,21 +581,28 @@ class AcquisitionSurrogate:
         S = 0.5 * (S + np.swapaxes(S, 1, 2)) * (ratio ** 2)[:, None, None]
         return S
 
-    @staticmethod
-    def _chol(S):
-        n = S.shape[0]
+    def _chol(self, S):
+        """Jitter ladder, then a COUNTED diagonal fallback.
+
+        MAJOR-11: a rank-1-dominated 6x6 is near-singular BY CONSTRUCTION —
+        that near-singularity IS the observability structure — so this is the
+        fallback most likely to fire in 3D, and it converts an anisotropic
+        scale-family error into a near-isotropic one with no error, no warning
+        and no counter. It now has a counter, and the campaign gates on zero.
+        """
+        k = S.shape[-1]
         d = np.einsum('nii->ni', S)
         scale = np.maximum(d.max(axis=1), 1e-30)
         for jit in (0.0, 1e-12, 1e-9, 1e-6, 1e-3):
             try:
                 return np.linalg.cholesky(
-                    S + (jit * scale)[:, None, None] * np.eye(4))
+                    S + (jit * scale)[:, None, None] * np.eye(k))
             except np.linalg.LinAlgError:
                 continue
-        # Per-row fallback: diagonal only.
+        self.n_chol_fallback += int(S.shape[0])
         L = np.zeros_like(S)
-        idx = np.arange(4)
-        L[:, idx, idx] = np.sqrt(np.maximum(d, 0.0))
+        ii = np.arange(k)
+        L[:, ii, ii] = np.sqrt(np.maximum(d, 0.0))
         return L
 
 

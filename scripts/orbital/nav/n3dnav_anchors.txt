@@ -1,17 +1,19 @@
-ext-3dnav anchor re-run — after adding vec_get_state to binding.c
-date: 2026-08-13T00:17:33Z   parent commit: 963d394
+ext-3dnav anchor + regression log
+date: 2026-08-13T00:51:47Z   branch ext-3dnav @ d1e14e4
 build: python setup.py build_ext --inplace --force   (-O2 -flto, confirmed in the compile line)
 
 Why this file exists (n3d_REDTEAM MAJOR-6): the build is -O2 -flto, so adding a
 translation-unit-level function can change cross-TU inlining and therefore FP code
 generation inside fill_observations and compute_phi. The probability is low; the cost
 of being wrong is the whole bit-exact lineage. Anchors are RE-RUN after any binding.c
-or toolchain change, never assumed.
+or toolchain change, never assumed. The 2D nav rows are here too because the wrapper
+was refactored under them.
 
 EXPECTED (pre-change lineage values):
   legacy       26/200  (success=26, collision=1, safety_cap=142, stranded=31)
   T3 canonical 100/100, and OrbitalNav(nav_mode='truth') md5-identical to it
   A2           0 double mismatches / 200000 draws, all four cells
+  V2 recon     max |recon - truth| ~ 2 x eps_f32, causes identical to truth
 
 ==============================================================================
 A2  Phi(shaping_mode=2) == Phi(shaping_mode=1) at di=0, BITWISE
@@ -43,6 +45,28 @@ V1  closed-loop replay anchors (verify_extnav.py --stage v1 --eps 100)
                              causes: success=100
 
   ACTION STREAM IDENTICAL: True   (2324 vs 2324 decisions, md5 68b267bed3696584 vs 68b267bed3696584)
+
+
+==============================================================================
+V2  2D recon gate, unchanged by the 3D work (verify_extnav.py --stage v2)
+==============================================================================
+== V2  recon gate ================================================
+  open-loop obs residual over 25664 row-steps (random actions):
+    bit-identical rows      2321/25664 = 9.04%
+    max |recon - truth|     2.384e-07  (dim 33)
+    / eps_f32(1.0)          2.00
+    non-zero dims: [11]=5.96e-08, [13]=5.96e-08, [14]=5.96e-08, [16]=6.71e-08, [33]=2.38e-07, [34]=1.19e-07, [35]=2.98e-08, [36]=2.98e-08, [37]=1.19e-07
+
+  closed loop, canonical ckpt, seed 123:
+  truth                      success 40/40 = 100.0%   gave_up 0   decisions 836 (mean 20.9/ep)   md5 fd5ff6ea1d1e   0s
+                             causes: success=40
+  recon                      success 40/40 = 100.0%   gave_up 0   decisions 836 (mean 20.9/ep)   md5 fd5ff6ea1d1e   0s
+                             causes: success=40
+  rb_ekf noise=0             success 40/40 = 100.0%   gave_up 0   decisions 855 (mean 21.4/ep)   md5 0108b3b53c10   9s
+                             causes: success=40
+
+  CAUSES IDENTICAL TO TRUTH (all three): True
+  action-stream md5: truth=fd5ff6ea1d  recon=fd5ff6ea1d  rb_ekf noise=0=0108b3b53c
 
 
 ==============================================================================
@@ -97,3 +121,14 @@ i_t[deg]  di[deg]          n   err p50[deg]   err p90[deg]   err max[deg]
       0.25       4000        2.404e-09           0.2384           3.8709
       1.00       4000        5.224e-10           0.9590          24.2904
       2.00       4000        6.141e-10           2.0180          75.4840
+
+==============================================================================
+2D wrapper bit-exactness under the refactor
+  120 steps x 32 envs, random Discrete-16 actions, md5 of the float32
+  observation stream, compared against the same script run at the branch point.
+==============================================================================
+recon 31e619aadbce92a9def187f351c32d39 div 0
+rb_ekf 94ef6a5d780ed6647d79bf6eed1543e9 div 0
+bearings_only bc60f991084f54580f9e042eb33b0663 div 29
+  (identical to the pre-branch run: recon 31e619aa..., rb_ekf 94ef6a5d...,
+   bearings_only bc60f991..., divergences 0/0/29)

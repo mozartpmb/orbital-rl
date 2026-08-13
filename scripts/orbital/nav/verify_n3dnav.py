@@ -37,6 +37,14 @@ Stages
   e1  BLOCKER-3  the analytic 3D STM: symplecticity, the universal-variable
                oracle, oracle central differences, the group property, the 2D
                reduction, and the before/after tick-time table.
+  f1  BLOCKER-2  the acquisition floor is SIM TIME: the same 2700 s at
+               dt_tick = 60 s and at 300 s, where a 45-tick floor would have
+               been 3.75 h. Plus MAJOR-7's fixed-count/adaptive-interval
+               sub-tick, MAJOR-11's enforced crlb_online and counted Cholesky
+               fallback, MAJOR-12's basis-free information kernel, MAJOR-13's
+               unit reconciliation, MAJOR-16's out-of-plane velocity seed,
+               NOTE-20's kwarg tripwires, NOTE-21's obs[28] diagnostic, and
+               the dim3 recon closed loop against truth.
 
 Two conventions worth knowing before reading the output:
   * `record` is a pass/fail GATE. `note` is a measured FINDING that is not a
@@ -1049,6 +1057,231 @@ def stage_e1(args):
     return dict(ok=bool(ok), speedup=speed, ticks=tabs)
 
 
+
+# ── f1: BLOCKER-2 + the remaining MAJORs / NOTEs ────────────────────────────
+def _nav_kw(**over):
+    kw = dict(_D3_KW)
+    kw.update(over)
+    return kw
+
+
+def stage_f1(args):
+    print('== f1  BLOCKER-2 sim-time floor + MAJOR-7/11/12/13/16 + NOTE-20/21 =')
+    from pufferlib.ocean.orbital_nav.orbital_nav import OrbitalNav
+    from pufferlib.ocean.orbital_nav import nav_math3d as n3
+    from pufferlib.ocean.orbital_nav import nav_surrogate as ns
+
+    ok = True
+
+    # ── BLOCKER-2: the floor is SIM TIME, invariant under the cadence ───────
+    def latency(dt_tick, steps=140):
+        env = OrbitalNav(num_envs=48, nav_mode='bearings_only', seed=7,
+                         log_interval=10 ** 9, nav_sensor_dt=dt_tick,
+                         **_D3_KW)
+        env.reset(seed=42)
+        rng = np.random.default_rng(0)
+        for _ in range(steps):
+            env.step(rng.integers(0, 30, 48).astype(np.int32))
+        lat = np.array(env._acq.acq_latency_s)
+        env.close()
+        return lat
+
+    l60 = latency(60.0)
+    l300 = latency(300.0)
+    print(f'    dt_tick =  60 s: {l60.size} acquisitions, median latency '
+          f'{np.median(l60):.0f} s ({np.median(l60)/60:.1f} min)')
+    print(f'    dt_tick = 300 s: {l300.size} acquisitions, median latency '
+          f'{np.median(l300):.0f} s ({np.median(l300)/60:.1f} min)')
+    ok &= record('acquisition floor is a SIM-TIME floor: >= 2700 s at both '
+                 'cadences', l60.min() >= 2700.0 and l300.min() >= 2700.0,
+                 f'min {l60.min():.0f} s / {l300.min():.0f} s')
+    ok &= record('a TICK floor would have scaled the floor with the cadence',
+                 np.median(l300) < 45 * 300.0 * 0.9,
+                 f'a 45-tick floor at dt=300 s would be {45*300:.0f} s '
+                 f'(3.75 h); measured {np.median(l300):.0f} s')
+    try:
+        OrbitalNav(num_envs=2, nav_mode='bearings_only',
+                   nav_acq_min_ticks=45, **_D3_KW)
+        raised = False
+    except ValueError:
+        raised = True
+    ok &= record('nav_acq_min_ticks > 0 RAISES (no silent unit re-entry)',
+                 raised)
+
+    # ── MAJOR-7: nav_max_ticks no longer desyncs filter from truth ──────────
+    tau = int(nm.ACTION_TAU[17])            # warp 6 h
+    K = 12
+    n_tick = min(tau, K)
+    dt_tick = tau * 60.0 / n_tick
+    ok &= record('MAJOR-7: fixed COUNT x adaptive INTERVAL spans the whole tau',
+                 abs(n_tick * dt_tick - tau * 60.0) < 1e-9,
+                 f'tau={tau} sub-steps, K={K}: {n_tick} ticks x {dt_tick:.0f} s '
+                 f'= {n_tick*dt_tick:.0f} s == {tau*60} s. The pre-fix code '
+                 f'ticked {K} x 60 s = {K*60} s and was then handed a bearing '
+                 f'{tau*60 - K*60} s in the future as one 60 s innovation.')
+
+    def rmse_with(mt):
+        env = OrbitalNav(num_envs=48, nav_mode='bearings_only', seed=7,
+                         log_interval=10 ** 9, nav_max_ticks=mt, **_D3_KW)
+        env.reset(seed=42)
+        rng = np.random.default_rng(1)
+        for _ in range(120):
+            env.step(rng.integers(0, 30, 48).astype(np.int32))
+        d = env._d_div / max(env._d_n, 1)
+        r = math.sqrt(env._d_sq / max(env._d_n, 1))
+        env.close()
+        return r, d
+
+    r0, d0 = rmse_with(0)
+    rk, dk = rmse_with(K)
+    print(f'    nav_max_ticks=0:   pos rmse {r0:.3e} m, diverge rate {d0:.4f}')
+    print(f'    nav_max_ticks={K}:  pos rmse {rk:.3e} m, diverge rate {dk:.4f}')
+    ok &= record('MAJOR-7: capping ticks no longer inflates the divergence '
+                 'rate', dk <= max(3.0 * d0, 0.02),
+                 f'{d0:.4f} -> {dk:.4f}')
+
+    # ── MAJOR-12: basis-free P_perp == explicit az/el FIM with the ──────────
+    #    cos-el-inflated R, at the elevations BLOCKER-1 says are reachable.
+    print('    MAJOR-12 information-kernel equivalence:')
+    worst = 0.0
+    for el_deg in (0.0, 27.0, 45.0, 60.0):
+        el = math.radians(el_deg)
+        az = 0.83
+        rho, sb = 5.0e3, 1.0e-3
+        u = np.array([math.cos(el) * math.cos(az), math.cos(el) * math.sin(az),
+                      math.sin(el)])
+        e_az = np.array([-math.sin(az), math.cos(az), 0.0])
+        e_el = np.array([-math.sin(el) * math.cos(az),
+                         -math.sin(el) * math.sin(az), math.cos(el)])
+        # explicit az/el: H = d(az,el)/d(r) , R = diag(sb^2/cos^2 el, sb^2)
+        H = np.stack([e_az / (rho * math.cos(el)), e_el / rho])
+        R = np.diag([sb ** 2 / math.cos(el) ** 2, sb ** 2])
+        M_azel = H.T @ np.linalg.inv(R) @ H
+        M_free = (np.eye(3) - np.outer(u, u)) / (sb * rho) ** 2
+        d = np.abs(M_azel - M_free).max() / np.abs(M_free).max()
+        worst = max(worst, d)
+        # what an ISOTROPIC R would have claimed
+        iso = H.T @ np.linalg.inv(np.eye(2) * sb ** 2) @ H
+        infl = np.trace(iso) / np.trace(M_free)
+        print(f'      el = {el_deg:4.0f} deg   |P_perp - azel| / |P_perp| '
+              f'{d:.2e}   isotropic-R inflation {infl:.3f}x '
+              f'(1/cos^2 el = {1/math.cos(el)**2:.3f})')
+    ok &= record('MAJOR-12: M = P_perp/(sigma_b rho)^2 == explicit az/el FIM '
+                 'with the cos-el-inflated R, el in {0,27,45,60} deg',
+                 worst < 1e-12, f'worst rel {worst:.2e}')
+
+    # ── MAJOR-13: the two lanes' "sigma_plane" are different OBJECTS ────────
+    r_orb = 6771e3
+    eps = 1e-5                                   # plane tilt, rad
+    errs = []
+    for u_deg in (10.0, 30.0, 90.0, 150.0):
+        u_arg = math.radians(u_deg)
+        x = n3.orbit_to_cartesian_3d(np.array([r_orb]), np.array([0.0]),
+                                     np.array([u_arg]), np.array([0.0]),
+                                     np.array([0.0]), np.array([0.0]))
+        xt = n3.orbit_to_cartesian_3d(np.array([r_orb]), np.array([0.0]),
+                                      np.array([u_arg]), np.array([0.0]),
+                                      np.array([eps]), np.array([0.0]))
+        pos = float(abs(xt[0, 2] - x[0, 2]))
+        pred = r_orb * eps * abs(math.sin(u_arg))
+        errs.append(abs(pos - pred) / max(pred, 1e-30))
+    ok &= record('MAJOR-13: sigma_plane_pos_m == r * sigma_plane_tilt_rad * '
+                 '|sin u| (the two lanes are not in conflict, they are in '
+                 'different units)', max(errs) < 1e-4,
+                 f'max rel {max(errs):.2e}; the scale factor is '
+                 f'r = {r_orb:.3e} m/rad, so mixing them silently rescales by '
+                 f'6.8e6')
+
+    # ── MAJOR-11 / NOTE-20 / NOTE-21 / sigma-channel relocation ────────────
+    try:
+        ns.AcquisitionSurrogate(4, sigma_beta=1e-3, mode='table', dim=6)
+        raised = False
+    except ValueError:
+        raised = True
+    ok &= record("MAJOR-11: acq_mode='table' under dim3 RAISES", raised)
+    acq = ns.AcquisitionSurrogate(4, sigma_beta=1e-3, mode='table', dim=6,
+                                  allow_table=True)
+    ok &= record('MAJOR-11: ... unless explicitly opted into for a reporting '
+                 'run', acq.mode == 'table')
+    ok &= record('MAJOR-11: the Cholesky diagonal fallback has a COUNTER',
+                 hasattr(acq, 'n_chol_fallback') and acq.n_chol_fallback == 0)
+
+    for bad, msg in ((dict(omega_offset_fixed=0.0), 'omega_offset_fixed'),
+                     (dict(raan_target_rad=0.3), 'raan_target_rad')):
+        try:
+            OrbitalNav(num_envs=2, nav_mode='bearings_only', **_nav_kw(**bad))
+            raised = False
+        except ValueError:
+            raised = True
+        ok &= record(f'NOTE-20: {msg} RAISES under dim3 nav', raised)
+
+    env = OrbitalNav(num_envs=32, nav_mode='bearings_only', seed=7,
+                     log_interval=32, nav_sigma_channel=1, **_D3_KW)
+    env.reset(seed=42)
+    rng = np.random.default_rng(0)
+    info = []
+    for _ in range(96):
+        _, _, _, _, i = env.step(rng.integers(0, 30, 32).astype(np.int32))
+        if i:
+            info = i
+    o = np.asarray(env.observations)
+    nav = [d for d in info if isinstance(d, dict) and 'nav_pos_rmse' in d]
+    ok &= record('MAJOR-14: the Sigma channel writes obs[29], NOT obs[21] '
+                 '(which is the ext-3d plane channel under dim3)',
+                 float(np.abs(o[:, 29]).max()) > 0.0,
+                 f'max |obs[29]| {np.abs(o[:, 29]).max():.4f}, '
+                 f'obs[30:33] still zero: {bool((o[:, 30:33] == 0).all())}')
+    ok &= record('NOTE-21: the obs[28] < 0 while unacquired diagnostic ships',
+                 bool(nav) and 'nav_obs28_neg_unacq' in nav[0],
+                 f"{nav[0].get('nav_obs28_neg_unacq') if nav else 'n/a'}")
+    ok &= record('BLOCKER-1: the re-pole counter ships as a nav_* diagnostic',
+                 bool(nav) and 'nav_repole_per_ep' in nav[0])
+    ok &= record('BLOCKER-2: acquisition latency ships in SIM SECONDS',
+                 bool(nav) and 'nav_acq_latency_s' in nav[0],
+                 f"{nav[0].get('nav_acq_latency_s') if nav else 'n/a'} s")
+    ok &= record('MAJOR-11: the chol-fallback counter ships and is 0',
+                 bool(nav) and nav[0].get('nav_chol_fallback', -1) == 0.0)
+    env.close()
+
+    # ── MAJOR-16: the out-of-plane rate seed ───────────────────────────────
+    env = OrbitalNav(num_envs=32, nav_mode='bearings_only', seed=7,
+                     log_interval=10 ** 9, **_D3_KW)
+    env.reset(seed=42)
+    y = env._filt.y
+    P = env._filt.Py
+    st = env.get_state(env._state_buf)
+    rho0 = np.exp(y[:, n3.IDX_LNRHO])
+    v_c = np.sqrt(n3.MU / st[:, 0])
+    need = v_c * math.sin(_D3_KW['di_max_rad']) / rho0
+    got = np.sqrt(P[:, n3.IDX_WE, n3.IDX_WE])
+    ok &= record('MAJOR-16: out-of-plane rate seed >= v_c sin(di_max)/rho0, '
+                 'decoupled from the eccentricity term',
+                 bool(np.all(got >= need - 1e-12)),
+                 f'margin min {np.min(got / np.maximum(need, 1e-300)):.3f}x '
+                 f'(the 2D seed reused sigma_v_ecc for both rate components: '
+                 f'154 m/s against 134 m/s of real ignorance, 1.15x)')
+    env.close()
+
+    # ── the 3D recon closed loop must be bit-identical to truth ────────────
+    def roll(mode, steps=150):
+        e = OrbitalNav(num_envs=32, nav_mode=mode, seed=7,
+                       log_interval=10 ** 9, **_D3_KW)
+        o, _ = e.reset(seed=42)
+        rng = np.random.default_rng(3)
+        acc = [np.asarray(o, dtype=np.float32).copy()]
+        for _ in range(steps):
+            o, r, t, tr, _ = e.step(rng.integers(0, 30, 32).astype(np.int32))
+            acc.append(np.asarray(o, dtype=np.float32).copy())
+        e.close()
+        return np.stack(acc)
+
+    A, C = roll('truth'), roll('recon')
+    ok &= record('dim3 recon closed loop is BIT-IDENTICAL to truth over '
+                 '150 steps x 32 envs', np.array_equal(A, C),
+                 f'max|diff| {np.abs(A - C).max():.3e} over {A.size} values')
+    return dict(ok=bool(ok))
+
+
 # ext-3d (dim3_mode=1) configuration: the X3 rung the campaign warm-starts from.
 _D3_KW = dict(_MIN_KW,
               e_max_target=0.05, e_max_sat=0.05,
@@ -1058,7 +1291,8 @@ _D3_KW = dict(_MIN_KW,
               shape_dv_ref_ms=700.0)
 
 STAGES = {'a1': stage_a1, 'a2': stage_a2, 'b1': stage_b1,
-          'c1': stage_c1, 'd1': stage_d1, 'e1': stage_e1}
+          'c1': stage_c1, 'd1': stage_d1, 'e1': stage_e1,
+          'f1': stage_f1}
 
 
 def main():

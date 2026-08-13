@@ -80,7 +80,8 @@ def run_arm(ckpt, label, eps=200, seed=123, skip_native=False):
     if b['acq_epoch_err'].size:
         out['acq_epoch_err_med_km'] = float(np.median(b['acq_epoch_err']) / 1e3)
         out['acq_epoch_err_max_km'] = float(b['acq_epoch_err'].max() / 1e3)
-        out['acq_latency_med_min'] = float(np.median(b['acq_latency']))
+        # BLOCKER-2: seconds, not decisions and not ticks.
+        out['acq_latency_med_s'] = float(np.median(b['acq_latency_s']))
     close = b['minrho'] < 2e5
     out['close200_succ'] = (f"{int(b['success'][close].sum())}/{int(close.sum())}"
                             if close.any() else 'n/a')

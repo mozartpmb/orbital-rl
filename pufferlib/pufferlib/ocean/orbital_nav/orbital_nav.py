@@ -67,7 +67,9 @@ import numpy as np
 
 from pufferlib.ocean.orbital.orbital import Orbital
 from . import nav_math as nm
-from .nav_surrogate import AcquisitionSurrogate
+from . import nav_math3d as n3
+from . import nav_encode3d as ne
+from .nav_surrogate import AcquisitionSurrogate, ACQ_MIN_SEC
 
 NAV_MODES = ('truth', 'recon', 'rb_ekf', 'bearings_only')
 
@@ -101,7 +103,15 @@ class OrbitalNav(Orbital):
                  # Bearings-only acquisition surrogate.
                  nav_acq_mode='crlb_online',   # or 'table'
                  nav_acq_gate=0.20,
-                 nav_acq_min_ticks=45,
+                 # n3d_REDTEAM BLOCKER-2. The acquisition floor is SIM TIME,
+                 # never an observation count: every cost lever divides
+                 # observations, so a tick floor and a cadence knob are the
+                 # same knob, and composing them silently multiplies the
+                 # campaign's headline metric. `nav_acq_min_ticks` survives
+                 # only as a tripwire — setting it > 0 RAISES rather than
+                 # silently re-introducing the unit.
+                 nav_acq_min_sec=ACQ_MIN_SEC,       # 2700 s = 45 min
+                 nav_acq_min_ticks=-1,
                  nav_cov_inflate=4.0,
                  # Altitude annulus for the analytic blind range prior. <0
                  # derives from the env's own sampler bounds.
@@ -161,6 +171,12 @@ class OrbitalNav(Orbital):
                  # here the stored action is the executed action, and only the
                  # transition it induces has changed.
                  nav_block_fine_below_m=0.0,
+                 # MAJOR-10: WHICH action set the ablation blocks. `_FINE` was
+                 # the in-plane fine burns only, which under Discrete-30 leaves
+                 # actions 20/21 (normal +/-1) — the 3D observability treatment
+                 # — wide open, making a `T-BO-act` arm uninterpretable. Every
+                 # arm must now state its set by name.
+                 nav_block_set='fine_inplane',
                  **kwargs):
         if nav_mode not in NAV_MODES:
             raise ValueError(f'nav_mode must be one of {NAV_MODES}, got {nav_mode!r}')
@@ -172,18 +188,53 @@ class OrbitalNav(Orbital):
         self._nav_sigma_v0 = float(nav_sigma_v0)
         self._acq_mode = nav_acq_mode
         self._acq_gate = float(nav_acq_gate)
-        self._acq_min_ticks = int(nav_acq_min_ticks)
+        if int(nav_acq_min_ticks) > 0:
+            raise ValueError(
+                'nav_acq_min_ticks is retired (n3d_REDTEAM BLOCKER-2): the '
+                'acquisition floor is sim TIME, because every cost lever '
+                'divides ticks and the two are the same knob. Set '
+                f'nav_acq_min_sec instead (currently {float(nav_acq_min_sec)} s).')
+        self._acq_min_sec = float(nav_acq_min_sec)
         self._cov_inflate = float(nav_cov_inflate)
         self._nav_clip = float(nav_clip)
         self._sig_ch = int(nav_sigma_channel)
         self._sig_ref = float(nav_sigma_ref)
         self._sig_gain = float(nav_sigma_gain)
         self._block_below = float(nav_block_fine_below_m)
+        if nav_block_set not in nm.ACTION_SETS:
+            raise ValueError(f'nav_block_set must be one of '
+                             f'{sorted(nm.ACTION_SETS)}, got {nav_block_set!r}')
+        self._block_set_name = nav_block_set
+        self._block_set = nm.ACTION_SETS[nav_block_set]
         self._nees_every = max(1, int(nav_nees_every))
         self._nav_max_ticks = int(nav_max_ticks)
 
         self._alt_scale = float(kwargs.get('obs_alt_scale_m', 1.6e6))
         self._lvlh_scale = float(kwargs.get('lvlh_scale_m', 6.371e6))
+        self._dim3 = int(kwargs.get('dim3_mode', 0))
+        self._di_max = float(kwargs.get('di_max_rad', -1.0))
+        self._kw3 = {k: kwargs.get(k) for k in
+                     ('obs_di_scale_rad', 'de_max', 'obs_de_scale',
+                      'shape_dv_ref_ms') if kwargs.get(k) is not None}
+        if self._dim3 and nav_mode != 'truth':
+            # NOTE-20, asserted here rather than discovered in a wide rung.
+            # `omega_offset_fixed > -10` sets target.omega = sat.omega + offset
+            # EVEN AT e_t = 0, at which point obs[11,12,16] carry a value no
+            # estimate can recover; `raan_target_rad != 0` makes target.omega
+            # node-referenced while the estimate's is inertial. Both are
+            # eval-only hooks today, and both break the recon gate for reasons
+            # that have nothing to do with the port.
+            if float(kwargs.get('omega_offset_fixed', -99.0)) > -10.0:
+                raise ValueError(
+                    'omega_offset_fixed is incompatible with dim3 nav '
+                    '(n3d_REDTEAM NOTE-20): it sets target.omega from the '
+                    'chaser even at e_t = 0, which no estimate can recover.')
+            if float(kwargs.get('raan_target_rad', 0.0)) != 0.0:
+                raise ValueError(
+                    'raan_target_rad != 0 is incompatible with dim3 nav '
+                    '(n3d_REDTEAM NOTE-20): target.omega becomes '
+                    'node-referenced while the estimate-side varpi is '
+                    'inertial.')
 
         a_min = kwargs.get('a_min_override', -1.0)
         a_max = kwargs.get('a_max_override', -1.0)
@@ -206,27 +257,51 @@ class OrbitalNav(Orbital):
             self._nav_ready = True
             return
         n = self.num_agents
+        d = 6 if self._dim3 else 4
+        self._cdim = d
         self._rng = np.random.default_rng([self._nav_seed, self._ctor_seed])
         self._s_rho = nm.SIGMA_RHO_M * self._nav_noise
         self._s_beta = nm.SIGMA_BETA_RAD * self._nav_noise
-        self._prev_sat = np.zeros((n, 4))
-        self._prev_tgt = np.zeros((n, 4))
-        self._slots = np.array(nm.TARGET_SLOTS_T3)
+        self._prev_sat = np.zeros((n, d))
+        self._prev_tgt = np.zeros((n, d))
+        self._slots = np.array(ne.TARGET_SLOTS_3D if self._dim3
+                               else nm.TARGET_SLOTS_T3)
         self._scratch = np.zeros((n, nm.OBS_DIM), dtype=np.float64)
-        self._pair = np.zeros((2 * n, 4), dtype=np.float64)
+        self._pair = np.zeros((2 * n, d), dtype=np.float64)
+        self._state_buf = np.zeros((n, self.STATE_FLOATS), dtype=np.float64)
+        self._enc3 = None
+        if self._dim3:
+            self._enc3 = ne.Encoder3D(
+                n, obs_alt_scale_m=self._alt_scale,
+                lvlh_scale_m=self._lvlh_scale,
+                di_max_rad=self._di_max,
+                obs_di_scale_rad=float(self._kw3.get('obs_di_scale_rad', -1.0)),
+                de_max=float(self._kw3.get('de_max', -1.0)),
+                obs_de_scale=float(self._kw3.get('obs_de_scale', -1.0)),
+                shape_dv_ref_ms=float(self._kw3.get('shape_dv_ref_ms', 300.0)),
+                clip=self._nav_clip)
 
         if self._nav_mode == 'rb_ekf':
             q = self._nav_q_a if self._nav_q_a > 0 else nm.Q_ACCEL_PSD_RB
+            if self._dim3:
+                raise NotImplementedError(
+                    "nav_mode='rb_ekf' under dim3 (the N1-rb3d control arm) is "
+                    'not part of Phase A; the bearings-only lane is.')
             self._filt = nm.BatchedRangeBearingEKF(
                 n, sigma_rho=self._s_rho, sigma_beta=self._s_beta,
                 q_a=q, sigma_v0=self._nav_sigma_v0)
         elif self._nav_mode == 'bearings_only':
             q = self._nav_q_a if self._nav_q_a > 0 else nm.Q_ACCEL_PSD_BO
-            self._filt = nm.BatchedBearingMPC(n, sigma_beta=self._s_beta, q_a=q)
+            if self._dim3:
+                self._filt = n3.BatchedBearingMSC6(
+                    n, sigma_beta=self._s_beta, q_a=q, stm='analytic')
+            else:
+                self._filt = nm.BatchedBearingMPC(
+                    n, sigma_beta=self._s_beta, q_a=q)
             self._acq = AcquisitionSurrogate(
                 n, sigma_beta=self._s_beta, gate=self._acq_gate,
-                min_ticks=self._acq_min_ticks, cov_inflate=self._cov_inflate,
-                mode=self._acq_mode)
+                min_sec=self._acq_min_sec, cov_inflate=self._cov_inflate,
+                mode=self._acq_mode, dim=d)
         else:
             self._filt = None
 
@@ -245,17 +320,66 @@ class OrbitalNav(Orbital):
         self._d_sig = []
         self._d_block = 0
         self._d_block_n = 0
+        self._d_feas_neg = 0            # NOTE-21: obs[28] < 0 while unacquired
+        self._d_feas_n = 0
 
     # ── decode / re-encode ───────────────────────────────────────────────────
     def _decode(self):
-        o = self.observations
-        sat, tgt = nm.recover_states_t3(o, self._alt_scale)
-        sat_c = nm.orbit_to_cartesian(sat['a'], sat['e'], sat['theta'], sat['omega'])
-        tgt_c = nm.orbit_to_cartesian(tgt['a'], tgt['e'], tgt['theta'], tgt['omega'])
-        return sat, sat_c, tgt, tgt_c
+        """(chaser elements, chaser Cartesian, target elements, target Cartesian).
+
+        In 2D this is the obs-only decode, unchanged. Under dim3 it is the
+        read-only C getter: the ext-3d observation block is SO(3)-invariant by
+        construction, so the chaser's plane is ABSENT from the observation and
+        no decoder can recover it (MAJOR-5). The getter also hands over each
+        body's Cartesian state and element-route e-vector on the env's own FP
+        path, which is what makes the recon gate exact.
+        """
+        if not self._dim3:
+            o = self.observations
+            sat, tgt = nm.recover_states_t3(o, self._alt_scale)
+            sat_c = nm.orbit_to_cartesian(sat['a'], sat['e'], sat['theta'],
+                                          sat['omega'])
+            tgt_c = nm.orbit_to_cartesian(tgt['a'], tgt['e'], tgt['theta'],
+                                          tgt['omega'])
+            return sat, sat_c, tgt, tgt_c
+        st = self.get_state(self._state_buf)
+        sat = ne.Encoder3D.chaser(st)
+        tgt = ne.Encoder3D.target_truth(st)
+        return sat, sat['cart'], tgt, tgt['cart']
+
+    def _di_rel_truth(self, sat, tgt):
+        """MAJOR-17: realized Delta_i_rel from TRUTH, captured at the TOP of
+        `_nav_step`.
+
+        Conditioning the surrogate's noise process on truth is legitimate — it
+        is exactly what the shipped 2D surrogate already does with realized
+        separation and realized delta-v. The defect the red-team caught is the
+        READ SITE: `_encode` overwrites obs[21,22] in place, so reading them
+        afterwards conditions the error model on the estimate it just produced,
+        a self-referential loop that raises nothing and produces a
+        plausible-looking number.
+        """
+        if not self._dim3:
+            return None
+        hs, ht = sat['hhat'], tgt['hhat']
+        c = np.linalg.norm(np.cross(ht, hs), axis=1)
+        return np.arctan2(c, np.einsum('ni,ni->n', ht, hs))
 
     def _encode(self, sat, sat_c, est_x):
         """Rebuild the target-derived obs slots from the estimate, in place."""
+        if self._dim3:
+            n_clip, n_tot = self._enc3.write(self.observations,
+                                             self._state_buf, est_x)
+            self._d_clip += n_clip
+            self._d_clip_n += n_tot
+            if self._nav_mode == 'bearings_only':
+                unacq = ~self._acq.acquired
+                self._d_feas_neg += int(np.count_nonzero(
+                    self._enc3.last_feas_neg & unacq))
+                self._d_feas_n += int(np.count_nonzero(unacq))
+            if self._sig_ch:
+                self._write_sigma_channel(est_x, sat_c)
+            return
         a, e, om, th = nm.cartesian_to_elements(est_x)
         # `fill_target_obs_t3` only WRITES the target slots, so a persistent
         # scratch buffer is enough — no need to copy the 38-wide observation
@@ -274,18 +398,19 @@ class OrbitalNav(Orbital):
         self.observations[:, self._slots] = v.astype(np.float32)
 
     # ── T-BO+Sigma: the uncertainty channel ──────────────────────────────────
-    def _sigma_los_over_rho(self, est_x, sat_c):
+    def _sigma_los_over_rho(self, est_x, sat_c):  # noqa: D401
         """The filter's OWN 1-sigma range uncertainty, normalised by its OWN
         estimated separation. Everything here is estimator-side — no truth — so
         it is a legitimate observation."""
         n = self.num_agents
         idx = np.arange(n)
+        p = self._filt.POS_DIM
         _, P = self._filt.mean_cov(idx)
-        d = est_x[:, :2] - sat_c[:, :2]
-        rho = np.maximum(np.hypot(d[:, 0], d[:, 1]), 1.0)
+        d = est_x[:, :p] - sat_c[:, :p]
+        rho = np.maximum(np.sqrt(np.einsum('ni,ni->n', d, d)), 1.0)
         u = d / rho[:, None]
         with np.errstate(all='ignore'):
-            s2 = np.einsum('ni,nij,nj->n', u, P[:, :2, :2], u)
+            s2 = np.einsum('ni,nij,nj->n', u, P[:, :p, :p], u)
             s = np.sqrt(np.maximum(s2, 0.0)) / rho
         return np.nan_to_num(s, nan=1.0, posinf=1.0, neginf=0.0)
 
@@ -305,11 +430,14 @@ class OrbitalNav(Orbital):
             t = np.log10(np.maximum(s, 1e-12) / lo) / np.log10(hi / lo)
         v = self._sig_gain * np.clip(np.nan_to_num(t, nan=1.0), 0.0, 1.0)
         self._d_sig.append(float(np.median(s)))
-        self.observations[:, 21] = v.astype(np.float32)
+        # MAJOR-14: under dim3 obs[21] is the ext-3d plane channel, not a free
+        # slot. The Sigma channel is DROPPED from the 3D layout (NAV-F measured
+        # T-BO+Sigma statistically identical to T-BO on every metric, so it has
+        # no claim on a slot); if an arm wants it back it goes on obs[29],
+        # which orbital.h hard-zeroes, and zero_obs_column.py retargets there.
+        self.observations[:, 29 if self._dim3 else 21] = v.astype(np.float32)
 
     # ── T-BO-act: fine burns are no-ops inside the ablation radius ───────────
-    _FINE = np.array([12, 13, 14, 15, 18, 19])
-
     def _apply_action_ablation(self, actions):
         """Env-variant dynamics: fine burns coast inside `nav_block_fine_below_m`.
 
@@ -320,9 +448,13 @@ class OrbitalNav(Orbital):
         a = np.asarray(actions, dtype=np.int32).reshape(-1).copy()
         if not self._nav_ready or self._prev_tgt is None:
             return a
-        d = self._prev_tgt[:, :2] - self._prev_sat[:, :2]
-        rho = np.hypot(d[:, 0], d[:, 1])
-        blocked = np.isin(a, self._FINE) & (rho < self._block_below)
+        # MAJOR-9: the separation is 3-D under dim3. A 2-component rho
+        # under-reports it by the cross-track term (1.62 km at the 5 km box)
+        # and fires the interlock in the wrong states.
+        p = self._cdim // 2
+        d = self._prev_tgt[:, :p] - self._prev_sat[:, :p]
+        rho = np.sqrt(np.einsum('ni,ni->n', d, d))
+        blocked = np.isin(a, self._block_set) & (rho < self._block_below)
         if blocked.any():
             a[blocked] = 0
             self._d_block += int(blocked.sum())
@@ -343,6 +475,8 @@ class OrbitalNav(Orbital):
         """(Re)initialise the filter on `idx`. `sat_c`/`tgt_c` are subsets."""
         if idx.size == 0:
             return
+        if self._dim3:
+            return self._init_rows3(idx, sat_c, tgt_c, sat_el)
         d = tgt_c[:, :2] - sat_c[:, :2]
         rho_t = np.maximum(np.hypot(d[:, 0], d[:, 1]), 1.0)
         beta_t = np.arctan2(d[:, 1], d[:, 0])
@@ -381,9 +515,92 @@ class OrbitalNav(Orbital):
         self._acq.reset_rows(idx, sat_c, tgt_c, period)
         self._acq.accumulate(idx, sat_c, tgt_c, tgt_c, self._nav_dt, first=True)
 
+    # ── 3D blind seed ────────────────────────────────────────────────────────
+    def _init_rows3(self, idx, sat_c, tgt_c, sat_el):
+        """Blind seed for the 6-state modified-spherical filter.
+
+        N3D-A 3c: the 3D acquisition is the 2D acquisition plus two
+        locally-convergent degrees of freedom — the analytic range prior lifts
+        verbatim (the annulus becomes a spherical shell, the LOS stays a ray),
+        and the out-of-plane POSITION comes free and exactly from the measured
+        elevation because the seed sits on the LOS ray.
+        """
+        a_s = sat_el['a'][idx]
+        self._filt.set_pole(idx, sat_c)
+        Rp = self._filt.Rp[idx]
+        d = tgt_c[:, :3] - sat_c[:, :3]
+        rho_t = np.maximum(np.linalg.norm(d, axis=1), 1.0)
+        u_t = np.einsum('nij,nj->ni', Rp, d / rho_t[:, None])
+        el_t = np.arcsin(np.clip(u_t[:, 2], -1.0, 1.0))
+        az_t = np.arctan2(u_t[:, 1], u_t[:, 0])
+        ce = np.maximum(np.cos(el_t), 1e-8)
+        az = nm.wrap_pi(az_t + self._rng.normal(0.0, 1.0, idx.size)
+                        * (self._s_beta / ce))
+        el = el_t + self._rng.normal(0.0, self._s_beta, idx.size)
+
+        # The range prior, in the pole frame's own coordinates.
+        u = np.stack([np.cos(el) * np.cos(az), np.cos(el) * np.sin(az),
+                      np.sin(el)], axis=1)
+        u_in = np.einsum('nji,nj->ni', Rp, u)          # back to inertial
+        rc2 = np.einsum('ni,ni->n', sat_c[:, :3], sat_c[:, :3])
+        b0 = np.einsum('ni,ni->n', sat_c[:, :3], u_in)
+        disc_out = b0 * b0 - rc2 + self._r_max ** 2
+        rho_out = np.where(disc_out > 0.0,
+                           -b0 + np.sqrt(np.maximum(disc_out, 0.0)), 1e3)
+        rho_out = np.maximum(rho_out, 200.0)
+        disc_in = b0 * b0 - rc2 + self._r_min ** 2
+        sq = np.sqrt(np.maximum(disc_in, 0.0))
+        lo_in = -b0 - sq
+        lo = np.where((disc_in > 0.0) & (lo_in <= 100.0),
+                      np.minimum(np.maximum(-b0 + sq, 100.0), 0.5 * rho_out),
+                      100.0)
+        hi = np.maximum(rho_out, lo * 1.01)
+        rho0 = np.sqrt(lo * hi)
+
+        y0 = np.zeros((idx.size, 6))
+        y0[:, n3.IDX_AZ] = az
+        y0[:, n3.IDX_EL] = el
+        y0[:, n3.IDX_LNRHO] = np.log(np.maximum(rho0, 1.0))
+        sig_lnr = np.clip(np.log(hi / np.maximum(lo, 1.0)) / np.sqrt(12.0),
+                          0.5, 4.0)
+        v_c = np.sqrt(nm.MU / np.maximum(a_s, 1.0))
+        # In-plane rate ignorance: a circular-orbit velocity guess is wrong by
+        # ~v_c*e, and at an unknown range that is also an unknown angular rate.
+        sig_rate_ip = np.clip(self._sigma_v_ecc / np.maximum(rho0, 1.0),
+                              1e-5, 1e-1)
+        # MAJOR-16: the OUT-OF-PLANE rate is seeded from its OWN ignorance,
+        # v_c sin(di_max)/rho0, decoupled from the eccentricity term. The
+        # shipped 2D seed reused _sigma_v_ecc for both rate components, which
+        # at di_max = 1 deg gives 154 m/s against 134 m/s of real ignorance —
+        # 1.15x of margin — and at di_max = 2 deg it is over-confident by ~3x
+        # on a channel with no measurement of its own at epoch, which is the
+        # classic bearings-only divergence trigger.
+        di = self._di_max if self._di_max > 0.0 else 0.0
+        v_oop = v_c * np.sin(di)
+        sig_rate_oop = np.clip(
+            np.maximum(v_oop, self._sigma_v_ecc) / np.maximum(rho0, 1.0),
+            1e-5, 1e-1)
+        assert np.all(sig_rate_oop * rho0 >= v_oop - 1e-9), \
+            'MAJOR-16: out-of-plane rate seed is below its own ignorance'
+        Py0 = np.zeros((idx.size, 6, 6))
+        Py0[:, n3.IDX_AZ, n3.IDX_AZ] = (self._s_beta / np.maximum(
+            np.cos(el), 1e-8)) ** 2
+        Py0[:, n3.IDX_EL, n3.IDX_EL] = self._s_beta ** 2
+        Py0[:, n3.IDX_WA, n3.IDX_WA] = sig_rate_ip ** 2
+        Py0[:, n3.IDX_WE, n3.IDX_WE] = sig_rate_oop ** 2
+        Py0[:, n3.IDX_RDOT, n3.IDX_RDOT] = sig_rate_ip ** 2
+        Py0[:, n3.IDX_LNRHO, n3.IDX_LNRHO] = sig_lnr ** 2
+        self._filt.set_polar(idx, y0, Py0, sat_c)
+        period = 2.0 * np.pi * np.sqrt(a_s ** 3 / nm.MU)
+        self._acq.reset_rows(idx, sat_c, tgt_c, period, a_ref=a_s)
+        self._acq.accumulate(idx, sat_c, tgt_c, tgt_c, self._nav_dt, first=True)
+
     # ── one navigation tick on a subset ──────────────────────────────────────
     def _tick(self, idx, sat_from, sat_to, tgt_to, tgt_prev, dt=None):
         dt = self._nav_dt if dt is None else dt
+        if self._dim3:
+            self._tick3(idx, sat_from, sat_to, tgt_to, tgt_prev, dt)
+            return
         d = tgt_to[:, :2] - sat_to[:, :2]
         rho_t = np.maximum(np.hypot(d[:, 0], d[:, 1]), 1.0)
         beta = nm.wrap_pi(np.arctan2(d[:, 1], d[:, 0])
@@ -405,6 +622,36 @@ class OrbitalNav(Orbital):
             sel = np.searchsorted(idx, rows)
             x_hat, P_acq, _ = self._acq.draw(rows, sig, tgt_to[sel], sat_to[sel],
                                              self._rng)
+            self._filt.set_cart(rows, x_hat, P_acq, sat_to[sel])
+
+    def _tick3(self, idx, sat_from, sat_to, tgt_to, tgt_prev, dt):
+        """One 3D nav tick: two focal-plane angles in the epoch-frozen frame.
+
+        The measurement noise is isotropic ON THE SPHERE, which in az/el is
+        `sigma_az = sigma_beta / cos el` and `sigma_el = sigma_beta`
+        (MAJOR-12). Drawing both at sigma_beta would be a different — and
+        easier — sensor than the filter's R claims.
+        """
+        self._filt.predict(idx, dt, sat_from, sat_to)
+        Rp = self._filt.Rp[idx]
+        d = tgt_to[:, :3] - sat_to[:, :3]
+        rho = np.maximum(np.linalg.norm(d, axis=1), 1.0)
+        u = np.einsum('nij,nj->ni', Rp, d / rho[:, None])
+        el_t = np.arcsin(np.clip(u[:, 2], -1.0, 1.0))
+        az_t = np.arctan2(u[:, 1], u[:, 0])
+        ce = np.maximum(np.cos(el_t), 1e-8)
+        az = nm.wrap_pi(az_t + self._rng.normal(0.0, 1.0, idx.size)
+                        * (self._s_beta / ce))
+        el = el_t + self._rng.normal(0.0, self._s_beta, idx.size)
+        self._filt.update(idx, sat_to, az, el)
+        self._filt.repole(idx)
+
+        self._acq.accumulate(idx, sat_to, tgt_to, tgt_prev, dt)
+        rows, sig = self._acq.ready(idx, dt)
+        if rows.size:
+            sel = np.searchsorted(idx, rows)
+            x_hat, P_acq, _ = self._acq.draw(rows, sig, tgt_to[sel],
+                                             sat_to[sel], self._rng)
             self._filt.set_cart(rows, x_hat, P_acq, sat_to[sel])
 
     # ── divergence guard ─────────────────────────────────────────────────────
@@ -437,16 +684,37 @@ class OrbitalNav(Orbital):
 
     # ── the wrapper's own step ───────────────────────────────────────────────
     def _nav_step(self, actions, done):
-        sat_el, sat_c, _, tgt_c = self._decode()
+        sat_el, sat_c, _tgt_el, tgt_c = self._decode()
 
         if self._nav_mode == 'recon':
             self._encode(sat_el, sat_c, tgt_c)
             self._d_n += self.num_agents
             return
 
+        # MAJOR-17: capture the realized plane geometry from TRUTH here, at the
+        # top, BEFORE `_encode` overwrites obs[21,22] in place.
+        self._di_rel_now = self._di_rel_truth(sat_el, _tgt_el)
+
         tau = nm.ACTION_TAU[np.asarray(actions, dtype=np.int64).reshape(-1)]
+        # MAJOR-7: `nav_max_ticks` used to CAP tau and then tick that many
+        # times at dt = 60 s while the C env advanced the full tau, pinning the
+        # last sub-tick to the env's current epoch — so at tau = 360, K = 60
+        # the filter predicted 60 minutes and was then handed a bearing of the
+        # true geometry five hours later, presented as one 60 s innovation. The
+        # filter diverges, `_guard` reinitialises it, and the only symptom is
+        # an elevated nav_diverge_rate. NAV-H called this inert; it was, at
+        # Discrete-16, and it is NOT at Discrete-30 where tau = 180/360 is
+        # 26.0% of decisions.
+        #
+        # The fix is a fixed measurement COUNT with an adaptive INTERVAL, and
+        # it is only safe because BLOCKER-2 made the acquisition floor sim
+        # time: n_ticks = min(tau, K), dt_tick = tau * 60 / n_ticks. Filter and
+        # truth stay on the same clock at every K.
+        n_tick_row = tau.copy()
+        dt_row = np.full(tau.shape, self._nav_dt)
         if self._nav_max_ticks > 0:
-            tau = np.minimum(tau, self._nav_max_ticks)
+            n_tick_row = np.minimum(tau, self._nav_max_ticks)
+            dt_row = (tau * self._nav_dt) / np.maximum(n_tick_row, 1)
         reset = np.asarray(done, dtype=bool).reshape(-1)
         live = ~reset
 
@@ -469,9 +737,11 @@ class OrbitalNav(Orbital):
         elif live.any():
             sc = self._prev_sat.copy()
             tc = self._prev_tgt.copy()
-            n_tick = int(tau[live].max())
+            prop = (n3.propagate_cartesian_nd if self._dim3
+                    else nm.propagate_cartesian)
+            n_tick = int(n_tick_row[live].max())
             for i in range(n_tick):
-                idx = np.flatnonzero(live & (tau > i))
+                idx = np.flatnonzero(live & (n_tick_row > i))
                 if idx.size == 0:
                     break
                 sat_from = sc[idx]
@@ -482,18 +752,24 @@ class OrbitalNav(Orbital):
                 pair = self._pair[:2 * m]
                 pair[:m] = sat_from
                 pair[m:] = tgt_prev
-                pn, _ = nm.propagate_cartesian(pair, self._nav_dt)
+                step_dt = dt_row[idx]
+                pn, _ = prop(pair, np.concatenate([step_dt, step_dt]))
                 s_new, t_new = pn[:m], pn[m:]
                 sc[idx] = s_new
                 tc[idx] = t_new
                 # The last sub-tick of a decision IS the env's own epoch: pin
                 # truth to the observation instead of the sub-propagation, so
                 # no integration drift accumulates across a whole episode.
-                last = idx[tau[idx] == i + 1]
+                last = idx[n_tick_row[idx] == i + 1]
                 if last.size:
                     sc[last] = sat_c[last]
                     tc[last] = tgt_c[last]
-                self._tick(idx, sat_from, sc[idx], tc[idx], tgt_prev)
+                for dv in np.unique(step_dt):
+                    sub = idx[step_dt == dv]
+                    if sub.size:
+                        j = np.searchsorted(idx, sub)
+                        self._tick(sub, sat_from[j], sc[sub], tc[sub],
+                                   tgt_prev[j], dt=float(dv))
 
         if reset.any():
             idx = np.flatnonzero(reset)
@@ -515,29 +791,34 @@ class OrbitalNav(Orbital):
     # ── diagnostics ──────────────────────────────────────────────────────────
     def _diag(self, est, tgt_c, sat_c):
         n = self.num_agents
-        d = est[:, :2] - tgt_c[:, :2]
-        self._d_sq += float(np.sum(d[:, 0] ** 2 + d[:, 1] ** 2))
+        p = self._filt.POS_DIM
+        d = est[:, :p] - tgt_c[:, :p]
+        self._d_sq += float(np.sum(d * d))
         self._d_n += n
         if self._nav_mode == 'bearings_only':
             self._d_blind += int(np.count_nonzero(~self._acq.acquired))
         if self.tick % self._nees_every:
             return
         all_idx = np.arange(n)
-        if self._nav_mode == 'rb_ekf':
-            x, P = self._filt.mean_cov(all_idx)
-        else:
-            x, P = self._filt.mean_cov(all_idx)
+        x, P = self._filt.mean_cov(all_idx)
         with np.errstate(all='ignore'):
-            v = nm.nees(x, P, tgt_c)
+            v = (n3.nees_nd(x, P, tgt_c) if self._dim3
+                 else nm.nees(x, P, tgt_c))
         v = v[np.isfinite(v)]
         if v.size:
             self._d_nees.append(float(np.median(v)))
         # sigma along the LOS, normalised by separation — the close-range gate.
-        dl = tgt_c[:, :2] - sat_c[:, :2]
-        rho = np.maximum(np.hypot(dl[:, 0], dl[:, 1]), 1.0)
+        # MAJOR-11 corollary: the RANGE channel only. Adding a plane term
+        # certifies garbage at di_rel = 0 (where the plane decouples completely
+        # and is measurement-limited irrespective of the range error — 0.73 m
+        # of plane against 682 km of range at the 5 km box) and double-counts
+        # at di_rel > 0 (where corr -> 1.000), which would also make the 3D
+        # gate non-comparable to the 2D gate NB1 was measured against.
+        dl = tgt_c[:, :p] - sat_c[:, :p]
+        rho = np.maximum(np.sqrt(np.einsum('ni,ni->n', dl, dl)), 1.0)
         u = dl / rho[:, None]
         with np.errstate(all='ignore'):
-            s2 = np.einsum('ni,nij,nj->n', u, P[:, :2, :2], u)
+            s2 = np.einsum('ni,nij,nj->n', u, P[:, :p, :p], u)
         s = np.sqrt(np.maximum(s2, 0.0)) / rho
         s = s[np.isfinite(s)]
         if s.size:
@@ -555,6 +836,28 @@ class OrbitalNav(Orbital):
         if self._nav_mode == 'bearings_only':
             info['nav_blind_frac'] = float(self._d_blind / n)
             info['nav_acq_per_ep'] = float(self._acq.n_acq / max(self._acq.n_reset, 1))
+            # BLOCKER-2: latency in SIM SECONDS. Never decisions (the 3D policy
+            # packs 2.45x more sim-time into each decision than the 2D one, so
+            # a decision-counted latency shows 3D winning by 2.45x from the tau
+            # mix alone) and never ticks (they are the cost knob).
+            lat = self._acq.acq_latency_s
+            info['nav_acq_latency_s'] = float(np.median(lat)) if lat else 0.0
+            info['nav_acq_latency_n'] = float(len(lat))
+            self._acq.acq_latency_s = []
+            # MAJOR-11: the Cholesky diagonal fallback silently converts an
+            # anisotropic scale-family error into a near-isotropic one. The
+            # campaign gates on this being zero.
+            info['nav_chol_fallback'] = float(self._acq.n_chol_fallback)
+        if self._dim3:
+            # BLOCKER-1: re-poles per episode, surfaced.
+            info['nav_repole_per_ep'] = float(
+                np.mean(self._filt.n_repole)) if hasattr(
+                    self._filt, 'n_repole') else 0.0
+            # NOTE-21: obs[28] is the only channel where a diverged estimate
+            # produces a CONFIDENTLY WRONG feasibility margin rather than an
+            # obviously broken number. Nothing else covers it.
+            info['nav_obs28_neg_unacq'] = float(
+                self._d_feas_neg / max(self._d_feas_n, 1))
         if self._sig_ch:
             info['nav_sigma_ch'] = (float(np.median(self._d_sig))
                                     if self._d_sig else 0.0)

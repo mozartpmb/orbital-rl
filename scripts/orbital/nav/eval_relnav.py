@@ -357,7 +357,20 @@ def _is_burn(a):
 
 
 BO_Q_A = 1.0e-13          # NAV-G's bearings-only covariance floor
-BO_W0 = 45                # initial batch window (observations)
+# n3d_REDTEAM BLOCKER-2. The acquisition floor is SIM TIME (45 min), and the
+# solver's initial window is DERIVED from it and the eval cadence — never
+# written as a bare observation count. A count is a cost knob in disguise: at
+# dt_tick = 300 s a hard-coded w0 = 45 is a 3.75-hour floor, and the resulting
+# failure would present as "bearings-only does not work", which is the
+# campaign's central claim.
+#
+# The same constant governs the TRAINING surrogate
+# (nav_surrogate.ACQ_MIN_SEC), because a cadence stretched for training cost
+# with eval left at 60 s is a train/eval sensor-model mismatch that invalidates
+# every arm-vs-arm delta.
+BO_ACQ_MIN_SEC = 2700.0   # 45 min, the floor itself
+BO_SENSOR_DT = 60.0       # eval sensor cadence; MUST match nav_sensor_dt
+BO_W0 = max(2, int(round(BO_ACQ_MIN_SEC / BO_SENSOR_DT)))   # derived
 BO_ACQ_EVERY = 15         # retry cadence, in new observations
 BO_ARC_MAX = 400          # cap the batch arc (cost is superlinear in window)
 
@@ -538,7 +551,10 @@ def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
             if acq is not None and acq[4]:
                 x_e, P_e = acq[0], acq[1]
                 dt_fwd = times[-1] - times[-w]
-                acq_latency.append(dt_fwd / 60.0 + BO_W0)
+                # BLOCKER-2: SIM SECONDS. This used to be
+                # `dt_fwd/60 + BO_W0`, i.e. observations — which equals
+                # minutes only at dt_tick = 60 s and was printed as "min".
+                acq_latency.append(dt_fwd + BO_W0 * BO_SENSOR_DT)
                 # epoch error against truth, the number MAJOR-2 says the gates
                 # do NOT certify
                 tgt_epoch = om.propagate_cartesian(tgt_cart, -dt_fwd)
@@ -688,7 +704,8 @@ def run_bo(num_episodes, noise_scale=1.0, q_a=BO_Q_A, seed=42, meas_seed=1234,
         flat_rho=np.array(flat_rho), flat_pe=np.array(flat_pe),
         flat_ve=np.array(flat_ve), flat_slr=np.array(flat_slr),
         flat_acq=np.array(flat_acq),
-        acq_latency=np.array(acq_latency), acq_epoch_err=np.array(acq_epoch_err),
+        acq_latency_s=np.array(acq_latency),
+        acq_latency=np.array(acq_latency),   # deprecated alias, SECONDS now acq_epoch_err=np.array(acq_epoch_err),
         n_acq_fail=n_acq_fail, n_diverge=n_diverge,
         blind_dec=np.array(ep_blind_dec), dec=np.array(ep_dec),
         minrho=np.array(ep_minrho),
@@ -763,8 +780,9 @@ def _bo_report(r):
     print(f"  {'':22s} causes: {causes}")
     if r['acq_latency'].size:
         print(f"  {'':22s} acquisition: latency median "
-              f"{np.median(r['acq_latency']):.0f} min "
-              f"(p90 {np.percentile(r['acq_latency'],90):.0f}), "
+              f"{np.median(r['acq_latency']):.0f} s "
+              f"({np.median(r['acq_latency'])/60:.1f} min, p90 "
+              f"{np.percentile(r['acq_latency'],90):.0f} s), "
               f"EPOCH error vs truth median "
               f"{np.median(r['acq_epoch_err'])/1e3:.1f} km "
               f"(p90 {np.percentile(r['acq_epoch_err'],90)/1e3:.1f} km, "
