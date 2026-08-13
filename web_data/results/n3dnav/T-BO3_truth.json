@@ -1,0 +1,23 @@
+{
+ "label": "T-BO3/truth",
+ "success": 200,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 200
+ },
+ "md5": "ba1769ea8181adf7b029002ca0ac6417",
+ "n_actions": 3477,
+ "mean_len": 17.385,
+ "dv_med_ms": 246.4213555946656,
+ "minrho_med_m": 0.0,
+ "wall_s": 0.23761320114135742,
+ "rung": "X3",
+ "nav_mode": "truth",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/pufferlib/experiments_n3dnav/T-BO3/puffer_orbital_nav_p8y9p1qz/model_puffer_orbital_nav_000382.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}

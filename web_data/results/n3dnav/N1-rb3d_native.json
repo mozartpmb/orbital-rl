@@ -1,0 +1,24 @@
+{
+ "label": "N1-rb3d/native",
+ "success": 200,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 200
+ },
+ "md5": "6ae054fbc91f34eadb9d842f91be6c5e",
+ "n_actions": 3563,
+ "mean_len": 17.815,
+ "dv_med_ms": 261.59901797104817,
+ "minrho_med_m": 70083.90424432367,
+ "wall_s": 69.72683477401733,
+ "repole_total": 0,
+ "rung": "X3",
+ "nav_mode": "rb_ekf",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/pufferlib/experiments_n3dnav/N1-rb3d/puffer_orbital_nav_qf5dgd94/model_puffer_orbital_nav_000382.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}

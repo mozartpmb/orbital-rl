@@ -1,0 +1,23 @@
+{
+ "label": "T-truth3d/truth",
+ "success": 200,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 200
+ },
+ "md5": "62f66b07eadf7e04c738c868b290d51c",
+ "n_actions": 3320,
+ "mean_len": 16.6,
+ "dv_med_ms": 238.74367975148738,
+ "minrho_med_m": 0.0,
+ "wall_s": 0.23746490478515625,
+ "rung": "X3",
+ "nav_mode": "truth",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/models/t3/n3dnav_warm_X3.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}

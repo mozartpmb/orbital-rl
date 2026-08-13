@@ -1,0 +1,33 @@
+{
+ "label": "T-BO3/native",
+ "success": 200,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 200
+ },
+ "md5": "8df04e6ba5e4da111332797ab18da7c0",
+ "n_actions": 3696,
+ "mean_len": 18.48,
+ "dv_med_ms": 246.42136068361788,
+ "minrho_med_m": 69778.10781281017,
+ "wall_s": 344.80795216560364,
+ "acq_n": 200,
+ "acq_per_ep": 0.9950248756218906,
+ "acq_latency_med_s": 2760.0,
+ "acq_latency_p90_s": 2760.0,
+ "acq_fail": 0,
+ "acq_attempts": 246,
+ "chol_fallback": 0,
+ "acq_epoch_err_med_m": 10067.24778527921,
+ "acq_epoch_err_max_m": 465883.9494609225,
+ "repole_total": 81,
+ "rung": "X3",
+ "nav_mode": "bearings_only",
+ "acq": "real",
+ "ckpt": "/Users/pete/space_training/pufferlib/experiments_n3dnav/T-BO3/puffer_orbital_nav_p8y9p1qz/model_puffer_orbital_nav_000382.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}
