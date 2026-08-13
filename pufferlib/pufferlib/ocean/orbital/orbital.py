@@ -176,6 +176,17 @@ class Orbital(pufferlib.PufferEnv):
         # Φ match-term squash: 0 = min(1, x) (legacy; required for the A2
         # bit-exact anchor), 1 = x/(1+x) (bounded, strictly monotone, no dead zone).
         shape_match_squash=0,
+        # ── ext-j2 (2026-08-13). Binding spec:
+        # scripts/orbital/ext_recon/reports/j2_A_design.md; implementation notes
+        # and validation numbers in J2_DESIGN_NOTES.md.
+        # 0 = off, the verbatim legacy propagator (bit-exact anchor).
+        # 1 = SECULAR mean-element J2: constant Ω̇/ω̇/Ṁ corrections from (a,e,i),
+        #     which secular J2 leaves invariant — so the map stays closed-form at
+        #     any dt and one warp of τ·DT equals τ steps of DT (≤2.3e-8 m).
+        # Requires dim3_mode=1 and num_debris=0 (asserted in C). At
+        # i_target_rad=0 the plane channel is provably inert (C warns).
+        # Enables obs[29] = cos i_sat, obs[30] = cos i_target; 31/32 stay 0.
+        j2_mode=0,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -262,6 +273,7 @@ class Orbital(pufferlib.PufferEnv):
             obs_di_scale_rad=obs_di_scale_rad,
             obs_de_scale=obs_de_scale,
             shape_match_squash=shape_match_squash,
+            j2_mode=j2_mode,
             # Red-team #4: per-sub-step trajectory recording (352 B/record,
             # ~1 MB/env buffer) only when trajectories are actually saved.
             log_enabled=1 if traj_log_dir else 0,

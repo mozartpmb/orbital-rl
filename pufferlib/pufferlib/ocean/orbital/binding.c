@@ -325,8 +325,49 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->obs_di_scale_rad        = (double)unpack(kwargs, "obs_di_scale_rad");
     env->obs_de_scale            = (double)unpack(kwargs, "obs_de_scale");
     env->shape_match_squash      = (int)unpack(kwargs, "shape_match_squash");
+    /* ext-j2 kwarg (default 0 = verbatim legacy propagator, bit-exact) */
+    env->j2_mode                 = (int)unpack(kwargs, "j2_mode");
     env->last_terminal_cause     = TERM_NONE;
     env->last_traj_records       = 0;
+
+    /* ── ext-j2 preconditions (j2_A_design §4.1) ─────────────────────────────
+     * (1) j2_mode = 1 REQUIRES dim3_mode = 1. Hard error, not a style rule: at
+     *     dim3_mode = 0 every orbit is exactly equatorial by construction, so
+     *     J2 would take the i = 0 branch for the chaser AND the target and
+     *     apply ϖ̇ = +k to both — a real precession of the 2D lineage's ω that
+     *     no 2D anchor and no 2D checkpoint covers.
+     * (2) j2_mode = 1 REQUIRES num_debris = 0. Inherited from dim3_mode: the
+     *     3D obs block occupies body slots 21-32.
+     * (3) i_target_rad = 0 under j2_mode = 1 is a WARNING, not an error. At an
+     *     equatorial target Δi_rel = i_s regardless of Ω_s, so differential Ω̇
+     *     cannot move the plane term at all — measured Δ(dv_pl) = +0.00 m/s and
+     *     ΔΦ = −0.00000 over a full 6000-step cap at every Δi (§2.2, the 4th
+     *     instance of this project's inert-knob class). It is NOT an error
+     *     because anchors J-A3 (equatorial closure) and J-A5 (inertness guard)
+     *     are DEFINED at i_t = 0 and must remain runnable; the design's §4.1
+     *     "assert i_target_rad > 0" contradicts its own §4.2 on that point. */
+    if (env->j2_mode) {
+        if (!env->dim3_mode) {
+            PyErr_SetString(PyExc_ValueError,
+                "j2_mode=1 requires dim3_mode=1 (j2_A_design §1.4/§4.1): at "
+                "dim3_mode=0 every orbit is exactly equatorial and J2 would "
+                "apply an unanchored varpi-dot precession to the 2D lineage.");
+            return -1;
+        }
+        if (env->num_debris_max > 0) {
+            PyErr_SetString(PyExc_ValueError,
+                "j2_mode=1 requires num_debris_max=0 (inherited from dim3_mode: "
+                "the 3D/J2 obs block occupies body slots 21-32).");
+            return -1;
+        }
+        if (env->i_target_rad == 0.0) {
+            fprintf(stderr,
+                "[orbital/j2] WARNING: j2_mode=1 with i_target_rad=0. The J2 "
+                "plane channel is provably INERT at an equatorial target "
+                "(j2_A_design §2.2: d(dv_pl) = 0.00 m/s over a full cap at "
+                "every di). Fine for the J-A3/J-A5 anchors; wrong for training.\n");
+        }
+    }
     return 0;
 }
 
