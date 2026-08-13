@@ -1,0 +1,99 @@
+ext-3dnav anchor re-run — after adding vec_get_state to binding.c
+date: 2026-08-13T00:17:33Z   parent commit: 963d394
+build: python setup.py build_ext --inplace --force   (-O2 -flto, confirmed in the compile line)
+
+Why this file exists (n3d_REDTEAM MAJOR-6): the build is -O2 -flto, so adding a
+translation-unit-level function can change cross-TU inlining and therefore FP code
+generation inside fill_observations and compute_phi. The probability is low; the cost
+of being wrong is the whole bit-exact lineage. Anchors are RE-RUN after any binding.c
+or toolchain change, never assumed.
+
+EXPECTED (pre-change lineage values):
+  legacy       26/200  (success=26, collision=1, safety_cap=142, stranded=31)
+  T3 canonical 100/100, and OrbitalNav(nav_mode='truth') md5-identical to it
+  A2           0 double mismatches / 200000 draws, all four cells
+
+==============================================================================
+A2  Phi(shaping_mode=2) == Phi(shaping_mode=1) at di=0, BITWISE
+  cc -O2 -flto -lm -I pufferlib/pufferlib/ocean/orbital scripts/orbital/ext3d/a2_bitexact.c
+==============================================================================
+=== ext-3d anchor A2: Φ(mode 2) == Φ(mode 1) at Δi = 0, bitwise ===
+T3 weights  w_m=0.35 dv_ref=300        n=200000  double mismatches=0 (0.0000%)  max|ΔΦ|=0.000e+00  min(1,·) saturated=5.130%
+3D weights  w_m=0.8166667 ref=700      n=200000  double mismatches=0 (0.0000%)  max|ΔΦ|=0.000e+00  min(1,·) saturated=0.000%
+wide  e<=0.30, 300-8000 km, ref=700    n=200000  double mismatches=0 (0.0000%)  max|ΔΦ|=0.000e+00  min(1,·) saturated=77.172%
+e = 0 exactly (ω degeneracy)          n=200000  double mismatches=0 (0.0000%)  max|ΔΦ|=0.000e+00  min(1,·) saturated=0.000%
+
+==============================================================================
+V1  closed-loop replay anchors (verify_extnav.py --stage v1 --eps 100)
+==============================================================================
+== V1  puffer_orbital untouched + truth-mode passthrough ==========
+  T3 ckpt     /Users/pete/space_training/models/t3/seed42_L2_headline.pt
+  legacy ckpt /Users/pete/space_training/pufferlib/experiments/puffer_orbital_177765503091/model_puffer_orbital_000325.pt
+
+-- legacy anchor (Phase-5e ckpt under corrected dynamics, seed 42, expect 26/200) --
+  legacy Orbital             success 26/200 =  13.0%   gave_up 0   decisions 193570 (mean 967.9/ep)   md5 f8a2388f0992   8s
+                             causes: success=26, collision=1, safety_cap=142, stranded=31
+
+-- T3 canonical anchor (seed 123, expect 200/200) --
+  T3 Orbital                 success 100/100 = 100.0%   gave_up 0   decisions 2324 (mean 23.2/ep)   md5 68b267bed369   0s
+                             causes: success=100
+
+-- OrbitalNav(nav_mode='truth') closed loop, same ckpt/seed --
+  T3 OrbitalNav truth        success 100/100 = 100.0%   gave_up 0   decisions 2324 (mean 23.2/ep)   md5 68b267bed369   0s
+                             causes: success=100
+
+  ACTION STREAM IDENTICAL: True   (2324 vs 2324 decisions, md5 68b267bed3696584 vs 68b267bed3696584)
+
+
+==============================================================================
+ext-3d V4 sampler / phase-gap / frame gates (scripts/orbital/ext3d/v4_gates.c)
+==============================================================================
+=== ext-3d V4 gates (real c_reset / fill_observations) ===
+
+== G1  relative-plane sampler: realized Δi_rel vs the knob ==
+i_t[deg] knob[deg]          n     max/knob     p90/knob  frac>knob
+     0.0      0.05      40000       1.0000       0.9491      0.00%
+     0.0      0.25      40000       1.0000       0.9485      0.00%
+     0.0      0.40      40000       1.0000       0.9478      0.00%
+     0.0      1.00      40000       1.0000       0.9490      0.00%
+     0.0      2.00      40000       1.0000       0.9482      0.00%
+    51.6      0.05      40000       1.0000       0.9483      0.00%
+    51.6      0.25      40000       1.0000       0.9489      0.00%
+    51.6      0.40      40000       1.0000       0.9480      0.00%
+    51.6      1.00      40000       1.0000       0.9487      0.00%
+    51.6      2.00      40000       1.0000       0.9495      0.00%
+    90.0      0.05      40000       1.0000       0.9474      0.00%
+    90.0      0.25      40000       1.0000       0.9498      0.00%
+    90.0      0.40      40000       1.0000       0.9493      0.00%
+    90.0      1.00      40000       1.0000       0.9500      0.00%
+    90.0      2.00      40000       1.0000       0.9484      0.00%
+    98.0      0.05      40000       1.0000       0.9497      0.00%
+    98.0      0.25      40000       1.0000       0.9490      0.00%
+    98.0      0.40      40000       1.0000       0.9485      0.00%
+    98.0      1.00      40000       1.0000       0.9481      0.00%
+    98.0      2.00      40000       1.0000       0.9493      0.00%
+
+== G2  phase_gap_mode=1: realized mean-longitude gap, PER DRAW ==
+i_t[deg]  di[deg]          n   err p50[deg]   err p90[deg]   err max[deg]
+     0.0     0.00      20000      7.806e-17      7.627e-14      2.036e-13
+     0.0     0.40      20000      7.806e-17      1.017e-13      4.071e-13
+     0.0     1.00      20000      7.806e-17      1.017e-13      3.053e-13
+     0.0     2.00      20000      7.806e-17      1.017e-13      3.308e-13
+    51.6     0.00      20000      4.325e-13      2.748e-12      9.064e-09
+    51.6     0.40      20000      4.325e-13      2.672e-12      5.138e-09
+    51.6     1.00      20000      4.325e-13      2.697e-12      1.065e-09
+    51.6     2.00      20000      4.580e-13      2.646e-12      6.895e-09
+
+== G3  frame gates ==
+(a) rotation about ĥ_t, di_max=1.0°, n=4000
+    success-relevant obs slots  max |Δ| = 0.000e+00   (worst slot -1)
+    grandfathered raw-ω/θ slots max |Δ| = 1.999e+00   (variant BY DESIGN)
+    Φ(mode 2)                   max |Δ| = 9.948e-14
+    Δλ (target gauge)           max |Δ| = 1.771e-11 deg
+    |Δr| rel / |Δv| abs         max      = 1.111e-13 / 4.284e-10 m/s
+(b) general SO(3), target-plane gauge vs plain λ = M+ω+Ω
+   di[deg]          n   gauge max[deg]   plain p90[deg]   plain max[deg]
+      0.00       4000        3.181e-08           0.0000           0.0000
+      0.25       4000        2.404e-09           0.2384           3.8709
+      1.00       4000        5.224e-10           0.9590          24.2904
+      2.00       4000        6.141e-10           2.0180          75.4840

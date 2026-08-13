@@ -351,6 +351,47 @@ class Orbital(pufferlib.PufferEnv):
         """
         return binding.vec_get_episode_result(self.c_envs, env_idx)
 
+    # ── read-only full-state accessor (ext-3dnav MAJOR-5/MAJOR-6) ───────────
+    # Column layout of the (num_envs, 30) float64 block filled by
+    # binding.c::fill_state_row. The plane is carried as the UNIT
+    # ANGULAR-MOMENTUM VECTOR, never as a bare RAAN: obs[21-28] is
+    # SO(3)-invariant so the node longitude is absent from the observation by
+    # construction, and reconstructing i_s from (Δi_rel, Ω_s) is two-valued
+    # whenever the target is tilted.
+    STATE_COLS = (
+        'sat_a', 'sat_e', 'sat_M', 'sat_theta', 'sat_omega',
+        'sat_hx', 'sat_hy', 'sat_hz',
+        'sat_x', 'sat_y', 'sat_z', 'sat_vx', 'sat_vy', 'sat_vz',
+        'fuel_frac',
+        'tgt_a', 'tgt_e', 'tgt_M', 'tgt_theta', 'tgt_omega',
+        'tgt_hx', 'tgt_hy', 'tgt_hz',
+        'tgt_x', 'tgt_y', 'tgt_z', 'tgt_vx', 'tgt_vy', 'tgt_vz',
+        'step',
+        # Element-route eccentricity 3-vectors (orb_evec). Handed over rather
+        # than re-derived: the Cartesian route (v x h)/mu - r_hat is a
+        # different FP path (3d_REDTEAM BLOCKER-2, 87.7% of draws), and the
+        # element route cannot be rebuilt from (h_hat, omega) because it needs
+        # RAAN, which is exactly what is ill-conditioned as i -> 0.
+        'sat_ex', 'sat_ey', 'sat_ez',
+        'tgt_ex', 'tgt_ey', 'tgt_ez',
+    )
+    STATE_FLOATS = 36
+
+    def get_state(self, out=None):
+        """(num_envs, 36) float64 chaser+target truth. Pure read.
+
+        Caller-owned out-array (the vec_get_trajectory pattern) so the hot path
+        does not allocate 1024x30x8 B per step per worker. Passing the same
+        buffer every call is the intended use.
+        """
+        if out is None:
+            if getattr(self, '_state_buf', None) is None:
+                self._state_buf = np.zeros(
+                    (self.num_agents, self.STATE_FLOATS), dtype=np.float64)
+            out = self._state_buf
+        binding.vec_get_state(self.c_envs, out)
+        return out
+
     def render(self):
         binding.vec_render(self.c_envs, 0)
 

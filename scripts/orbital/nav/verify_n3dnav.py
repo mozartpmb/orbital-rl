@@ -228,6 +228,124 @@ def stage_a2(args):
     return dict(ok=bool(ok))
 
 
+# ── b1: MAJOR-5 / MAJOR-6 — the read-only C getter ───────────────────────────
+def stage_b1(args):
+    print('== b1  MAJOR-5/6  vec_get_state: read-only, plane as h-hat =========')
+    from pufferlib.ocean.orbital.orbital import Orbital
+
+    n = 64
+    env = Orbital(num_envs=n, seed=5, **_D3_KW)
+    env.reset(seed=11)
+    S = env.get_state()
+    C = {c: i for i, c in enumerate(Orbital.STATE_COLS)}
+
+    ok = record('shape / dtype', S.shape == (n, 36) and S.dtype == np.float64,
+                f'{S.shape} {S.dtype}')
+
+    hs = S[:, C['sat_hx']:C['sat_hx'] + 3]
+    ht = S[:, C['tgt_hx']:C['tgt_hx'] + 3]
+    d = max(np.abs(np.linalg.norm(hs, axis=1) - 1.0).max(),
+            np.abs(np.linalg.norm(ht, axis=1) - 1.0).max())
+    ok &= record('|h-hat| == 1 to <= 4 ulp', d <= 4 * np.spacing(1.0),
+                 f'max||h|-1| {d:.3e} (sin^2+cos^2 rounding, not a normalisation)')
+
+    rs = S[:, C['sat_x']:C['sat_x'] + 3]
+    vs = S[:, C['sat_vx']:C['sat_vx'] + 3]
+    hv = np.cross(rs, vs)
+    hv /= np.linalg.norm(hv, axis=1)[:, None]
+    d = np.abs(hv - hs).max()
+    ok &= record('h-hat == unit(r x v)', d < 1e-14, f'max|diff| {d:.3e}')
+
+    rmag = (S[:, C['sat_a']] * (1.0 - S[:, C['sat_e']] ** 2)
+            / (1.0 + S[:, C['sat_e']] * np.cos(S[:, C['sat_theta']])))
+    d = np.abs(np.linalg.norm(rs, axis=1) - rmag).max()
+    ok &= record('Cartesian consistent with (a, e, theta)', d < 1e-6,
+                 f'max|diff| {d:.3e} m')
+
+    # The e-vectors are the ELEMENT route (orb_evec); they must agree with the
+    # Cartesian route in VALUE (they differ only in floating-point path).
+    es = S[:, C['sat_ex']:C['sat_ex'] + 3]
+    hvec = np.cross(rs, vs)
+    ecart = (np.cross(vs, hvec) / nm.MU
+             - rs / np.linalg.norm(rs, axis=1)[:, None])
+    d = np.abs(es - ecart).max()
+    ok &= record('sat e-vector (element route) == Cartesian route in value',
+                 d < 1e-12,
+                 f'max|diff| {d:.3e}; |e| = {np.linalg.norm(es, axis=1).max():.4f}')
+    d = np.abs(np.linalg.norm(es, axis=1) - S[:, C['sat_e']]).max()
+    ok &= record('|e-vector| == e element', d < 1e-15, f'max|diff| {d:.3e}')
+
+    # PURE READ. Interleaving 3 getter calls per step must not perturb the
+    # observation stream, the reward stream or the RNG (the getter draws no
+    # random numbers and mutates no env state; this proves it rather than
+    # asserting it).
+    def roll(with_getter):
+        e = Orbital(num_envs=n, seed=5, **_D3_KW)
+        o, _ = e.reset(seed=11)
+        rng = np.random.default_rng(0)
+        acc = [np.asarray(o, dtype=np.float32).copy()]
+        for _ in range(150):
+            if with_getter:
+                for _ in range(3):
+                    e.get_state()
+            o, r, t, tr, _ = e.step(rng.integers(0, 30, n).astype(np.int32))
+            acc.append(np.asarray(o, dtype=np.float32).copy())
+            acc.append(np.asarray(r, dtype=np.float32).copy().reshape(-1, 1)
+                       * np.ones((1, 38), dtype=np.float32))
+        e.close()
+        return np.stack(acc)
+
+    A, B = roll(False), roll(True)
+    ok &= record('getter is a PURE READ (obs+reward stream bit-identical)',
+                 np.array_equal(A, B),
+                 f'max|diff| {np.abs(A - B).max():.3e} over {A.size} values')
+
+    # MAJOR-5, the reason the plane is returned as a VECTOR. At i_t = 0 the
+    # observation carries (Delta_i_rel, u) and annihilates the node longitude
+    # exactly, so RAAN alone would be the missing d.o.f. — but the moment the
+    # target tilts, recovering i_s from (Delta_i_rel, Omega_s) is two-valued.
+    o = np.asarray(env.observations, dtype=np.float64)
+    di_scale = _D3_KW['di_max_rad']
+    u = S[:, C['sat_omega']] + S[:, C['sat_theta']]
+    i_s = np.arccos(np.clip(S[:, C['sat_hz']], -1.0, 1.0))
+    pred21 = i_s * np.cos(u) / di_scale
+    pred22 = -i_s * np.sin(u) / di_scale
+    d = max(np.abs(o[:, 21] - pred21).max(), np.abs(o[:, 22] - pred22).max())
+    ok &= record('obs[21,22] == (i_s cos u, -i_s sin u)/di_scale at i_t=0',
+                 d < 1e-6, f'max|diff| {d:.3e} (float32 obs quantisation)')
+
+    n_amb = _inclination_root_ambiguity(200, math.radians(51.6))
+    record('two-fold i_s ambiguity at i_t=51.6 deg (why NOT Omega_s)',
+           n_amb > 0.1,
+           f'{n_amb:.0%} of my 200 draws admit >= 2 inclination roots '
+           f'(n3d_REDTEAM measured 30% on its own draw distribution)')
+    env.close()
+    return dict(ok=bool(ok))
+
+
+def _inclination_root_ambiguity(n, i_t, seed=17):
+    """Fraction of draws where `cos di_rel = f(i_s)` has >= 2 roots in [0, pi).
+
+    This is what a RAAN-only getter would have to solve, per step, in the hot
+    path — a 2-D nonlinear solve with a discrete branch choice. Returning
+    h-hat removes the equation entirely.
+    """
+    rng = np.random.default_rng(seed)
+    hits = 0
+    for _ in range(n):
+        raan_t = rng.uniform(0, 2 * np.pi)
+        raan_s = rng.uniform(0, 2 * np.pi)
+        i_s_true = rng.uniform(0.0, np.pi * 0.9)
+        def hhat(i, O):
+            return np.array([np.sin(i) * np.sin(O), -np.sin(i) * np.cos(O),
+                             np.cos(i)])
+        c_true = float(hhat(i_s_true, raan_s) @ hhat(i_t, raan_t))
+        grid = np.linspace(1e-6, np.pi - 1e-6, 4001)
+        f = np.array([hhat(g, raan_s) @ hhat(i_t, raan_t) for g in grid]) - c_true
+        hits += int((np.diff(np.sign(f)) != 0).sum() >= 2)
+    return hits / n
+
+
 # Minimal C-env kwargs: no debris, LEO, the standing project configuration.
 _MIN_KW = dict(
     num_debris_min=0, num_debris_max=0,
@@ -240,7 +358,15 @@ _MIN_KW = dict(
 )
 
 
-STAGES = {'a1': stage_a1, 'a2': stage_a2}
+# ext-3d (dim3_mode=1) configuration: the X3 rung the campaign warm-starts from.
+_D3_KW = dict(_MIN_KW,
+              e_max_target=0.05, e_max_sat=0.05,
+              dim3_mode=1, di_max_rad=math.radians(1.0),
+              legacy_action_space=30,
+              shaping_mode=2, shape_w_lambda=1.0, shape_w_match=0.8166667,
+              shape_dv_ref_ms=700.0)
+
+STAGES = {'a1': stage_a1, 'a2': stage_a2, 'b1': stage_b1}
 
 
 def main():

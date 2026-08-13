@@ -6,6 +6,7 @@
 static PyObject* vec_get_trajectory(PyObject* self, PyObject* args);
 static PyObject* vec_get_episode_init_info(PyObject* self, PyObject* args);
 static PyObject* vec_get_episode_result(PyObject* self, PyObject* args);
+static PyObject* vec_get_state(PyObject* self, PyObject* args);
 
 /* Hook into env_binding.h method table — no trailing comma, the sentinel follows */
 #define MY_METHODS \
@@ -14,7 +15,9 @@ static PyObject* vec_get_episode_result(PyObject* self, PyObject* args);
     {"vec_get_episode_init_info", (PyCFunction)vec_get_episode_init_info, METH_VARARGS, \
      "Get last-reset info: (vec_handle, env_idx) -> (attempts:int, gave_up:int)"}, \
     {"vec_get_episode_result", (PyCFunction)vec_get_episode_result, METH_VARARGS, \
-     "Get last-episode outcome: (vec_handle, env_idx) -> (sim_steps:int, terminal_cause:int)"}
+     "Get last-episode outcome: (vec_handle, env_idx) -> (sim_steps:int, terminal_cause:int)"}, \
+    {"vec_get_state", (PyCFunction)vec_get_state, METH_VARARGS, \
+     "Read chaser+target state for ALL envs: (vec_handle, out_float64_(N,36)) -> N"}
 
 #define Env Orbital
 #include "../env_binding.h"
@@ -178,6 +181,95 @@ static PyObject* vec_get_episode_result(PyObject* self, PyObject* args) {
     }
     Orbital* env = vec->envs[env_idx];
     return Py_BuildValue("(ii)", env->last_episode_steps, env->last_terminal_cause);
+}
+
+/* ── vec_get_state ──────────────────────────────────────────────────────────
+ * Read-only accessor for the chaser and target states of EVERY env in one
+ * call. Exists because the 3D-nav wrapper cannot recover the chaser's orbit
+ * plane from the observation: the ext-3d block obs[21-28] is SO(3)-invariant
+ * by construction, so it carries (Δi_rel, u) and annihilates the inertial node
+ * longitude exactly (n3d_REDTEAM MAJOR-5, measured to 1.06e-15).
+ *
+ * n3d_REDTEAM MAJOR-5: the plane is returned as the UNIT ANGULAR-MOMENTUM
+ * VECTOR ĥ, NOT as the scalar Ω. Ω alone is sufficient only at i_target = 0;
+ * the moment the target is tilted, recovering i_s from (Δi_rel, Ω_s) requires
+ * solving `P sin i + Q cos i = cos Δi_rel`, which is two-valued — 30% of draws
+ * at i_t = 51.6° admit >= 2 inclination roots. ĥ is the plane itself: no
+ * branch, no solve, and it also honours orbital.h's CONSUMER RULE that no
+ * downstream channel may read `omega` or `raan` ALONE.
+ *
+ * The Cartesian states come from the env's OWN orbit_to_cartesian so the
+ * wrapper's reconstruction is on the identical FP path (including the
+ * value-gated 2D fast branch) rather than a re-derivation.
+ *
+ * Mechanics (n3d_REDTEAM MAJOR-6): caller-owned contiguous float64 out-array,
+ * mirroring vec_get_trajectory rather than vec_get_episode_init_info — a
+ * per-step allocating getter is 1024 x 30 x 8 B of churn per worker per step.
+ * Pure read: no RNG draw, no env mutation, no observation write. */
+#define STATE_FLOATS 36
+
+static void fill_state_row(const Orbital* env, double* o) {
+    const Orbit* s = &env->sat.orbit;
+    const Orbit* t = &env->target;
+    double hx, hy, hz, x, y, z, vx, vy, vz, ex, ey, ez;
+
+    o[0] = s->a;  o[1] = s->e;  o[2] = s->M;  o[3] = s->theta;  o[4] = s->omega;
+    orb_hhat(s, &hx, &hy, &hz);
+    o[5] = hx; o[6] = hy; o[7] = hz;
+    orbit_to_cartesian(s, &x, &y, &z, &vx, &vy, &vz);
+    o[8] = x; o[9] = y; o[10] = z; o[11] = vx; o[12] = vy; o[13] = vz;
+    o[14] = env->sat.fuel_mass / (env->sat.dry_mass + env->sat.fuel_mass);
+
+    o[15] = t->a; o[16] = t->e; o[17] = t->M; o[18] = t->theta; o[19] = t->omega;
+    orb_hhat(t, &hx, &hy, &hz);
+    o[20] = hx; o[21] = hy; o[22] = hz;
+    orbit_to_cartesian(t, &x, &y, &z, &vx, &vy, &vz);
+    o[23] = x; o[24] = y; o[25] = z; o[26] = vx; o[27] = vy; o[28] = vz;
+    o[29] = (double)env->step;
+
+    /* Inertial eccentricity 3-vectors, ELEMENT route (orb_evec), because that
+     * is the route obs[23] and obs[28] are built from in fill_observations.
+     * 3d_REDTEAM BLOCKER-2: the algebraically identical Cartesian route
+     * e = (v x h)/mu - r_hat is a different FP path and breaks the A2 anchor on
+     * 87.7% of draws, so the wrapper must not re-derive it — and it CANNOT
+     * re-derive the element route from (h_hat, omega) either, because that
+     * needs Omega, which is exactly the ill-conditioned quantity at i -> 0
+     * (the env pins raan = 0 there, while atan2(h_x, -h_y) on a zero vector
+     * returns pi). Hand it over instead. */
+    orb_evec(s, &ex, &ey, &ez);
+    o[30] = ex; o[31] = ey; o[32] = ez;
+    orb_evec(t, &ex, &ey, &ez);
+    o[33] = ex; o[34] = ey; o[35] = ez;
+}
+
+static PyObject* vec_get_state(PyObject* self, PyObject* args) {
+    if (PyTuple_Size(args) != 2) {
+        PyErr_SetString(PyExc_TypeError,
+            "vec_get_state(vec_handle, out_float64_array)");
+        return NULL;
+    }
+
+    PyObject* handle_obj = PyTuple_GetItem(args, 0);
+    VecEnv* vec = (VecEnv*)PyLong_AsVoidPtr(handle_obj);
+    if (!vec) { PyErr_SetString(PyExc_ValueError, "Invalid vec handle"); return NULL; }
+
+    PyArrayObject* arr = (PyArrayObject*)PyTuple_GetItem(args, 1);
+    if (!PyArray_Check(arr) || !PyArray_ISCONTIGUOUS(arr)
+        || PyArray_TYPE(arr) != NPY_DOUBLE) {
+        PyErr_SetString(PyExc_ValueError, "out_array must be contiguous float64");
+        return NULL;
+    }
+    if (PyArray_SIZE(arr) < (npy_intp)vec->num_envs * STATE_FLOATS) {
+        PyErr_SetString(PyExc_ValueError,
+            "out_array too small: need (num_envs, 36) float64");
+        return NULL;
+    }
+
+    double* out = (double*)PyArray_DATA(arr);
+    for (int i = 0; i < vec->num_envs; i++) {
+        fill_state_row(vec->envs[i], out + (size_t)i * STATE_FLOATS);
+    }
+    return PyLong_FromLong(vec->num_envs);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
