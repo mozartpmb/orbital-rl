@@ -1022,3 +1022,157 @@ def nees_nd(x, P, truth):
 
 # 95% two-sided chi-square bounds normalised by dof, 6 dof (nav_math has 4).
 NEES6_LO, NEES6_HI = 1.2373 / 6.0, 14.4494 / 6.0
+
+
+class BatchedRangeBearingEKF3D:
+    """N independent range + TWO-ANGLE EKFs on the target's inertial 6-state.
+
+    The N1-rb3d control arm. n3d_REDTEAM and N3D-C 5 both call it essential
+    rather than optional, and for the same reason T-RB was essential in NAV-F:
+    it is the arm in which range is MEASURED, so a maneuver buys the estimator
+    nothing. If the bearings-only treatment and this control move together, the
+    effect is not observability — it is guidance, or the box, or the warm start.
+    Without it a positive result has no attribution.
+
+    Deliberately the SAME sensor as the bearings-only arm plus one row: the two
+    angles are az/el in the identical epoch-frozen pole frame, with the same
+    isotropic-on-the-sphere noise (MAJOR-12), so the two arms differ in exactly
+    one measurement channel and nothing else.
+    """
+
+    STATE_DIM = 6
+    CART_DIM = 6
+    POS_DIM = 3
+    IDX_LNRHO = None          # Cartesian filter: no ln-rho slot (MAJOR-9)
+
+    def __init__(self, n, sigma_rho=nm.SIGMA_RHO_M,
+                 sigma_beta=nm.SIGMA_BETA_RAD, q_a=nm.Q_ACCEL_PSD_RB,
+                 sigma_v0=nm.SIGMA_V0, stm='analytic'):
+        self.n = n
+        self.sigma_rho = float(sigma_rho)
+        self.sigma_beta = float(sigma_beta)
+        self.q_a = float(q_a)
+        self.sigma_v0 = float(sigma_v0)
+        self.stm = stm
+        self.x = np.zeros((n, 6))
+        self.P = np.tile(np.eye(6) * 1e6, (n, 1, 1))
+        self.Rp = np.tile(np.eye(3), (n, 1, 1))
+        self._I6 = np.eye(6)
+        # Present so the wrapper's shared code paths do not have to branch.
+        self.n_repole = np.zeros(n, dtype=np.int64)
+        self.n_repole_total = 0
+
+    def _Q(self, dt):
+        q = getattr(self, '_Qc', None)
+        if q is None or q[0] != dt:
+            self._Qc = (dt, process_noise_nd(dt, self.q_a, 3))
+        return self._Qc[1]
+
+    def set_pole(self, idx, sat_cart):
+        if idx.size == 0:
+            return
+        self.Rp[idx] = pole_frame(sat_cart)
+
+    def repole(self, idx=None):
+        """No chart, no singularity, nothing to re-pole. The pole frame here is
+        only the measurement basis, and az/el noise is drawn against it exactly
+        as in the bearings-only arm so the two sensors are identical."""
+        return np.zeros(0, dtype=np.int64)
+
+    # -- init -----------------------------------------------------------------
+    def initialize(self, idx, sat_cart, rho, az, el):
+        """Single-measurement init: inverted measurement + circular velocity."""
+        if idx.size == 0:
+            return
+        Rp = self.Rp[idx]
+        u_p, e_az, e_el, _ = _basis(az, el)
+        u = np.einsum('nji,nj->ni', Rp, u_p)              # pole -> inertial
+        p = sat_cart[:, :3] + rho[:, None] * u
+        r = np.maximum(_norm(p), 1.0)
+        v_c = np.sqrt(MU / r)
+        # Prograde circular in the CHASER's plane — the least-committal guess
+        # that is still a bound orbit.
+        h = unit(cross(sat_cart[:, :3], sat_cart[:, 3:6]))
+        v = v_c[:, None] * unit(cross(h, p))
+        self.x[idx] = np.concatenate([p, v], axis=1)
+
+        # Measurement-Jacobian-consistent position block, velocity isotropic.
+        ce = np.maximum(np.cos(el), 1e-8)
+        a_az = np.einsum('nji,nj->ni', Rp, e_az)
+        a_el = np.einsum('nji,nj->ni', Rp, e_el)
+        s_t = (rho * self.sigma_beta)
+        P = np.zeros((idx.size, 6, 6))
+        P[:, :3, :3] = (self.sigma_rho ** 2) * u[:, :, None] * u[:, None, :]
+        P[:, :3, :3] += (s_t / ce)[:, None, None] ** 2 \
+            * a_az[:, :, None] * a_az[:, None, :]
+        P[:, :3, :3] += (s_t ** 2)[:, None, None] \
+            * a_el[:, :, None] * a_el[:, None, :]
+        ii = np.arange(3, 6)
+        P[:, ii, ii] = self.sigma_v0 ** 2
+        self.P[idx] = P
+
+    def set_cart(self, idx, x, P, sat_cart):
+        if idx.size == 0:
+            return
+        self.x[idx] = x
+        self.P[idx] = P
+
+    # -- predict / update -----------------------------------------------------
+    def predict(self, idx, dt, sat_from=None, sat_to=None, **_):
+        if idx.size == 0:
+            return np.zeros(0, dtype=bool)
+        X = self.x[idx]
+        if self.stm == 'analytic':
+            F, ok, Y = stm_analytic_nd(X, dt)
+        else:
+            F, ok, Y = stm_fd_nd(X, dt)
+        P = F @ self.P[idx] @ np.swapaxes(F, 1, 2) + self._Q(dt)
+        self.x[idx] = Y
+        self.P[idx] = 0.5 * (P + np.swapaxes(P, 1, 2))
+        return ok
+
+    def update(self, idx, sat_cart, rho, az, el):
+        """Joseph-form update on (range, az, el). Returns per-row NIS / 3."""
+        if idx.size == 0:
+            return np.zeros(0)
+        X = self.x[idx]
+        P = self.P[idx]
+        Rp = self.Rp[idx]
+        d = np.einsum('nij,nj->ni', Rp, X[:, :3] - sat_cart[:, :3])
+        rho_h = np.maximum(_norm(d), 1e-6)
+        u = d / rho_h[:, None]
+        el_h = np.arcsin(np.clip(u[:, 2], -1.0, 1.0))
+        az_h = np.arctan2(u[:, 1], u[:, 0])
+        _, e_az, e_el, _ = _basis(az_h, el_h)
+        ce = np.maximum(np.cos(el_h), 1e-8)
+
+        H = np.zeros((idx.size, 3, 6))
+        H[:, 0, :3] = np.einsum('ni,nij->nj', u, Rp)
+        H[:, 1, :3] = np.einsum('ni,nij->nj', e_az, Rp) / (rho_h * ce)[:, None]
+        H[:, 2, :3] = np.einsum('ni,nij->nj', e_el, Rp) / rho_h[:, None]
+
+        R = np.zeros((idx.size, 3, 3))
+        R[:, 0, 0] = max(self.sigma_rho, 1e-6) ** 2
+        R[:, 1, 1] = self.sigma_beta ** 2 / (ce * ce)
+        R[:, 2, 2] = self.sigma_beta ** 2
+
+        nu = np.stack([rho - rho_h, nm.wrap_pi(az - az_h), el - el_h], axis=1)
+        Ht = np.swapaxes(H, 1, 2)
+        S = H @ P @ Ht + R
+        Sinv = np.linalg.inv(S)
+        K = P @ Ht @ Sinv
+        self.x[idx] = X + (K @ nu[:, :, None])[:, :, 0]
+        IKH = self._I6 - K @ H
+        Pn = IKH @ P @ np.swapaxes(IKH, 1, 2) + K @ R @ np.swapaxes(K, 1, 2)
+        self.P[idx] = 0.5 * (Pn + np.swapaxes(Pn, 1, 2))
+        return np.einsum('ni,nij,nj->n', nu, Sinv, nu) / 3.0
+
+    # -- interface ------------------------------------------------------------
+    def mean_cov(self, idx):
+        return self.x[idx], self.P[idx]
+
+    def mean_cart(self, idx):
+        return self.x[idx]
+
+    def trace(self):
+        return np.trace(self.P, axis1=1, axis2=2)

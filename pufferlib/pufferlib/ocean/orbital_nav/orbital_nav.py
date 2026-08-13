@@ -284,12 +284,16 @@ class OrbitalNav(Orbital):
         if self._nav_mode == 'rb_ekf':
             q = self._nav_q_a if self._nav_q_a > 0 else nm.Q_ACCEL_PSD_RB
             if self._dim3:
-                raise NotImplementedError(
-                    "nav_mode='rb_ekf' under dim3 (the N1-rb3d control arm) is "
-                    'not part of Phase A; the bearings-only lane is.')
-            self._filt = nm.BatchedRangeBearingEKF(
-                n, sigma_rho=self._s_rho, sigma_beta=self._s_beta,
-                q_a=q, sigma_v0=self._nav_sigma_v0)
+                # N1-rb3d, the control arm. Same sensor as the bearings-only
+                # arm plus one row, so the two differ in exactly one
+                # measurement channel.
+                self._filt = n3.BatchedRangeBearingEKF3D(
+                    n, sigma_rho=self._s_rho, sigma_beta=self._s_beta,
+                    q_a=q, sigma_v0=self._nav_sigma_v0)
+            else:
+                self._filt = nm.BatchedRangeBearingEKF(
+                    n, sigma_rho=self._s_rho, sigma_beta=self._s_beta,
+                    q_a=q, sigma_v0=self._nav_sigma_v0)
         elif self._nav_mode == 'bearings_only':
             q = self._nav_q_a if self._nav_q_a > 0 else nm.Q_ACCEL_PSD_BO
             if self._dim3:
@@ -538,6 +542,12 @@ class OrbitalNav(Orbital):
                         * (self._s_beta / ce))
         el = el_t + self._rng.normal(0.0, self._s_beta, idx.size)
 
+        if self._nav_mode == 'rb_ekf':
+            rho = np.maximum(
+                rho_t + self._rng.normal(0.0, self._s_rho, idx.size), 1.0)
+            self._filt.initialize(idx, sat_c, rho, az, el)
+            return
+
         # The range prior, in the pole frame's own coordinates.
         u = np.stack([np.cos(el) * np.cos(az), np.cos(el) * np.sin(az),
                       np.sin(el)], axis=1)
@@ -635,16 +645,33 @@ class OrbitalNav(Orbital):
         self._filt.predict(idx, dt, sat_from, sat_to)
         Rp = self._filt.Rp[idx]
         d = tgt_to[:, :3] - sat_to[:, :3]
-        rho = np.maximum(np.linalg.norm(d, axis=1), 1.0)
-        u = np.einsum('nij,nj->ni', Rp, d / rho[:, None])
+        rho_t = np.maximum(np.linalg.norm(d, axis=1), 1.0)
+        u = np.einsum('nij,nj->ni', Rp, d / rho_t[:, None])
         el_t = np.arcsin(np.clip(u[:, 2], -1.0, 1.0))
         az_t = np.arctan2(u[:, 1], u[:, 0])
         ce = np.maximum(np.cos(el_t), 1e-8)
         az = nm.wrap_pi(az_t + self._rng.normal(0.0, 1.0, idx.size)
                         * (self._s_beta / ce))
         el = el_t + self._rng.normal(0.0, self._s_beta, idx.size)
+
+        if self._nav_mode == 'rb_ekf':
+            rho = np.maximum(
+                rho_t + self._rng.normal(0.0, self._s_rho, idx.size), 1.0)
+            self._filt.update(idx, sat_to, rho, az, el)
+            return
+
         self._filt.update(idx, sat_to, az, el)
         self._filt.repole(idx)
+
+        # Hook for an acquisition backend that needs the REALISED measurement
+        # arc rather than a re-draw of it — the eval-side real batch IOD. The
+        # training surrogate does not define it and pays nothing. It matters
+        # that this is the same az/el the filter was fed: a re-draw would give
+        # the batch solver an independent noise realisation and the two would
+        # disagree for a reason that is not the estimator.
+        rec = getattr(self._acq, 'record_meas', None)
+        if rec is not None:
+            rec(idx, Rp, sat_to, az, el)
 
         self._acq.accumulate(idx, sat_to, tgt_to, tgt_prev, dt)
         rows, sig = self._acq.ready(idx, dt)
