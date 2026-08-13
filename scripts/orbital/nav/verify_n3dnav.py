@@ -20,6 +20,30 @@ Stages
   a2  MAJOR-9  the divergence guard reads ln rho from the FILTER's own index.
                A healthy 6-state batch must flag ZERO rows; the pre-fix guard
                (hard-coded y[:,3]) flags every row of every step forever.
+  b1  MAJOR-5/6  vec_get_state: shape, h-hat identities, Cartesian-vs-element
+               consistency, and a PURE-READ proof (interleaved getter calls
+               leave the observation AND reward stream bit-identical).
+  c1  BLOCKER-4  the 19-slot encode: recon exactness against the C's own
+               observation, MAJOR-15's recon-cart, the leakcheck gate in both
+               directions, and the gate tested against a deliberately leaky and
+               a deliberately over-broad encode. Plus MAJOR-14's slot-dependent
+               clamp.
+  d1  BLOCKER-1  the MSC chart pole. Reproduces the pole table (N3D-C 3b is
+               exact gimbal lock in the coplanar anchor), the el == 0
+               2D-reduction anchor, the closed-form guard-trigger condition,
+               the re-pole as an exact similarity transform (round trip 1e-12,
+               NEES continuity, per-row counter), and a closed-loop sweep
+               through the regime the prototype skipped.
+  e1  BLOCKER-3  the analytic 3D STM: symplecticity, the universal-variable
+               oracle, oracle central differences, the group property, the 2D
+               reduction, and the before/after tick-time table.
+
+Two conventions worth knowing before reading the output:
+  * `record` is a pass/fail GATE. `note` is a measured FINDING that is not a
+    gate — a projection that came in low, or a correction to the spec. They are
+    kept apart so the ladder's exit status means "a gate broke", nothing else.
+  * every timing is min-of-batches with the ops interleaved round-robin, so a
+    busy machine cannot turn a ratio into a result.
 """
 
 import argparse
@@ -41,12 +65,24 @@ ORBITAL_H = os.path.join(WT, 'pufferlib', 'pufferlib', 'ocean',
                          'orbital', 'orbital.h')
 
 _RESULTS = []
+_NOTES = []
 
 
 def record(name, ok, detail=''):
     _RESULTS.append((name, bool(ok), detail))
     print(f"  [{'PASS' if ok else 'FAIL'}] {name}" + (f"   {detail}" if detail else ''))
     return bool(ok)
+
+
+def note(name, detail=''):
+    """A measured FINDING that is not a pass/fail gate.
+
+    Kept distinct on purpose: a projection that was not met, or a correction to
+    the spec, must be visible in the ladder output without turning the ladder's
+    own exit status into a mix of "a gate broke" and "a number came in low".
+    """
+    _NOTES.append((name, detail))
+    print(f'  [NOTE] {name}' + (f'   {detail}' if detail else ''))
 
 
 # ── C-source parsing (so the tables cannot drift silently) ───────────────────
@@ -315,9 +351,9 @@ def stage_b1(args):
                  d < 1e-6, f'max|diff| {d:.3e} (float32 obs quantisation)')
 
     n_amb = _inclination_root_ambiguity(200, math.radians(51.6))
-    record('two-fold i_s ambiguity at i_t=51.6 deg (why NOT Omega_s)',
-           n_amb > 0.1,
-           f'{n_amb:.0%} of my 200 draws admit >= 2 inclination roots '
+    note('two-fold i_s ambiguity at i_t=51.6 deg (why the getter returns '
+         'h-hat, NOT Omega_s)',
+         f'{n_amb:.0%} of my 200 draws admit >= 2 inclination roots '
            f'(n3d_REDTEAM measured 30% on its own draw distribution)')
     env.close()
     return dict(ok=bool(ok))
@@ -537,9 +573,9 @@ def stage_c1(args):
     base = obs_c.copy(); enc.write(base, st, tt['cart'])
     alt = obs_c.copy(); enc.write(alt, st, _alongtrack_shift(tt['cart']))
     still = [int(s) for s in slots if not (base[:, s] != alt[:, s]).any()]
-    record('NOTE: the red-team\'s example probe (+1000 km ALONG-TRACK) is '
-           'NOT a valid leakcheck garbage', len(still) > 0,
-           f'it leaves {still} bit-identical — (r + d v-hat) x v = r x v so '
+    note("the red-team's example probe (+1000 km ALONG-TRACK) is NOT a valid "
+         'leakcheck garbage',
+         f'it leaves {still} bit-identical — (r + d v-hat) x v = r x v so '
            f'h-hat-t never moves, and every induced change is in-plane')
 
     # ── MAJOR-14: slot-dependent clamp ──────────────────────────────────────
@@ -567,6 +603,452 @@ def stage_c1(args):
     return dict(ok=bool(ok))
 
 
+
+
+# ── d1: BLOCKER-1 — the MSC chart pole and the re-pole ───────────────────────
+def _pair_geometry(di_deg, rho_inplane_m, a=6771e3, n_steps=200):
+    """Chaser/target pair: same circular LEO orbit, an along-track separation,
+    and a relative inclination. Propagated over one full orbit."""
+    from pufferlib.ocean.orbital_nav import nav_math3d as n3
+    di = math.radians(di_deg)
+    th0 = 0.7
+    dth = rho_inplane_m / a
+    tgt0 = n3.orbit_to_cartesian_3d(np.array([a]), np.array([0.0]),
+                                    np.array([th0]), np.array([0.0]),
+                                    np.array([0.0]), np.array([0.0]))
+    sat0 = n3.orbit_to_cartesian_3d(np.array([a]), np.array([0.0]),
+                                    np.array([th0 - dth]), np.array([0.0]),
+                                    np.array([di]), np.array([0.0]))
+    T = 2.0 * np.pi * math.sqrt(a ** 3 / n3.MU)
+    ts = np.linspace(0.0, T, n_steps)
+    S = n3.propagate_cartesian_nd(np.repeat(sat0, n_steps, axis=0), ts)[0]
+    G = n3.propagate_cartesian_nd(np.repeat(tgt0, n_steps, axis=0), ts)[0]
+    return S, G, ts
+
+
+def _max_el(S, G, pole):
+    """max |el| (deg) of the LOS about a FIXED unit pole."""
+    d = G[:, :3] - S[:, :3]
+    u = d / np.linalg.norm(d, axis=1)[:, None]
+    return float(np.degrees(np.abs(np.arcsin(np.clip(u @ pole, -1.0, 1.0)))).max())
+
+
+def stage_d1(args):
+    print('== d1  BLOCKER-1  MSC chart pole + re-pole ========================')
+    from pufferlib.ocean.orbital_nav import nav_math3d as n3
+
+    # (1) reproduce the red-team's pole table
+    print('  max |el| over one orbit, N3D-A pole (h-hat_c) vs N3D-C 3b pole '
+          '(u0 x h-hat_t):')
+    print(f"    {'geometry':38s} {'h-hat_c':>10s} {'u0 x h-hat_t':>14s}")
+    cells = [('coplanar 5 km  (2D-reduction anchor)', 0.0, 5e3),
+             ('coplanar 10 km', 0.0, 10e3),
+             ('di=0.02 deg, 5 km  (tight box)', 0.02, 5e3),
+             ('di=0.0417 deg, 5 km  (box plane tol)', 0.0417, 5e3),
+             ('di=1.0 deg, rho_inplane 5 km  (X3)', 1.0, 5e3),
+             ('di=1.0 deg, 300 km', 1.0, 300e3)]
+    tab = {}
+    for name, di, rho in cells:
+        # 40,001 samples over one orbit: the N3D-C pole's singularity is a
+        # crossing, not a plateau, so a coarse sweep under-reports it (a
+        # 200-sample grid tops out at 89.55 deg purely by missing the crossing).
+        S, G, _ = _pair_geometry(di, rho, n_steps=40001)
+        pA = n3.pole_frame(S[:1])[0, 2]                    # h-hat_c(t0)
+        d0 = G[0, :3] - S[0, :3]
+        u0 = d0 / np.linalg.norm(d0)
+        ht = n3.unit(n3.cross(G[0, :3], G[0, 3:6])[None])[0]
+        pC = n3.unit(n3.cross(u0[None], ht[None]))[0]
+        eA, eC = _max_el(S, G, pA), _max_el(S, G, pC)
+        tab[name] = (eA, eC)
+        print(f'    {name:38s} {eA:9.2f}  {eC:13.2f}')
+
+    ok = record('N3D-C 3b pole is EXACT gimbal lock in the coplanar anchor',
+                abs(tab['coplanar 5 km  (2D-reduction anchor)'][1] - 90.0) < 1e-3,
+                f"{tab['coplanar 5 km  (2D-reduction anchor)'][1]:.4f} deg — "
+                f'this is why it is deleted from the spec')
+    ok &= record('N3D-A pole gives el == 0 in the coplanar anchor '
+                 '(the 2D-reduction regression test)',
+                 tab['coplanar 5 km  (2D-reduction anchor)'][0] < 1e-9,
+                 f"{tab['coplanar 5 km  (2D-reduction anchor)'][0]:.2e} deg")
+    ok &= record('N3D-A pole DOES arm the guard at the X3 rung '
+                 '(the caveat the prototype never exercised)',
+                 tab['di=1.0 deg, rho_inplane 5 km  (X3)'][0] > 45.0,
+                 f"{tab['di=1.0 deg, rho_inplane 5 km  (X3)'][0]:.2f} deg "
+                 f'> 45 deg trigger')
+
+    # (2) the 2D reduction, exactly: at di = 0, el and w_e are identically zero
+    S, G, _ = _pair_geometry(0.0, 5e3, n_steps=60)
+    Rp = np.repeat(n3.pole_frame(S[:1]), S.shape[0], axis=0)
+    y = n3.msc6_encode(S, G, Rp)
+    ok &= record('2D reduction: el == 0 and w_e == 0 at di = 0',
+                 np.abs(y[:, n3.IDX_EL]).max() < 1e-15
+                 and np.abs(y[:, n3.IDX_WE]).max() < 1e-18,
+                 f'max |el| {np.abs(y[:, n3.IDX_EL]).max():.2e} rad, '
+                 f'max |w_e| {np.abs(y[:, n3.IDX_WE]).max():.2e} rad/s')
+
+    # (3) the closed-form guard-trigger condition
+    #     |el| > X  <=>  rho_inplane < rho_oop / tan(X),  rho_oop <= r sin(di)
+    r = 6771e3
+    di = 1.0
+    print('  guard-trigger crossing at di = 1.0 deg (sweep rho_inplane):')
+    rows = []
+    for rho in (20e3, 40e3, 68e3, 90e3, 118e3, 160e3, 300e3):
+        S, G, _ = _pair_geometry(di, rho)
+        pA = n3.pole_frame(S[:1])[0, 2]
+        rows.append((rho, _max_el(S, G, pA)))
+        print(f'    rho_inplane {rho/1e3:6.0f} km   max |el| {rows[-1][1]:6.2f} deg')
+    pred60 = 0.577 * r * math.sin(math.radians(di))
+    pred45 = 1.000 * r * math.sin(math.radians(di))
+    def crossing(deg):
+        below = [x for x, e in rows if e > deg]
+        above = [x for x, e in rows if e <= deg]
+        return (max(below) if below else 0.0, min(above) if above else np.inf)
+    c60, c45 = crossing(60.0), crossing(45.0)
+    ok &= record('closed form |el|>60 <=> rho_inplane < 0.577 r sin(di) '
+                 f'= {pred60/1e3:.0f} km',
+                 c60[0] <= pred60 <= c60[1],
+                 f'measured crossing bracketed by [{c60[0]/1e3:.0f}, '
+                 f'{c60[1]/1e3:.0f}] km')
+    ok &= record('closed form |el|>45 <=> rho_inplane < 1.000 r sin(di) '
+                 f'= {pred45/1e3:.0f} km',
+                 c45[0] <= pred45 <= c45[1],
+                 f'measured crossing bracketed by [{c45[0]/1e3:.0f}, '
+                 f'{c45[1]/1e3:.0f}] km')
+    note('CONSEQUENCE: the 45 deg trigger does NOT keep re-poles out of the '
+         '30 km success box',
+         f'it arms below {pred45/1e3:.0f} km vs {pred60/1e3:.0f} km at 60 deg '
+           f'— lowering the trigger fires MORE, not less. Taken deliberately: '
+           f'45 caps the az-noise inflation 1/cos^2 el at 2.0 (60 allows 4.0), '
+           f'and the re-pole is exact, so the cost of firing is bounded below.')
+
+    # (4) the re-pole itself: exact similarity transform
+    rng = np.random.default_rng(11)
+    B = 64
+    S, G, _ = _pair_geometry(1.0, 5e3, n_steps=B)
+    Rp = np.repeat(n3.pole_frame(S[:1]), B, axis=0)
+    filt = n3.BatchedBearingMSC6(B, sigma_beta=1e-3)
+    filt.Rp = Rp.copy()
+    filt.sat = S.copy()
+    # Seed a NON-ZERO estimation error, otherwise NEES is identically 0 and the
+    # continuity check is vacuous.
+    sig_p, sig_v = 40.0, 0.04
+    x_est = G.copy()
+    x_est[:, :3] += rng.normal(0.0, sig_p, (B, 3))
+    x_est[:, 3:] += rng.normal(0.0, sig_v, (B, 3))
+    P_cart = np.tile(np.diag([sig_p ** 2] * 3 + [sig_v ** 2] * 3), (B, 1, 1))
+    filt.set_cart(np.arange(B), x_est, P_cart, S)
+
+    idx = np.arange(B)
+    x_before, P_before = filt.mean_cov(idx)
+    hot = filt.repole(idx)
+    x_after, P_after = filt.mean_cov(idx)
+    scale = np.abs(x_before).max()
+    d_state = float(np.abs(x_after - x_before).max() / scale)
+    d_cov = float(np.abs(P_after - P_before).max()
+                  / max(np.abs(P_before).max(), 1e-300))
+    ok &= record('re-pole fired on the rows above the trigger',
+                 hot.size > 0,
+                 f'{hot.size}/{B} rows, |el| range '
+                 f'{np.degrees(np.abs(n3.msc6_encode(S, G, Rp)[:, 1])).min():.1f}'
+                 f'-{np.degrees(np.abs(n3.msc6_encode(S, G, Rp)[:, 1])).max():.1f} deg')
+    ok &= record('re-pole Cartesian round trip is the identity to 1e-12',
+                 d_state < 1e-12, f'max rel |dx| {d_state:.3e}')
+    ok &= record('re-pole covariance is an exact similarity transform '
+                 '(Cartesian P unchanged)', d_cov < 1e-9,
+                 f'max rel |dP| {d_cov:.3e}')
+    truth = G
+    nees_b = n3.nees_nd(x_before, P_before, truth)
+    nees_a = n3.nees_nd(x_after, P_after, truth)
+    ok &= record('NEES continuous across the re-pole (no step)',
+                 float(np.abs(nees_a - nees_b).max()) < 1e-6,
+                 f'max |dNEES| {np.abs(nees_a - nees_b).max():.3e}; '
+                 f'median NEES {np.median(nees_b):.4f} -> '
+                 f'{np.median(nees_a):.4f}')
+    el_after = np.degrees(np.abs(filt.y[:, n3.IDX_EL]))
+    sel = np.isin(np.arange(B), hot)
+    ok &= record('every row is inside the trigger after the re-pole',
+                 float(el_after.max()) <= n3.REPOLE_EL_DEG,
+                 f'max |el| after {el_after.max():.2f} deg '
+                 f'(trigger {n3.REPOLE_EL_DEG} deg)')
+    ok &= record('the RE-POLED rows land at el == 0 exactly '
+                 '(maximal distance from the singularity)',
+                 float(el_after[sel].max()) < 1e-9,
+                 f'max |el| on re-poled rows {el_after[sel].max():.2e} deg')
+    ok &= record('re-pole COUNTER surfaced per row',
+                 filt.n_repole_total == hot.size,
+                 f'n_repole_total {filt.n_repole_total}, '
+                 f'per-row max {int(filt.n_repole.max())}')
+
+    # (5) exercise the regime the prototype skipped: di = 1 deg, rho_inplane
+    #     swept THROUGH the 68 km guard radius, closed-loop over one orbit.
+    print('  closed-loop 6-state run at di = 1.0 deg (the skipped regime):')
+    ok_all = True
+    for rho0 in (5e3, 30e3, 68e3, 118e3, 300e3):
+        res = _run_msc6_arc(rho0, di_deg=1.0, seed=5)
+        print(f"    rho_inplane {rho0/1e3:6.0f} km  re-poles {res['repoles']:3d}"
+              f"  pos RMSE {res['pos']:10.1f} m  NEES med {res['nees']:8.3f}"
+              f"  in-bounds {res['ib']:.2f}  diverged {res['div']}")
+        ok_all &= (res['div'] == 0) and np.isfinite(res['pos'])
+    ok &= record('no divergence anywhere in the swept regime, re-poles handled',
+                 ok_all)
+    return dict(ok=bool(ok))
+
+
+def _run_msc6_arc(rho_inplane_m, di_deg=1.0, seed=5, n_obs=180, dt=60.0):
+    """One bearings-only arc through the 6-state filter, seeded near truth.
+
+    Deliberately NOT a blind start: this gate is about the CHART (pole,
+    re-pole, anisotropic R), not about acquisition.
+    """
+    from pufferlib.ocean.orbital_nav import nav_math3d as n3
+    rng = np.random.default_rng(seed)
+    S, G, ts = _pair_geometry(di_deg, rho_inplane_m, n_steps=n_obs)
+    B = 1
+    filt = n3.BatchedBearingMSC6(B, sigma_beta=1e-3, q_a=1e-13)
+    idx = np.arange(B)
+    filt.set_pole(idx, S[:1])
+    x0 = G[:1].copy()
+    x0[:, :3] += rng.normal(0.0, 50.0, 3)
+    x0[:, 3:] += rng.normal(0.0, 0.05, 3)
+    P0 = np.diag([50.0 ** 2] * 3 + [0.05 ** 2] * 3)[None]
+    filt.set_cart(idx, x0, P0, S[:1])
+    nees, ib, div = [], [], 0
+    for k in range(1, n_obs):
+        ddt = float(ts[k] - ts[k - 1])
+        ok = filt.predict(idx, ddt, S[k - 1:k], S[k:k + 1])
+        if not ok.all():
+            div += 1
+            break
+        d = np.einsum('nij,nj->ni', filt.Rp[idx], G[k:k + 1, :3] - S[k:k + 1, :3])
+        u = d / np.linalg.norm(d, axis=1)[:, None]
+        el_t = np.arcsin(np.clip(u[:, 2], -1.0, 1.0))
+        az_t = np.arctan2(u[:, 1], u[:, 0])
+        ce = np.maximum(np.cos(el_t), 1e-8)
+        az = az_t + rng.normal(0.0, 1e-3 / ce)
+        el = el_t + rng.normal(0.0, 1e-3, B)
+        filt.update(idx, S[k:k + 1], az, el)
+        filt.repole(idx)
+        x, P = filt.mean_cov(idx)
+        v = n3.nees_nd(x, P, G[k:k + 1])
+        if np.isfinite(v).all():
+            nees.append(float(v[0]))
+            ib.append(n3.NEES6_LO <= v[0] <= n3.NEES6_HI)
+    x, _ = filt.mean_cov(idx)
+    pos = float(np.linalg.norm(x[0, :3] - G[n_obs - 1, :3]))
+    return dict(repoles=int(filt.n_repole_total), pos=pos,
+                nees=float(np.median(nees)) if nees else np.nan,
+                ib=float(np.mean(ib)) if ib else 0.0, div=div)
+
+
+
+# ── e1: BLOCKER-3 — the analytic 3D STM ─────────────────────────────────────
+def _fuzz_states(N, rng):
+    from pufferlib.ocean.orbital_nav import nav_math3d as n3
+    a = n3.R_EARTH + rng.uniform(300e3, 8000e3, N)
+    e = rng.uniform(0.0, 0.30, N)
+    inc = rng.uniform(0.0, math.radians(69.0), N)
+    raan = rng.uniform(0.0, 2 * np.pi, N)
+    argp = rng.uniform(0.0, 2 * np.pi, N)
+    nu = rng.uniform(0.0, 2 * np.pi, N)
+    return n3.orbit_to_cartesian_3d(a, e, nu, argp, inc, raan)
+
+
+def stage_e1(args):
+    print('== e1  BLOCKER-3  analytic 3D STM ================================')
+    import time
+    from pufferlib.ocean.orbital_nav import nav_math3d as n3
+    sys.path.insert(0, os.path.join(WT, 'scripts', 'orbital', 'ext_recon'))
+    import orbital_math3d as o3
+
+    rng = np.random.default_rng(3)
+    N = 200
+    X = _fuzz_states(N, rng)
+    ok = True
+    print('  fuzz envelope: a 6.7-14.4 Mm, e <= 0.30, i <= 69 deg, N = 200')
+    print(f"    {'dt [s]':>8s} {'symp analytic':>15s} {'symp FD':>12s} "
+          f"{'prop vs oracle':>16s} {'STM vs oracle-FD':>18s}")
+    for dt in (60.0, 300.0, 1800.0, 3600.0, 21600.0):
+        F, okf, Y = n3.stm_analytic_nd(X, dt)
+        Ffd, _, _ = n3.stm_fd_nd(X, dt)
+        sr = n3.symplectic_residual(F).max()
+        srf = n3.symplectic_residual(Ffd).max()
+        Yo = np.array([o3.propagate_universal(X[i], dt) for i in range(N)])
+        dprop = np.abs(Y - Yo).max()
+        # Richardson-extrapolated central differences OF THE ORACLE — an
+        # independent reference for the STM itself, not just the propagation.
+        Fnum = np.zeros((N, 6, 6))
+        hs = np.array([1e2] * 3 + [1e-1] * 3)
+        for j in range(6):
+            for c, k in ((8 / 12., 1.0), (-1 / 12., 2.0)):
+                Zp = X.copy(); Zp[:, j] += k * hs[j]
+                Zm = X.copy(); Zm[:, j] -= k * hs[j]
+                Op = np.array([o3.propagate_universal(Zp[i], dt) for i in range(N)])
+                Om = np.array([o3.propagate_universal(Zm[i], dt) for i in range(N)])
+                Fnum[:, :, j] += c * (Op - Om) / hs[j]
+        rel = (np.abs(F - Fnum) / np.abs(Fnum).max(axis=(1, 2))[:, None, None]).max()
+        print(f'    {dt:8.0f} {sr:15.2e} {srf:12.2e} {dprop:14.2e} m '
+              f'{rel:17.2e}')
+        ok &= (sr < 1e-9) and (dprop < 1e-3) and (rel < 1e-6)
+    ok = record('analytic STM: symplectic to <= 1e-9, propagation matches the '
+                'universal-variable oracle, STM matches oracle central '
+                'differences to <= 1e-6 rel, across the fuzz envelope', ok)
+
+    dt1, dt2 = 137.0, 431.0
+    F1, _, Y1 = n3.stm_analytic_nd(X, dt1)
+    F2, _, _ = n3.stm_analytic_nd(Y1, dt2)
+    F12, _, _ = n3.stm_analytic_nd(X, dt1 + dt2)
+    g = float((np.abs(F2 @ F1 - F12) / np.abs(F12).max()).max())
+    ok &= record('group property Phi(t2<-t1) Phi(t1<-t0) == Phi(t2<-t0)',
+                 g < 1e-12, f'max rel {g:.3e}')
+    F0, _, _ = n3.stm_analytic_nd(X, 0.0)
+    ok &= record('Phi(dt=0) == I exactly',
+                 float(np.abs(F0 - np.eye(6)).max()) == 0.0)
+
+    # 2D reduction against the SHIPPED finite-difference STM.
+    rng2 = np.random.default_rng(9)
+    M = 200
+    a = n3.R_EARTH + rng2.uniform(300e3, 800e3, M)
+    e = rng2.uniform(0.0, 0.05, M)
+    nu = rng2.uniform(0.0, 2 * np.pi, M)
+    w = rng2.uniform(0.0, 2 * np.pi, M)
+    Xe = n3.orbit_to_cartesian_3d(a, e, nu, w, np.zeros(M), np.zeros(M))
+    X4 = np.stack([Xe[:, 0], Xe[:, 1], Xe[:, 3], Xe[:, 4]], axis=1)
+    F4, _, _ = n3.stm_analytic_nd(X4, 60.0)
+    Ffd4, _, _ = nm.stm_fd(X4, 60.0)
+    d4 = float((np.abs(F4 - Ffd4) / np.abs(Ffd4).max()).max())
+    ok &= record('2D reduction: analytic 4-state == shipped stm_fd within the '
+                 "FD's own truncation floor", d4 < 1e-6,
+                 f'max rel {d4:.2e}; symplectic analytic '
+                 f'{n3.symplectic_residual(F4).max():.2e} vs shipped '
+                 f'{n3.symplectic_residual(Ffd4).max():.2e}')
+
+    # ── the tick-time table ────────────────────────────────────────────────
+    def tick_table(B):
+        rngb = np.random.default_rng(1)
+        a = n3.R_EARTH + rngb.uniform(300e3, 800e3, B)
+        ecc = rngb.uniform(0.0, 0.05, B)
+        inc = rngb.uniform(0.0, math.radians(1.0), B)
+        raan = rngb.uniform(0.0, 2 * np.pi, B)
+        argp = rngb.uniform(0.0, 2 * np.pi, B)
+        nu = rngb.uniform(0.0, 2 * np.pi, B)
+        sat = n3.orbit_to_cartesian_3d(a, ecc, nu, argp, inc, raan)
+        tgt = n3.orbit_to_cartesian_3d(a + rngb.uniform(-3e4, 3e4, B), ecc,
+                                       nu + rngb.uniform(-1e-3, 1e-3, B), argp,
+                                       inc * 0.5, raan)
+        sat2 = n3.propagate_cartesian_nd(sat, 60.0)[0]
+        X4b = np.stack([sat[:, 0], sat[:, 1], sat[:, 3], sat[:, 4]], axis=1)
+        idx = np.arange(B)
+
+        def mk(stm):
+            f = n3.BatchedBearingMSC6(B, sigma_beta=1e-3, stm=stm)
+            f.set_pole(idx, sat)
+            f.set_cart(idx, tgt, np.tile(np.diag([2500.0] * 3 + [0.01] * 3),
+                                         (B, 1, 1)), sat)
+            return f
+
+        def tick(f):
+            def go():
+                f.predict(idx, 60.0, sat, sat2)
+                f.update(idx, sat2, f.y[:, 0], f.y[:, 1])
+                f.repole(idx)
+            return go
+
+        mpc = nm.BatchedBearingMPC(B, sigma_beta=1e-3)
+        t4 = np.stack([tgt[:, 0], tgt[:, 1], tgt[:, 3], tgt[:, 4]], axis=1)
+        s4 = np.stack([sat[:, 0], sat[:, 1], sat[:, 3], sat[:, 4]], axis=1)
+        s4b = np.stack([sat2[:, 0], sat2[:, 1], sat2[:, 3], sat2[:, 4]], axis=1)
+        mpc.set_cart(idx, t4, np.tile(np.diag([2500.0] * 2 + [0.01] * 2),
+                                      (B, 1, 1)), s4)
+
+        def tick2d():
+            mpc.predict(idx, 60.0, s4, s4b)
+            mpc.update(idx, s4b, mpc.y[:, 0])
+
+        ops = [
+            ('stm_fd_nd (6-state FD, 13 propagations)',
+             lambda: n3.stm_fd_nd(sat, 60.0)),
+            ('stm_analytic_nd (6-state analytic)',
+             lambda: n3.stm_analytic_nd(sat, 60.0)),
+            ('nav_math.stm_fd (4-state, the 2D shipped object)',
+             lambda: nm.stm_fd(X4b, 60.0)),
+            ('MSC6 tick BASELINE (y-space FD, the mechanical port)',
+             tick(mk('fd_msc'))),
+            ('MSC6 tick intermediate (analytic chart Jac + FD STM)',
+             tick(mk('fd'))),
+            ('MSC6 tick SHIPPED (fully analytic)', tick(mk('analytic'))),
+            ('2D shipped BatchedBearingMPC tick (reference)', tick2d),
+        ]
+        # ROUND-ROBIN, min-of-batches. Timing each op to completion in turn
+        # measures whatever else the machine was doing during that op's slot;
+        # interleaving makes every op see the same conditions, and the min
+        # discards the slots where it was doing something else.
+        rep, batches = 20, 7
+        best = {nme: float('inf') for nme, _ in ops}
+        for _, fn in ops:
+            fn()
+        for _ in range(batches):
+            for nme, fn in ops:
+                t = time.perf_counter()
+                for _ in range(rep):
+                    fn()
+                best[nme] = min(best[nme], (time.perf_counter() - t) / rep * 1e3)
+        return best
+
+    print("\n  TICK TIME, OMP pinned to 1. B = 256 is one worker's env slice "
+          'at the shipped 8w x 256 shape.')
+    tabs = {B: tick_table(B) for B in (256, 1024)}
+    names = list(tabs[256])
+    print(f"    {'op':56s} {'B=256':>10s} {'B=1024':>10s}")
+    for nme in names:
+        print(f'    {nme:56s} {tabs[256][nme]:9.4f}  {tabs[1024][nme]:9.4f}')
+    sp = {B: tabs[B]['MSC6 tick BASELINE (y-space FD, the mechanical port)']
+          / tabs[B]['MSC6 tick SHIPPED (fully analytic)'] for B in (256, 1024)}
+    speed = sp[256]
+    ok &= record('analytic path speeds the full 6-state tick by >= 2x vs the '
+                 'mechanical port',
+                 min(sp.values()) >= 2.0,
+                 f'{sp[256]:.2f}x at B=256, {sp[1024]:.2f}x at B=1024')
+    note("SHORTFALL: the red-team's >= 3x projection is NOT met on the full "
+         'tick',
+         f"measured {sp[256]:.2f}x. The projection came from the PROTOTYPE's "
+           f'accounting, where FD-STM was 87% of the tick; in the shipped tick '
+           f'the analytic path also replaces the FD chart Jacobians, so the '
+           f'STM is only '
+           f"{tabs[256]['stm_fd_nd (6-state FD, 13 propagations)'] / tabs[256]['MSC6 tick BASELINE (y-space FD, the mechanical port)']:.0%}"
+           f' of the baseline, and what remains (decode/encode, two analytic '
+           f'6x6 Jacobians, one 6x6 inverse, five (B,6,6) matmuls, the update) '
+           f'is numpy-call-overhead bound at these batch shapes. Residual '
+         f'levers are the red-team\'s own items 2-4, not more STM work.')
+
+    # BLOCKER-3 item 2: "confirm it, do not assume it".
+    from pufferlib.ocean.orbital_nav.nav_surrogate import AcquisitionSurrogate
+    B = 256
+    acq = AcquisitionSurrogate(B, sigma_beta=1e-3)
+    rngc = np.random.default_rng(2)
+    sat_c = np.zeros((B, 4)); sat_c[:, 0] = n3.R_EARTH + 5e5
+    sat_c[:, 3] = math.sqrt(n3.MU / sat_c[0, 0])
+    tgt_c = sat_c.copy(); tgt_c[:, 0] += 5e3
+    idx = np.arange(B)
+    acq.reset_rows(idx, sat_c, tgt_c, np.full(B, 5545.0))
+
+    def acc():
+        acq.accumulate(idx, sat_c, tgt_c, tgt_c, 60.0)
+    acc(); t = time.perf_counter()
+    for _ in range(50):
+        acc()
+    t_un = (time.perf_counter() - t) / 50 * 1e3
+    acq.acquired[:] = True
+    acc(); t = time.perf_counter()
+    for _ in range(50):
+        acc()
+    t_acq = (time.perf_counter() - t) / 50 * 1e3
+    ok &= record('surrogate accumulate is SKIPPED once a row is acquired '
+                 '(measured, not assumed)', t_acq < 0.05 * t_un,
+                 f'{t_un:.4f} ms unacquired -> {t_acq:.4f} ms acquired '
+                 f'({t_acq / max(t_un, 1e-12):.1%})')
+    return dict(ok=bool(ok), speedup=speed, ticks=tabs)
+
+
 # ext-3d (dim3_mode=1) configuration: the X3 rung the campaign warm-starts from.
 _D3_KW = dict(_MIN_KW,
               e_max_target=0.05, e_max_sat=0.05,
@@ -576,7 +1058,7 @@ _D3_KW = dict(_MIN_KW,
               shape_dv_ref_ms=700.0)
 
 STAGES = {'a1': stage_a1, 'a2': stage_a2, 'b1': stage_b1,
-          'c1': stage_c1}
+          'c1': stage_c1, 'd1': stage_d1, 'e1': stage_e1}
 
 
 def main():
@@ -593,6 +1075,10 @@ def main():
         print(f"  [{'PASS' if ok else 'FAIL'}] {name}")
     n_fail = sum(1 for _, ok, _ in _RESULTS if not ok)
     print(f'\n  {len(_RESULTS) - n_fail}/{len(_RESULTS)} checks pass')
+    if _NOTES:
+        print('\n  measured findings that are NOT pass/fail gates:')
+        for name, detail in _NOTES:
+            print(f'    [NOTE] {name}')
     return 1 if n_fail else 0
 
 
