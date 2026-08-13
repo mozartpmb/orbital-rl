@@ -1028,6 +1028,25 @@ def stage_e1(args):
            f'is numpy-call-overhead bound at these batch shapes. Residual '
          f'levers are the red-team\'s own items 2-4, not more STM work.')
 
+    # BLOCKER-3 item 4: budget from the CONVERGED tau mix, and from the
+    # measured tick rather than from the prototype's.
+    t2d = tabs[256]['2D shipped BatchedBearingMPC tick (reference)']
+    t3d = tabs[256]['MSC6 tick SHIPPED (fully analytic)']
+    TAU_2D, TAU_3D = 32.50, 79.61        # measured mean sub-steps per decision
+    nav_mult = (t3d * TAU_3D) / (t2d * TAU_2D)
+    note('BLOCKER-3 item 4: revised nav-portion cost multiplier, from the '
+         'measured shipped tick and the CONVERGED tau mix',
+         f'3D/2D per tick {t3d / t2d:.2f}x (the red-team assumed 2.25x from '
+         f'the prototype), x tau-bar {TAU_3D:.2f}/{TAU_2D:.2f} = '
+         f'{TAU_3D / TAU_2D:.2f}x  =>  {nav_mult:.2f}x on the nav portion '
+         f'against their 5.51x. Their 5.5-8.0 h per 50M bearings-only rung '
+         f'scales by roughly {nav_mult / 5.51:.2f}x on the nav term; with '
+         f'their unchanged 2.44x env term the combined multiplier lands near '
+         f'{max(nav_mult, 2.44) * 0.85:.1f}x rather than 4.9x, i.e. ~3-5 h per '
+         f'rung. Projection, not a measurement — the only way to close it is '
+         f'to time a rung, and tau-bar rises 22.0 -> 79.61 DURING a run so an '
+         f'epoch-1 SPS ETA under-predicts by ~3.6x.')
+
     # BLOCKER-3 item 2: "confirm it, do not assume it".
     from pufferlib.ocean.orbital_nav.nav_surrogate import AcquisitionSurrogate
     B = 256

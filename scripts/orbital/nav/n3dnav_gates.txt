@@ -1,0 +1,243 @@
+== a1  MAJOR-8  action tables vs orbital.h ========================
+  orbital.h: NUM_ACTIONS 30, ACTION_TAU 30 rows, ACTION_DV 30 rows
+  [PASS] ACTION_TAU length == NUM_ACTIONS   30 vs 30
+  [PASS] ACTION_DV_MAG length == NUM_ACTIONS   30 vs 30
+  [PASS] ACTION_TAU row-by-row == C   max|diff| 0
+  [PASS] ACTION_DV_MAG row-by-row == ||ACTION_DV|| (C)   max|diff| 0.000e+00
+  [PASS] combined rows 26-29 == hypot(25,25) = 35.355   [35.3553, 35.3553, 35.3553, 35.3553] (L1 answer would be 50.0)
+  [PASS] ACTION_TAU[[26,29]] does not raise IndexError
+  [PASS] MAJOR-10 action subsets present   ['combined', 'fine_all', 'fine_inplane', 'fine_normal', 'normal_all']
+  [PASS] fine_normal == [20, 21] (normal +/-1, the 3D treatment)
+
+== a2  MAJOR-9  divergence guard under a 6-state filter ===========
+  [PASS] healthy 6-state batch: guard flags 0 rows   0/16 flagged
+  [PASS] pre-fix guard WOULD have flagged every row (test fires)   16/16 rows, exp(y[:,3]) = 0.9998 m < RHO_MIN_M = 1.0
+  [PASS] diverged rows still caught (rho=1e12 m, NaN)   2 flagged, expected 2
+  [PASS] BatchedBearingMPC.IDX_LNRHO == 3 (4-state)
+  [PASS] BatchedRangeBearingEKF.IDX_LNRHO is None
+  [PASS] MSC6 index layout [az, el, w_a, w_e, rdot/rho, ln rho]
+
+== b1  MAJOR-5/6  vec_get_state: read-only, plane as h-hat =========
+  [PASS] shape / dtype   (64, 36) float64
+  [PASS] |h-hat| == 1 to <= 4 ulp   max||h|-1| 1.110e-16 (sin^2+cos^2 rounding, not a normalisation)
+  [PASS] h-hat == unit(r x v)   max|diff| 2.220e-16
+  [PASS] Cartesian consistent with (a, e, theta)   max|diff| 1.863e-09 m
+  [PASS] sat e-vector (element route) == Cartesian route in value   max|diff| 6.904e-16; |e| = 0.0499
+  [PASS] |e-vector| == e element   max|diff| 6.939e-18
+  [PASS] getter is a PURE READ (obs+reward stream bit-identical)   max|diff| 0.000e+00 over 732032 values
+  [PASS] obs[21,22] == (i_s cos u, -i_s sin u)/di_scale at i_t=0   max|diff| 2.973e-08 (float32 obs quantisation)
+  [NOTE] two-fold i_s ambiguity at i_t=51.6 deg (why the getter returns h-hat, NOT Omega_s)   44% of my 200 draws admit >= 2 inclination roots (n3d_REDTEAM measured 30% on its own draw distribution)
+
+== c1  BLOCKER-4 leakcheck / MAJOR-14 clamp / MAJOR-15 recon-cart ==
+  [PASS] layout: 19 target slots + 19 complement partition obs[0:38]   target (7, 8, 11, 12, 13, 14, 16, 21, 22, 23, 24, 25, 26, 28, 33, 34, 35, 36, 37)
+  [PASS] the 7 NEW leak channels are in the rebuilt set
+  [PASS] obs[27] (chaser-only dv ledger) is NOT rebuilt
+  [PASS] obs[15] (episode clock) is NOT rebuilt
+  [PASS] obs[29-32] reserved, NOT rebuilt
+  [PASS] recon: complement untouched (bitwise)   max|diff| 0.000e+00
+  [PASS] recon: 19 rebuilt slots reproduce the C to < 1e-5 abs   max 0.000e+00 at slot 7; 0.0 x eps_f32
+    per-slot max |recon - truth|: 
+  [PASS] recon-cart: truth round-tripped through Cartesian, 19 slots (float32, vs the C)   max 0.000e+00 at slot 7 (state round-trip 4.66e-08 m)
+  [PASS] recon-cart: same, in float64 before the cast (the STATED tolerance)   max 2.560e-13 at slot 11
+    per-slot max |recon-cart - recon| (float64): [7]=4.1e-15, [8]=8.5e-16, [11]=2.6e-13, [12]=1.3e-13, [13]=6.6e-15, [14]=6.0e-15, [16]=2.4e-13, [25]=1.4e-17, [26]=1.1e-16, [28]=4.2e-15, [33]=6.4e-15, [34]=6.6e-15, [35]=1.5e-15, [36]=2.5e-15, [37]=1.6e-15
+    shipped Encoder3D: unmoved target slots [], moved complement slots []
+  [PASS] leakcheck (a): ALL 19 estimated slots move
+  [PASS] leakcheck (b): the complement does NOT move
+    deliberately LEAKY encode (2D 12-slot): unmoved target slots [21, 22, 23, 24, 25, 26, 28], moved complement slots []
+  [PASS] test-the-test: leaky encode caught on exactly the 7 new channels {21,22,23,24,25,26,28}   caught [21, 22, 23, 24, 25, 26, 28]
+    deliberately OVER-BROAD encode: unmoved target slots [], moved complement slots [27]
+  [PASS] test-the-test: over-broad encode caught on obs[27] (and obs[15] via the untouched-complement bitwise check)   moved complement [27]
+  [PASS] test-the-test: over-broad encode breaks the bitwise complement check
+  [NOTE] the red-team's example probe (+1000 km ALONG-TRACK) is NOT a valid leakcheck garbage   it leaves [21, 22, 23, 24] bit-identical — (r + d v-hat) x v = r x v so h-hat-t never moves, and every induced change is in-plane
+  [PASS] clamp set is exactly {21..26, 28} (obs[27] is not rebuilt)
+  [PASS] obs_clamp2 reproduces the C branch incl. the NaN trap (NaN -> -2.0)   [-2.0, -2.0, -1.5, 0.0, 1.5, 2.0, 2.0, -2.0, 2.0, -2.0]
+  [PASS] saturating estimate: slots 21-28 bounded by 2.0, not 4.0   max |obs[21..28]| = 2.0000
+
+== d1  BLOCKER-1  MSC chart pole + re-pole ========================
+  max |el| over one orbit, N3D-A pole (h-hat_c) vs N3D-C 3b pole (u0 x h-hat_t):
+    geometry                                  h-hat_c   u0 x h-hat_t
+    coplanar 5 km  (2D-reduction anchor)        0.00          90.00
+    coplanar 10 km                              0.00          90.00
+    di=0.02 deg, 5 km  (tight box)             25.30          70.91
+    di=0.0417 deg, 5 km  (box plane tol)       44.58          57.50
+    di=1.0 deg, rho_inplane 5 km  (X3)         87.58          35.70
+    di=1.0 deg, 300 km                         21.50          73.09
+  [PASS] N3D-C 3b pole is EXACT gimbal lock in the coplanar anchor   90.0000 deg — this is why it is deleted from the spec
+  [PASS] N3D-A pole gives el == 0 in the coplanar anchor (the 2D-reduction regression test)   0.00e+00 deg
+  [PASS] N3D-A pole DOES arm the guard at the X3 rung (the caveat the prototype never exercised)   87.58 deg > 45 deg trigger
+  [PASS] 2D reduction: el == 0 and w_e == 0 at di = 0   max |el| 0.00e+00 rad, max |w_e| 0.00e+00 rad/s
+  guard-trigger crossing at di = 1.0 deg (sweep rho_inplane):
+    rho_inplane     20 km   max |el|  80.39 deg
+    rho_inplane     40 km   max |el|  71.30 deg
+    rho_inplane     68 km   max |el|  60.08 deg
+    rho_inplane     90 km   max |el|  52.71 deg
+    rho_inplane    118 km   max |el|  45.04 deg
+    rho_inplane    160 km   max |el|  36.45 deg
+    rho_inplane    300 km   max |el|  21.50 deg
+  [PASS] closed form |el|>60 <=> rho_inplane < 0.577 r sin(di) = 68 km   measured crossing bracketed by [68, 90] km
+  [PASS] closed form |el|>45 <=> rho_inplane < 1.000 r sin(di) = 118 km   measured crossing bracketed by [118, 160] km
+  [NOTE] CONSEQUENCE: the 45 deg trigger does NOT keep re-poles out of the 30 km success box   it arms below 118 km vs 68 km at 60 deg — lowering the trigger fires MORE, not less. Taken deliberately: 45 caps the az-noise inflation 1/cos^2 el at 2.0 (60 allows 4.0), and the re-pole is exact, so the cost of firing is bounded below.
+  [PASS] re-pole fired on the rows above the trigger   63/64 rows, |el| range 2.5-87.6 deg
+  [PASS] re-pole Cartesian round trip is the identity to 1e-12   max rel |dx| 8.167e-17
+  [PASS] re-pole covariance is an exact similarity transform (Cartesian P unchanged)   max rel |dP| 7.105e-16
+  [PASS] NEES continuous across the re-pole (no step)   max |dNEES| 1.005e-11; median NEES 0.8426 -> 0.8426
+  [PASS] every row is inside the trigger after the re-pole   max |el| after 2.74 deg (trigger 45.0 deg)
+  [PASS] the RE-POLED rows land at el == 0 exactly (maximal distance from the singularity)   max |el| on re-poled rows 3.40e-13 deg
+  [PASS] re-pole COUNTER surfaced per row   n_repole_total 63, per-row max 1
+  closed-loop 6-state run at di = 1.0 deg (the skipped regime):
+    rho_inplane      5 km  re-poles   1  pos RMSE        6.6 m  NEES med    0.745  in-bounds 1.00  diverged 0
+    rho_inplane     30 km  re-poles   2  pos RMSE       12.3 m  NEES med    0.923  in-bounds 1.00  diverged 0
+    rho_inplane     68 km  re-poles   1  pos RMSE       38.7 m  NEES med    1.040  in-bounds 1.00  diverged 0
+    rho_inplane    118 km  re-poles   1  pos RMSE       74.0 m  NEES med    1.026  in-bounds 1.00  diverged 0
+    rho_inplane    300 km  re-poles   0  pos RMSE      122.7 m  NEES med    0.895  in-bounds 1.00  diverged 0
+  [PASS] no divergence anywhere in the swept regime, re-poles handled
+
+== e1  BLOCKER-3  analytic 3D STM ================================
+  fuzz envelope: a 6.7-14.4 Mm, e <= 0.30, i <= 69 deg, N = 200
+      dt [s]   symp analytic      symp FD   prop vs oracle   STM vs oracle-FD
+          60        2.56e-13     1.87e-06       4.75e-08 m          5.33e-09
+         300        3.12e-13     2.04e-06       6.55e-07 m          1.84e-08
+        1800        5.34e-12     9.23e-06       1.72e-05 m          4.63e-08
+        3600        3.14e-11     4.58e-05       3.54e-05 m          4.70e-08
+       21600        7.20e-10     1.90e-03       3.26e-04 m          5.05e-08
+  [PASS] analytic STM: symplectic to <= 1e-9, propagation matches the universal-variable oracle, STM matches oracle central differences to <= 1e-6 rel, across the fuzz envelope
+  [PASS] group property Phi(t2<-t1) Phi(t1<-t0) == Phi(t2<-t0)   max rel 7.412e-16
+  [PASS] Phi(dt=0) == I exactly
+  [PASS] 2D reduction: analytic 4-state == shipped stm_fd within the FD's own truncation floor   max rel 1.82e-08; symplectic analytic 1.05e-13 vs shipped 9.21e-07
+
+  TICK TIME, OMP pinned to 1. B = 256 is one worker's env slice at the shipped 8w x 256 shape.
+    op                                                            B=256     B=1024
+    stm_fd_nd (6-state FD, 13 propagations)                     0.6584     1.6810
+    stm_analytic_nd (6-state analytic)                          0.2863     0.7933
+    nav_math.stm_fd (4-state, the 2D shipped object)            0.3514     0.6648
+    MSC6 tick BASELINE (y-space FD, the mechanical port)        2.7135     7.2212
+    MSC6 tick intermediate (analytic chart Jac + FD STM)        1.6072     4.3181
+    MSC6 tick SHIPPED (fully analytic)                          1.1161     3.3380
+    2D shipped BatchedBearingMPC tick (reference)               0.7900     1.8551
+  [PASS] analytic path speeds the full 6-state tick by >= 2x vs the mechanical port   2.43x at B=256, 2.16x at B=1024
+  [NOTE] SHORTFALL: the red-team's >= 3x projection is NOT met on the full tick   measured 2.43x. The projection came from the PROTOTYPE's accounting, where FD-STM was 87% of the tick; in the shipped tick the analytic path also replaces the FD chart Jacobians, so the STM is only 24% of the baseline, and what remains (decode/encode, two analytic 6x6 Jacobians, one 6x6 inverse, five (B,6,6) matmuls, the update) is numpy-call-overhead bound at these batch shapes. Residual levers are the red-team's own items 2-4, not more STM work.
+  [NOTE] BLOCKER-3 item 4: revised nav-portion cost multiplier, from the measured shipped tick and the CONVERGED tau mix   3D/2D per tick 1.41x (the red-team assumed 2.25x from the prototype), x tau-bar 79.61/32.50 = 2.45x  =>  3.46x on the nav portion against their 5.51x. Their 5.5-8.0 h per 50M bearings-only rung scales by roughly 0.63x on the nav term; with their unchanged 2.44x env term the combined multiplier lands near 2.9x rather than 4.9x, i.e. ~3-5 h per rung. Projection, not a measurement — the only way to close it is to time a rung, and tau-bar rises 22.0 -> 79.61 DURING a run so an epoch-1 SPS ETA under-predicts by ~3.6x.
+  [PASS] surrogate accumulate is SKIPPED once a row is acquired (measured, not assumed)   0.4163 ms unacquired -> 0.0011 ms acquired (0.3%)
+
+== f1  BLOCKER-2 sim-time floor + MAJOR-7/11/12/13/16 + NOTE-20/21 =
+    dt_tick =  60 s: 160 acquisitions, median latency 2700 s (45.0 min)
+    dt_tick = 300 s: 565 acquisitions, median latency 2700 s (45.0 min)
+  [PASS] acquisition floor is a SIM-TIME floor: >= 2700 s at both cadences   min 2700 s / 2700 s
+  [PASS] a TICK floor would have scaled the floor with the cadence   a 45-tick floor at dt=300 s would be 13500 s (3.75 h); measured 2700 s
+  [PASS] nav_acq_min_ticks > 0 RAISES (no silent unit re-entry)
+  [PASS] MAJOR-7: fixed COUNT x adaptive INTERVAL spans the whole tau   tau=360 sub-steps, K=12: 12 ticks x 1800 s = 21600 s == 21600 s. The pre-fix code ticked 12 x 60 s = 720 s and was then handed a bearing 20880 s in the future as one 60 s innovation.
+    nav_max_ticks=0:   pos rmse 4.412e+06 m, diverge rate 0.0017
+    nav_max_ticks=12:  pos rmse 4.424e+06 m, diverge rate 0.0026
+  [PASS] MAJOR-7: capping ticks no longer inflates the divergence rate   0.0017 -> 0.0026
+    MAJOR-12 information-kernel equivalence:
+      el =    0 deg   |P_perp - azel| / |P_perp| 8.67e-17   isotropic-R inflation 1.000x (1/cos^2 el = 1.000)
+      el =   27 deg   |P_perp - azel| / |P_perp| 1.09e-16   isotropic-R inflation 1.130x (1/cos^2 el = 1.260)
+      el =   45 deg   |P_perp - azel| / |P_perp| 2.25e-16   isotropic-R inflation 1.500x (1/cos^2 el = 2.000)
+      el =   60 deg   |P_perp - azel| / |P_perp| 7.34e-17   isotropic-R inflation 2.500x (1/cos^2 el = 4.000)
+  [PASS] MAJOR-12: M = P_perp/(sigma_b rho)^2 == explicit az/el FIM with the cos-el-inflated R, el in {0,27,45,60} deg   worst rel 2.25e-16
+  [PASS] MAJOR-13: sigma_plane_pos_m == r * sigma_plane_tilt_rad * |sin u| (the two lanes are not in conflict, they are in different units)   max rel 1.67e-11; the scale factor is r = 6.771e+06 m/rad, so mixing them silently rescales by 6.8e6
+  [PASS] MAJOR-11: acq_mode='table' under dim3 RAISES
+  [PASS] MAJOR-11: ... unless explicitly opted into for a reporting run
+  [PASS] MAJOR-11: the Cholesky diagonal fallback has a COUNTER
+  [PASS] NOTE-20: omega_offset_fixed RAISES under dim3 nav
+  [PASS] NOTE-20: raan_target_rad RAISES under dim3 nav
+  [PASS] MAJOR-14: the Sigma channel writes obs[29], NOT obs[21] (which is the ext-3d plane channel under dim3)   max |obs[29]| 0.1000, obs[30:33] still zero: True
+  [PASS] NOTE-21: the obs[28] < 0 while unacquired diagnostic ships   0.17142857142857143
+  [PASS] BLOCKER-1: the re-pole counter ships as a nav_* diagnostic
+  [PASS] BLOCKER-2: acquisition latency ships in SIM SECONDS   2700.0 s
+  [PASS] MAJOR-11: the chol-fallback counter ships and is 0
+  [PASS] MAJOR-16: out-of-plane rate seed >= v_c sin(di_max)/rho0, decoupled from the eccentricity term   margin min 2.855x (the 2D seed reused sigma_v_ecc for both rate components: 154 m/s against 134 m/s of real ignorance, 1.15x)
+  [PASS] dim3 recon closed loop is BIT-IDENTICAL to truth over 150 steps x 32 envs   max|diff| 0.000e+00 over 183616 values
+
+== SUMMARY =======================================================
+  [PASS] ACTION_TAU length == NUM_ACTIONS
+  [PASS] ACTION_DV_MAG length == NUM_ACTIONS
+  [PASS] ACTION_TAU row-by-row == C
+  [PASS] ACTION_DV_MAG row-by-row == ||ACTION_DV|| (C)
+  [PASS] combined rows 26-29 == hypot(25,25) = 35.355
+  [PASS] ACTION_TAU[[26,29]] does not raise IndexError
+  [PASS] MAJOR-10 action subsets present
+  [PASS] fine_normal == [20, 21] (normal +/-1, the 3D treatment)
+  [PASS] healthy 6-state batch: guard flags 0 rows
+  [PASS] pre-fix guard WOULD have flagged every row (test fires)
+  [PASS] diverged rows still caught (rho=1e12 m, NaN)
+  [PASS] BatchedBearingMPC.IDX_LNRHO == 3 (4-state)
+  [PASS] BatchedRangeBearingEKF.IDX_LNRHO is None
+  [PASS] MSC6 index layout [az, el, w_a, w_e, rdot/rho, ln rho]
+  [PASS] shape / dtype
+  [PASS] |h-hat| == 1 to <= 4 ulp
+  [PASS] h-hat == unit(r x v)
+  [PASS] Cartesian consistent with (a, e, theta)
+  [PASS] sat e-vector (element route) == Cartesian route in value
+  [PASS] |e-vector| == e element
+  [PASS] getter is a PURE READ (obs+reward stream bit-identical)
+  [PASS] obs[21,22] == (i_s cos u, -i_s sin u)/di_scale at i_t=0
+  [PASS] layout: 19 target slots + 19 complement partition obs[0:38]
+  [PASS] the 7 NEW leak channels are in the rebuilt set
+  [PASS] obs[27] (chaser-only dv ledger) is NOT rebuilt
+  [PASS] obs[15] (episode clock) is NOT rebuilt
+  [PASS] obs[29-32] reserved, NOT rebuilt
+  [PASS] recon: complement untouched (bitwise)
+  [PASS] recon: 19 rebuilt slots reproduce the C to < 1e-5 abs
+  [PASS] recon-cart: truth round-tripped through Cartesian, 19 slots (float32, vs the C)
+  [PASS] recon-cart: same, in float64 before the cast (the STATED tolerance)
+  [PASS] leakcheck (a): ALL 19 estimated slots move
+  [PASS] leakcheck (b): the complement does NOT move
+  [PASS] test-the-test: leaky encode caught on exactly the 7 new channels {21,22,23,24,25,26,28}
+  [PASS] test-the-test: over-broad encode caught on obs[27] (and obs[15] via the untouched-complement bitwise check)
+  [PASS] test-the-test: over-broad encode breaks the bitwise complement check
+  [PASS] clamp set is exactly {21..26, 28} (obs[27] is not rebuilt)
+  [PASS] obs_clamp2 reproduces the C branch incl. the NaN trap (NaN -> -2.0)
+  [PASS] saturating estimate: slots 21-28 bounded by 2.0, not 4.0
+  [PASS] N3D-C 3b pole is EXACT gimbal lock in the coplanar anchor
+  [PASS] N3D-A pole gives el == 0 in the coplanar anchor (the 2D-reduction regression test)
+  [PASS] N3D-A pole DOES arm the guard at the X3 rung (the caveat the prototype never exercised)
+  [PASS] 2D reduction: el == 0 and w_e == 0 at di = 0
+  [PASS] closed form |el|>60 <=> rho_inplane < 0.577 r sin(di) = 68 km
+  [PASS] closed form |el|>45 <=> rho_inplane < 1.000 r sin(di) = 118 km
+  [PASS] re-pole fired on the rows above the trigger
+  [PASS] re-pole Cartesian round trip is the identity to 1e-12
+  [PASS] re-pole covariance is an exact similarity transform (Cartesian P unchanged)
+  [PASS] NEES continuous across the re-pole (no step)
+  [PASS] every row is inside the trigger after the re-pole
+  [PASS] the RE-POLED rows land at el == 0 exactly (maximal distance from the singularity)
+  [PASS] re-pole COUNTER surfaced per row
+  [PASS] no divergence anywhere in the swept regime, re-poles handled
+  [PASS] analytic STM: symplectic to <= 1e-9, propagation matches the universal-variable oracle, STM matches oracle central differences to <= 1e-6 rel, across the fuzz envelope
+  [PASS] group property Phi(t2<-t1) Phi(t1<-t0) == Phi(t2<-t0)
+  [PASS] Phi(dt=0) == I exactly
+  [PASS] 2D reduction: analytic 4-state == shipped stm_fd within the FD's own truncation floor
+  [PASS] analytic path speeds the full 6-state tick by >= 2x vs the mechanical port
+  [PASS] surrogate accumulate is SKIPPED once a row is acquired (measured, not assumed)
+  [PASS] acquisition floor is a SIM-TIME floor: >= 2700 s at both cadences
+  [PASS] a TICK floor would have scaled the floor with the cadence
+  [PASS] nav_acq_min_ticks > 0 RAISES (no silent unit re-entry)
+  [PASS] MAJOR-7: fixed COUNT x adaptive INTERVAL spans the whole tau
+  [PASS] MAJOR-7: capping ticks no longer inflates the divergence rate
+  [PASS] MAJOR-12: M = P_perp/(sigma_b rho)^2 == explicit az/el FIM with the cos-el-inflated R, el in {0,27,45,60} deg
+  [PASS] MAJOR-13: sigma_plane_pos_m == r * sigma_plane_tilt_rad * |sin u| (the two lanes are not in conflict, they are in different units)
+  [PASS] MAJOR-11: acq_mode='table' under dim3 RAISES
+  [PASS] MAJOR-11: ... unless explicitly opted into for a reporting run
+  [PASS] MAJOR-11: the Cholesky diagonal fallback has a COUNTER
+  [PASS] NOTE-20: omega_offset_fixed RAISES under dim3 nav
+  [PASS] NOTE-20: raan_target_rad RAISES under dim3 nav
+  [PASS] MAJOR-14: the Sigma channel writes obs[29], NOT obs[21] (which is the ext-3d plane channel under dim3)
+  [PASS] NOTE-21: the obs[28] < 0 while unacquired diagnostic ships
+  [PASS] BLOCKER-1: the re-pole counter ships as a nav_* diagnostic
+  [PASS] BLOCKER-2: acquisition latency ships in SIM SECONDS
+  [PASS] MAJOR-11: the chol-fallback counter ships and is 0
+  [PASS] MAJOR-16: out-of-plane rate seed >= v_c sin(di_max)/rho0, decoupled from the eccentricity term
+  [PASS] dim3 recon closed loop is BIT-IDENTICAL to truth over 150 steps x 32 envs
+
+  78/78 checks pass
+
+  measured findings that are NOT pass/fail gates:
+    [NOTE] two-fold i_s ambiguity at i_t=51.6 deg (why the getter returns h-hat, NOT Omega_s)
+    [NOTE] the red-team's example probe (+1000 km ALONG-TRACK) is NOT a valid leakcheck garbage
+    [NOTE] CONSEQUENCE: the 45 deg trigger does NOT keep re-poles out of the 30 km success box
+    [NOTE] SHORTFALL: the red-team's >= 3x projection is NOT met on the full tick
+    [NOTE] BLOCKER-3 item 4: revised nav-portion cost multiplier, from the measured shipped tick and the CONVERGED tau mix
+
+generated: 2026-08-13T00:54:45Z  branch ext-3dnav @ ac8da20
+command:   cd pufferlib && OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 \
+             python3 ../scripts/orbital/nav/verify_n3dnav.py --stage all
