@@ -144,7 +144,14 @@ train_arm() {
     fi
     say "START train $arm (nav_mode=$nav, ${STEPS} steps, warm=$(basename $WS))"
     cd "$PUF" || return 1
-    caffeinate -is python3 -m pufferlib.pufferl train puffer_orbital_nav \
+    # NO inner `caffeinate` wrapper. The whole script already runs under
+    # `caffeinate -is`, so the machine stays awake for the entire campaign —
+    # and wrapping the trainer again would make $! the PID of CAFFEINATE, not
+    # of python3. caffeinate does not forward signals to its child, so the
+    # watchdog would kill the wrapper and leave the hung trainer ORPHANED,
+    # burning 14 cores underneath the next stage. That is worse than the hang
+    # it was added to fix.
+    python3 -m pufferlib.pufferl train puffer_orbital_nav \
         --train.device cpu --train.total-timesteps $STEPS --train.seed 42 \
         --train.data-dir "$dir" \
         --load-model-path "$WS" \
@@ -166,8 +173,10 @@ train_arm() {
         if [ "$t_final" -ne 0 ] \
            && [ $(( $(date +%s) - t_final )) -ge $WATCHDOG_S ]; then
             say "  WATCHDOG: final ckpt saved but trainer still alive after ${WATCHDOG_S}s — killing $pid"
+            pkill -TERM -P "$pid" 2>/dev/null      # the vector workers first
             kill -TERM "$pid" 2>/dev/null
             sleep 20
+            pkill -KILL -P "$pid" 2>/dev/null
             kill -KILL "$pid" 2>/dev/null
             break
         fi
