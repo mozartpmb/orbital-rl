@@ -1,0 +1,26 @@
+{
+ "label": "T-BO3-X3-s1337/X3_truth",
+ "success": 200,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 200
+ },
+ "md5": "88248a67eac5bef471a95aef12696111",
+ "n_actions": 3392,
+ "mean_len": 16.96,
+ "dv_med_ms": 251.4213649855374,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.23277497291564941,
+ "rung": "X3",
+ "box": "X3",
+ "nav_mode": "truth",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/pufferlib/experiments_n3dnav_tb/T-BO3-X3-s1337/puffer_orbital_nav_zwf7fkpo/model_puffer_orbital_nav_000382.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}

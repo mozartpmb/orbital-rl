@@ -1,0 +1,27 @@
+{
+ "label": "T-BO3D-TB5/TB5-3D_truth",
+ "success": 199,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 0.995,
+ "causes": {
+  "success": 199,
+  "safety_cap": 1
+ },
+ "md5": "5d959d7794cb02c6ed8ad3630206e5b2",
+ "n_actions": 10904,
+ "mean_len": 54.52,
+ "dv_med_ms": 364.9213551888662,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 5000.0,
+ "box_vel_ms": 1.0,
+ "wall_s": 0.5512361526489258,
+ "rung": "X3",
+ "box": "TB5-3D",
+ "nav_mode": "truth",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/pufferlib/experiments_n3dnav_tb/T-BO3D-TB5/puffer_orbital_nav_57365wh3/model_puffer_orbital_nav_000382.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}

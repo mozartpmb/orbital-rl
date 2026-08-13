@@ -58,11 +58,58 @@ is airtight.**
    sufficient for a perfect score at the 2D-lineage box even with the 3D
    plane channel in the loop.
 
+## Rung 2 — the tight boxes (2026-08-13, campaign `n3dnav_tb_campaign.sh`)
+
+The NAV-F regime in 3D: boxes where navigation actually binds. Same X3 3D
+settings with `rendezvous_radius_m`/`rel_vel_tol_ms` overridden per box;
+warm start `models/t3/n3dnav_warm_TB5.pt` derived from
+`seed42_TB3D_box5k1.pt` (columns 29–32 only; verified bit-identical action
+stream, reproduces the parent's published 194/200). Shaping inherited from
+the TB3D lineage (`shape_w_match 0.35`), NOT the rung-1 value — each arm
+trains against its own parent's reward. Stage-0 anchor re-proven at the
+tight box before any arm ran.
+
+| arm | TB5-3D (5 km / 1 m/s) | TB4-3D (5 km / 2 m/s) |
+|---|---|---|
+| **Floor** — truth ckpt flown blind | 92/200 = **46.0%** (truth 194/200 = 97.0%) | 107/200 = **53.5%** (truth 200/200) |
+| **Control** — trained on rb_ekf @TB5 | 99.0% in-mode · truth 99.5% · **blind 26/200 = 13.0%** | 100% in-mode · truth 100% · **blind 36/200 = 18.0%** |
+| **Treatment** — trained bearings-only @TB5 | **196/200 = 98.0%** · truth 199/200 = 99.5% | **199/200 = 99.5%** · truth 200/200 |
+
+Verdict, three parts:
+
+1. **The gap closes entirely at the tightest box** — 46.0% → 98.0% on the
+   real IOD, and the treatment's truth-mode (99.5%) *exceeds* its parent's
+   97.0%: bearings-only training at TB5-3D improved the guidance skill it
+   was warm-started with. Failure census across all 400 treatment
+   bearings-only episodes: 1 collision, 3 safety-cap, 1 cap (TB4).
+2. **Negative transfer, measured twice.** The control is lossless in its own
+   mode but collapses to 13.0%/18.0% flown blind — far BELOW the untrained
+   floor (46.0%/53.5%). At tight tolerances, training on always-reliable
+   estimates actively unlearns blind-window caution. Estimates-per-se are
+   not merely insufficient (rung 1's 60.5% ≈ floor); at rung 2 they are
+   harmful. The attribution to observability structure could not be sharper.
+3. **Navigation is over-solved at capture; guidance is the binding
+   constraint.** Inside the 5 km box the treatment's estimator velocity
+   error is 0.001 m/s (p90 0.005) against the 1 m/s tolerance — three
+   orders of magnitude of margin — while in-box |v_rel| medians 3.2 m/s
+   until the capture maneuver. n3d_B's "the 3D dividend lands on velocity"
+   framing is moot at this box: there is no velocity-information deficit to
+   buy back. What bearings-only training buys is guidance discipline under
+   the estimate stream, and that is sufficient — the same mechanism NAV-F
+   identified in 2D, confirmed at the tightest 3D boxes.
+
+## Multi-seed — rung-1 treatment replicated 3/3
+
+T-BO3 at X3 (loose box), seeds 7 and 1337, same warm start and config as
+seed 42: **both 200/200 native AND 200/200 truth.** With the original run,
+the rung-1 result is 3/3 seeds at 100% — including seed 1337, the seed that
+failed Phase 4's Stage-1 fresh training outright. Checkpoints
+`models/t3/n3dnav_T-BO3-X3-s{7,1337}.pt`.
+
 ## Caveats
 
-- Single training seed (42) per arm; single rung (X3, 30 km / 50 m/s). The
-  2D lineage's tight boxes (TB4/TB5) with the plane channel are the natural
-  next rung and NOT covered by this table.
+- Tight-box arms are single-seed (42) as of this table; TB5-3D multi-seed
+  (seeds 7/1337) staged as campaign stage 5.
 - Both boxes share eval seed 123 (paired scenarios across arms — valid for
   arm-vs-arm deltas).
 - The IOD acceptance gates still certify large epoch errors (max 465.9 km

@@ -1,0 +1,26 @@
+{
+ "label": "T-truth3d-TB/TB4-3D_truth",
+ "success": 200,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 200
+ },
+ "md5": "1a6c29c9fc90532329667abb31f36654",
+ "n_actions": 8240,
+ "mean_len": 41.2,
+ "dv_med_ms": 313.06601654650865,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 5000.0,
+ "box_vel_ms": 2.0,
+ "wall_s": 0.4412868022918701,
+ "rung": "X3",
+ "box": "TB4-3D",
+ "nav_mode": "truth",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/models/t3/n3dnav_warm_TB5.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}
