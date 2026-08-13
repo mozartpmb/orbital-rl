@@ -380,19 +380,20 @@ def show(r):
 # ═══════════════════════════════════════════════════════════════════════════
 def stage_anchor(args):
     """THE harness gate. If this fails, nothing downstream means anything."""
+    ck = args.ckpt or ANCHOR_CKPT
     print('== HARNESS ANCHOR ================================================')
     print(f'  rung        {args.rung}')
-    print(f'  checkpoint  {ANCHOR_CKPT}')
+    print(f'  checkpoint  {ck}')
     print(f'  expect      {ANCHOR_EXPECT[0]}/{ANCHOR_EXPECT[1]} at seed '
           f'{args.seed} (published t5_x3_seeds.sh held-out score)')
-    if not os.path.exists(ANCHOR_CKPT):
+    if not os.path.exists(ck):
         print(f'  FAIL: checkpoint missing')
         return 1
 
-    a = rollout(Orbital(num_envs=1, **RUNGS[args.rung]), ANCHOR_CKPT,
+    a = rollout(Orbital(num_envs=1, **RUNGS[args.rung]), ck,
                 args.episodes, args.seed, 'plain Orbital (dim3)', verbose=False)
     show(a)
-    b = rollout(make_env(args.rung, 'truth'), ANCHOR_CKPT, args.episodes,
+    b = rollout(make_env(args.rung, 'truth'), ck, args.episodes,
                 args.seed, 'OrbitalNav truth (dim3)', verbose=False)
     show(b)
 
@@ -406,7 +407,7 @@ def stage_anchor(args):
           f"a byte-identical passthrough (md5 {a['md5'][:16]} vs "
           f"{b['md5'][:16]})")
 
-    c = rollout(make_env(args.rung, 'recon'), ANCHOR_CKPT, args.episodes,
+    c = rollout(make_env(args.rung, 'recon'), ck, args.episodes,
                 args.seed, 'OrbitalNav recon (dim3)', verbose=False)
     show(c)
     ok_recon = (a['md5'] == c['md5'] and a['causes'] == c['causes'])
