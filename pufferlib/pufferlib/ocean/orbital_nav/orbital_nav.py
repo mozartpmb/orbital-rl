@@ -331,11 +331,12 @@ class OrbitalNav(Orbital):
 
     # ── filter mean, cheaply ─────────────────────────────────────────────────
     def _mean(self, idx=None):
+        """MAJOR-9: no `nav_mode` branch and no positional slice — the filter
+        knows its own parametrisation and returns an inertial Cartesian mean of
+        width `filt.CART_DIM` (4 in 2D, 6 in 3D)."""
         if idx is None:
             idx = np.arange(self.num_agents)
-        if self._nav_mode == 'rb_ekf':
-            return self._filt.x[idx]
-        return nm.msc_decode(self._filt.y[idx], self._filt.sat[idx])
+        return self._filt.mean_cart(idx)
 
     # ── episode boundaries ───────────────────────────────────────────────────
     def _init_rows(self, idx, sat_c, tgt_c, sat_el):
@@ -408,17 +409,21 @@ class OrbitalNav(Orbital):
 
     # ── divergence guard ─────────────────────────────────────────────────────
     def _guard(self, sat_c, tgt_c, sat_el):
+        """MAJOR-9: dimension-generic. `rho` comes from the filter's OWN
+        `IDX_LNRHO` (3 under the 4-state, 5 under the 6-state); reading index 3
+        unconditionally reads `w_e` in 3D, whose exp() is ~1 m, which trips
+        RHO_MIN_M on every row of every step and silently reinitialises the
+        filter forever."""
         x = self._mean()
-        r2 = x[:, 0] ** 2 + x[:, 1] ** 2
-        v2 = x[:, 2] ** 2 + x[:, 3] ** 2
+        p = self._filt.POS_DIM
+        r2 = np.sum(x[:, :p] ** 2, axis=1)
+        v2 = np.sum(x[:, p:2 * p] ** 2, axis=1)
         with np.errstate(all='ignore'):
             inv_a = 2.0 / np.sqrt(np.maximum(r2, 1.0)) - v2 / nm.MU
         bad = ~np.isfinite(x).all(axis=1) | ~(inv_a > 0.0)
-        if self._nav_mode == 'rb_ekf':
-            tr = np.trace(self._filt.P, axis1=1, axis2=2)
-        else:
-            tr = np.trace(self._filt.Py, axis1=1, axis2=2)
-            rho = np.exp(np.minimum(self._filt.y[:, 3], 25.0))
+        tr = self._filt.trace()
+        if self._filt.IDX_LNRHO is not None:
+            rho = self._filt.rho()
             bad |= ~np.isfinite(self._filt.y).all(axis=1)
             bad |= (rho < RHO_MIN_M) | (rho > RHO_MAX_M)
         bad |= ~np.isfinite(tr)

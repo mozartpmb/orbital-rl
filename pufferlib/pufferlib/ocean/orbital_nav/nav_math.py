@@ -36,20 +36,65 @@ OBS_DIM = 38
 
 SQ_MU = math.sqrt(MU)
 
-# orbital.h:117-124 — MUST be 20 long (Discrete-20 C env).
+# Sub-steps per action, verbatim from `ACTION_TAU` in orbital.h.
+#
+# n3d_REDTEAM MAJOR-8: this table was 20 long against `NUM_ACTIONS 30`, so
+# `ACTION_TAU[np.array([26])]` raised `IndexError` on the first step of any
+# Discrete-30 (ext-3d) run — a hard crash, not a degradation. Rows 20-29 are
+# the ext-3d normal / combined impulses; all ten are tau = 1.
 ACTION_TAU = np.array(
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 30, 60, 1, 1, 1, 1, 180, 360, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1,    # 0-8   single-step burns / coast
+     5,                            # 9     warp 5 min
+     30, 60,                       # 10-11 warp 30 min / 1 h
+     1, 1, 1, 1,                   # 12-15 sub-5 m/s prograde/retrograde
+     180, 360,                     # 16-17 warp 3 h / 6 h
+     1, 1,                         # 18-19 radial +/-1
+     1, 1, 1, 1, 1, 1,             # 20-25 ext-3d normal burns
+     1, 1, 1, 1],                  # 26-29 ext-3d combined burns
     dtype=np.int64)
 
-# |Δv| commanded by each action (m/s), from ACTION_DV in orbital.h:78-113.
+# |Δv| commanded by each action (m/s), from ACTION_DV in orbital.h:78-137.
 # Used only to condition the bearings-only acquisition surrogate on the Δv the
 # chaser actually asked for during the acquisition arc. It is the COMMANDED
 # magnitude: a fuel-exhausted chaser is credited with a burn it did not make.
 # Inert in practice — acquisition windows are 45-185 min from episode start,
 # where the tank is full.
+#
+# n3d_REDTEAM MAJOR-8, the trap inside the extension: rows 26-29 are COMBINED
+# prograde+normal impulses `{+/-25, 0, +/-25}`, and `apply_impulse` takes the
+# norm of the ASSEMBLED vector with p̂ ⟂ n̂ exactly (orbital.h:785-818), so the
+# commanded magnitude is hypot(25, 25) = 35.355 — not 50. Writing 50 misstates
+# the surrogate's Δv conditioning by 1.41x on the 23.6% of the measured
+# Discrete-30 action mix that is actions 26-29.
+_DV_COMBINED = math.hypot(25.0, 25.0)          # 35.35533905932738
 ACTION_DV_MAG = np.array(
-    [0., 5., 10., 25., 5., 10., 25., 10., 10., 0.,
-     0., 0., 1., 1., 2., 2., 0., 0., 1., 1.], dtype=np.float64)
+    [0., 5., 10., 25., 5., 10., 25., 10., 10., 0.,      # 0-9
+     0., 0., 1., 1., 2., 2., 0., 0., 1., 1.,            # 10-19
+     1., 1., 10., 10., 25., 25.,                        # 20-25 normal
+     _DV_COMBINED, _DV_COMBINED,                        # 26-27 combined
+     _DV_COMBINED, _DV_COMBINED], dtype=np.float64)     # 28-29 combined
+
+NUM_ACTIONS = 30
+
+# ── Discrete-30 action subsets (n3d_REDTEAM MAJOR-10) ────────────────────────
+# `_FINE = [12,13,14,15,18,19]` is the correct set of *in-plane* fine burns and
+# stays frozen, but under Discrete-30 actions 20/21 are normal +/-1 m/s — which
+# N3D-B §3.3 measures as the 3D OBSERVABILITY TREATMENT (1 m/s normal beats
+# 1 m/s prograde by 2.5-8x in information at every terminal cell, and is 5.5x
+# more robust to mis-placement). An ablation arm that blocks only the in-plane
+# set leaves the treatment axis wide open and is uninterpretable, so the sets
+# are named separately and each arm must state which one it blocks.
+FINE_INPLANE = np.array([12, 13, 14, 15, 18, 19])
+FINE_NORMAL = np.array([20, 21])
+NORMAL_ALL = np.array([20, 21, 22, 23, 24, 25])
+COMBINED = np.array([26, 27, 28, 29])
+ACTION_SETS = {
+    'fine_inplane': FINE_INPLANE,
+    'fine_normal': FINE_NORMAL,
+    'fine_all': np.concatenate([FINE_INPLANE, FINE_NORMAL]),
+    'normal_all': NORMAL_ALL,
+    'combined': COMBINED,
+}
 
 # Sensor suite (ekf.py:50-51).
 SIGMA_RHO_M = 50.0
@@ -371,6 +416,13 @@ class BatchedRangeBearingEKF:
     Batched port of `ekf.TargetEKF`. Measurement = (range, inertial bearing).
     """
 
+    # Filter-interface contract (MAJOR-9): the wrapper never hard-codes a
+    # component index or a slice width; it asks the filter.
+    STATE_DIM = 4        # width of the filter's own state vector
+    CART_DIM = 4         # width of the Cartesian state it decodes to
+    POS_DIM = 2          # position components in the Cartesian state
+    IDX_LNRHO = None     # not a modified-polar filter
+
     def __init__(self, n, sigma_rho=SIGMA_RHO_M, sigma_beta=SIGMA_BETA_RAD,
                  q_a=Q_ACCEL_PSD_RB, sigma_v0=SIGMA_V0):
         self.n = n
@@ -461,10 +513,39 @@ class BatchedRangeBearingEKF:
     def mean_cov(self, idx):
         return self.x[idx], self.P[idx]
 
+    def mean_cart(self, idx):
+        """Filter mean as an inertial Cartesian state, cheaply (no covariance).
+
+        Part of the MAJOR-9 filter-interface contract: `OrbitalNav._mean` used
+        to branch on `nav_mode` and then slice `[:, :2]`, which is wrong for
+        every 6-state filter. Ask the filter instead.
+        """
+        return self.x[idx]
+
+    def trace(self):
+        return np.trace(self.P, axis1=1, axis2=2)
+
 
 # ── batched bearings-only modified-polar EKF (NAV-G's BO-MPC) ────────────────
 _LOG_RHO_MAX = 25.0
 _RHO_FLOOR = 1.0
+
+# ── NAMED modified-spherical state indices (n3d_REDTEAM MAJOR-9) ─────────────
+#
+# 2D (modified POLAR, 4 states):  y = [beta, betadot, rhodot/rho, ln rho]
+# 3D (modified SPHERICAL, 6):     y = [az, el, w_a, w_e, rhodot/rho, ln rho]
+#
+# `ln rho` moves from index 3 to index 5. Every positional `y[:, 3]` in the
+# wrapper is therefore a silent 3D bug, and one of them is fatal: the
+# divergence guard read `rho = exp(y[:, 3])`, which under a 6-state is
+# `exp(w_e) ~ 1.0 m < RHO_MIN_M`, so EVERY row is flagged bad on the boundary
+# and the filter reinitialises every step, forever. The run trains, the loss
+# curve looks plausible, and the experiment measures nothing.
+#
+# Positional indices are banned in the wrapper from here on: read them off the
+# filter object (`filt.IDX_LNRHO`, `filt.STATE_DIM`, `filt.CART_DIM`).
+MSC4_AZ, MSC4_AZDOT, MSC4_RDOT, MSC4_LNRHO = 0, 1, 2, 3
+MSC6_AZ, MSC6_EL, MSC6_WA, MSC6_WE, MSC6_RDOT, MSC6_LNRHO = 0, 1, 2, 3, 4, 5
 
 
 def msc_encode(sat, tgt):
@@ -531,6 +612,11 @@ class BatchedBearingMPC:
     encode o (exact two-body flow) o decode with a numerically differenced
     Jacobian.
     """
+
+    STATE_DIM = 4
+    CART_DIM = 4
+    POS_DIM = 2
+    IDX_LNRHO = MSC4_LNRHO       # 3 here, 5 in the 6-state (MAJOR-9)
 
     def __init__(self, n, sigma_beta=SIGMA_BETA_RAD, q_a=Q_ACCEL_PSD_BO):
         self.n = n
@@ -650,6 +736,16 @@ class BatchedBearingMPC:
             return x, np.tile(np.eye(4) * 1e12, (idx.size, 1, 1))
         P = Ginv @ self.Py[idx] @ np.swapaxes(Ginv, 1, 2)
         return x, 0.5 * (P + np.swapaxes(P, 1, 2))
+
+    def mean_cart(self, idx):
+        return msc_decode(self.y[idx], self.sat[idx])
+
+    def trace(self):
+        return np.trace(self.Py, axis1=1, axis2=2)
+
+    def rho(self):
+        """Estimated separation per row, from the filter's OWN ln-rho slot."""
+        return np.exp(np.minimum(self.y[:, self.IDX_LNRHO], _LOG_RHO_MAX))
 
 
 # ── analytic range prior (no range measurement) ──────────────────────────────
