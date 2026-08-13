@@ -358,6 +358,215 @@ _MIN_KW = dict(
 )
 
 
+# ── c1: BLOCKER-4 (leakcheck) + MAJOR-14 (clamp) + MAJOR-15 (recon-cart) ─────
+def _fixed_wrong_state(xt):
+    """A FIXED wrong target state for `leakcheck`.
+
+    NOT the literal "+1000 km along-track" of the red-team's example, and the
+    reason is measurable. A position shift along v-hat leaves r x v EXACTLY
+    invariant ((r + d v-hat) x v = r x v), so h-hat-t does not move; and every
+    other change it induces is in-plane, so its projection on h-hat-t is zero
+    too. Measured below: such a probe leaves obs[21], obs[22], obs[23] and
+    obs[24] bit-identical — FOUR of the seven new leak channels — so a
+    leakcheck built on it would certify a leaky encode as clean. This state
+    instead rotates the plane, shifts along-track and rescales the speed, so
+    every derived quantity differs.
+    """
+    r, v = xt[:, :3], xt[:, 3:6]
+    ax = np.array([0.3, 0.5, 0.81])
+    ax = ax / np.linalg.norm(ax)
+    th = math.radians(3.0)
+    K = np.array([[0, -ax[2], ax[1]], [ax[2], 0, -ax[0]], [-ax[1], ax[0], 0]])
+    R = np.eye(3) + math.sin(th) * K + (1 - math.cos(th)) * (K @ K)
+    vh = v / np.linalg.norm(v, axis=1)[:, None]
+    out = np.empty_like(xt)
+    out[:, :3] = r @ R.T + 1.0e6 * vh
+    out[:, 3:6] = (v @ R.T) * 1.001
+    return out
+
+
+def _alongtrack_shift(xt, d=1.0e6):
+    v = xt[:, 3:6]
+    out = xt.copy()
+    out[:, :3] = xt[:, :3] + d * v / np.linalg.norm(v, axis=1)[:, None]
+    return out
+
+
+def stage_c1(args):
+    print('== c1  BLOCKER-4 leakcheck / MAJOR-14 clamp / MAJOR-15 recon-cart ==')
+    from pufferlib.ocean.orbital.orbital import Orbital
+    from pufferlib.ocean.orbital_nav import nav_encode3d as ne
+    from pufferlib.ocean.orbital_nav import nav_math3d as n3
+
+    n = 128
+    env = Orbital(num_envs=n, seed=5, **_D3_KW)
+    env.reset(seed=11)
+    rng = np.random.default_rng(0)
+    for _ in range(40):                      # get off the reset manifold
+        env.step(rng.integers(0, 30, n).astype(np.int32))
+    st = env.get_state()
+    obs_c = np.asarray(env.observations, dtype=np.float32).copy()
+
+    enc = ne.Encoder3D(n, obs_alt_scale_m=_D3_KW['obs_alt_scale_m'],
+                       lvlh_scale_m=_D3_KW['lvlh_scale_m'],
+                       di_max_rad=_D3_KW['di_max_rad'],
+                       shape_dv_ref_ms=_D3_KW['shape_dv_ref_ms'])
+    slots = np.array(ne.TARGET_SLOTS_3D)
+    comp = np.array(ne.COMPLEMENT_SLOTS_3D)
+
+    ok = record('layout: 19 target slots + 19 complement partition obs[0:38]',
+                len(ne.TARGET_SLOTS_3D) == 19 and len(ne.COMPLEMENT_SLOTS_3D) == 19,
+                f'target {ne.TARGET_SLOTS_3D}')
+    ok &= record('the 7 NEW leak channels are in the rebuilt set',
+                 set([21, 22, 23, 24, 25, 26, 28]) <= set(ne.TARGET_SLOTS_3D))
+    ok &= record('obs[27] (chaser-only dv ledger) is NOT rebuilt',
+                 27 in ne.COMPLEMENT_SLOTS_3D)
+    ok &= record('obs[15] (episode clock) is NOT rebuilt',
+                 15 in ne.COMPLEMENT_SLOTS_3D)
+    ok &= record('obs[29-32] reserved, NOT rebuilt',
+                 set([29, 30, 31, 32]) <= set(ne.COMPLEMENT_SLOTS_3D))
+
+    # ── recon: estimate := truth, straight off the getter ───────────────────
+    tt = ne.Encoder3D.target_truth(st)
+    o = obs_c.copy()
+    enc.write(o, st, tt['cart'])
+    d = np.abs(o.astype(np.float64) - obs_c.astype(np.float64))
+    eps32 = float(np.spacing(np.float32(1.0)))
+    per = d[:, slots].max(axis=0)
+    ok &= record('recon: complement untouched (bitwise)',
+                 np.array_equal(o[:, comp], obs_c[:, comp]),
+                 f'max|diff| {d[:, comp].max():.3e}')
+    ok &= record('recon: 19 rebuilt slots reproduce the C to < 1e-5 abs',
+                 per.max() < 1e-5,
+                 f'max {per.max():.3e} at slot {slots[int(per.argmax())]}; '
+                 f'{per.max() / eps32:.1f} x eps_f32')
+    print('    per-slot max |recon - truth|: '
+          + ', '.join(f'[{s}]={per[i]:.1e}' for i, s in enumerate(slots)
+                      if per[i] > 0))
+
+    # ── MAJOR-15 recon-cart: the Cartesian route the FILTER actually flies ──
+    el = n3.cartesian_to_elements_3d(tt['cart'])
+    xt_rt = n3.orbit_to_cartesian_3d(el['a'], el['e'], el['theta'],
+                                     el['omega'], el['inc'], el['raan'])
+    o2 = obs_c.copy()
+    enc.write(o2, st, xt_rt)
+    d2 = np.abs(o2.astype(np.float64) - obs_c.astype(np.float64))[:, slots]
+    per2 = d2.max(axis=0)
+    cart_err = float(np.abs(xt_rt - tt['cart']).max())
+    ok &= record('recon-cart: truth round-tripped through Cartesian, 19 slots '
+                 '(float32, vs the C)', per2.max() < 1e-3,
+                 f'max {per2.max():.3e} at slot {slots[int(per2.argmax())]} '
+                 f'(state round-trip {cart_err:.2e} m)')
+    # The float32 comparison saturates at 0 because the round-trip state error
+    # is below the observation's own quantum. The MEASURED tolerance the gate
+    # states is therefore taken in float64, on the encoder's raw values, before
+    # the cast — otherwise "0.0" would be a property of float32, not of the
+    # Cartesian route.
+    v_el = enc.values(st, tt['cart'])[:, slots].copy()
+    v_ct = enc.values(st, xt_rt)[:, slots].copy()
+    per64 = np.abs(v_el - v_ct).max(axis=0)
+    ok &= record('recon-cart: same, in float64 before the cast (the STATED '
+                 'tolerance)', per64.max() < 1e-9,
+                 f'max {per64.max():.3e} at slot {slots[int(per64.argmax())]}')
+    print('    per-slot max |recon-cart - recon| (float64): '
+          + ', '.join(f'[{s}]={per64[i]:.1e}' for i, s in enumerate(slots)
+                      if per64[i] > 0))
+
+    # ── leakcheck ───────────────────────────────────────────────────────────
+    def leakcheck(encoder, label):
+        """Returns (unmoved_target_slots, moved_complement_slots)."""
+        base = obs_c.copy()
+        encoder(base, st, tt['cart'])
+        bad = obs_c.copy()
+        encoder(bad, st, _fixed_wrong_state(tt['cart']))
+        moved = (base != bad).any(axis=0)
+        unmoved_t = [int(s) for s in slots if not moved[s]]
+        moved_c = [int(s) for s in comp if moved[s]]
+        print(f'    {label}: unmoved target slots {unmoved_t}, '
+              f'moved complement slots {moved_c}')
+        return unmoved_t, moved_c
+
+    ut, mc = leakcheck(enc.write, 'shipped Encoder3D')
+    ok &= record('leakcheck (a): ALL 19 estimated slots move', not ut)
+    ok &= record('leakcheck (b): the complement does NOT move', not mc)
+
+    # ── test the test (the ext_invariants3d discipline) ─────────────────────
+    class _LeakyEncoder(ne.Encoder3D):
+        """The 2D wrapper's behaviour under dim3: rebuilds only the 12 slots of
+        nav_math.TARGET_SLOTS_T3, leaving the seven ext-3d channels on TRUTH."""
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            self.slots = np.array(nm.TARGET_SLOTS_T3)
+            self._is_clamp2 = np.isin(self.slots, self.clamp2)
+
+    class _OverBroadEncoder(ne.Encoder3D):
+        """The other direction: also writes obs[15] (the episode clock) and
+        obs[27] (the chaser-only dv ledger)."""
+        def write(self, obs, st, xt):
+            r = super().write(obs, st, xt)
+            v = self.values(st, xt)
+            obs[:, 15] = np.float32(0.5)
+            obs[:, 27] = (v[:, 26] * 0.5).astype(np.float32)
+            return r
+
+    leaky = _LeakyEncoder(n, obs_alt_scale_m=_D3_KW['obs_alt_scale_m'],
+                          lvlh_scale_m=_D3_KW['lvlh_scale_m'],
+                          di_max_rad=_D3_KW['di_max_rad'],
+                          shape_dv_ref_ms=_D3_KW['shape_dv_ref_ms'])
+    ut, mc = leakcheck(leaky.write, 'deliberately LEAKY encode (2D 12-slot)')
+    ok &= record('test-the-test: leaky encode caught on exactly the 7 new '
+                 'channels {21,22,23,24,25,26,28}',
+                 sorted(ut) == [21, 22, 23, 24, 25, 26, 28] and not mc,
+                 f'caught {sorted(ut)}')
+
+    broad = _OverBroadEncoder(n, obs_alt_scale_m=_D3_KW['obs_alt_scale_m'],
+                              lvlh_scale_m=_D3_KW['lvlh_scale_m'],
+                              di_max_rad=_D3_KW['di_max_rad'],
+                              shape_dv_ref_ms=_D3_KW['shape_dv_ref_ms'])
+    ut, mc = leakcheck(broad.write, 'deliberately OVER-BROAD encode')
+    ok &= record('test-the-test: over-broad encode caught on obs[27] '
+                 '(and obs[15] via the untouched-complement bitwise check)',
+                 27 in mc, f'moved complement {mc}')
+    o3 = obs_c.copy()
+    broad.write(o3, st, tt['cart'])
+    ok &= record('test-the-test: over-broad encode breaks the bitwise '
+                 'complement check', not np.array_equal(o3[:, comp],
+                                                        obs_c[:, comp]))
+
+    # The probe the red-team's example would have used, and why it is unsafe.
+    base = obs_c.copy(); enc.write(base, st, tt['cart'])
+    alt = obs_c.copy(); enc.write(alt, st, _alongtrack_shift(tt['cart']))
+    still = [int(s) for s in slots if not (base[:, s] != alt[:, s]).any()]
+    record('NOTE: the red-team\'s example probe (+1000 km ALONG-TRACK) is '
+           'NOT a valid leakcheck garbage', len(still) > 0,
+           f'it leaves {still} bit-identical — (r + d v-hat) x v = r x v so '
+           f'h-hat-t never moves, and every induced change is in-plane')
+
+    # ── MAJOR-14: slot-dependent clamp ──────────────────────────────────────
+    ok &= record('clamp set is exactly {21..26, 28} (obs[27] is not rebuilt)',
+                 tuple(ne.CLAMP2_SLOTS) == (21, 22, 23, 24, 25, 26, 28))
+    probe = np.array([-3.0, -2.0, -1.5, 0.0, 1.5, 2.0, 3.0, np.nan, np.inf,
+                      -np.inf])
+    want = np.array([-2.0, -2.0, -1.5, 0.0, 1.5, 2.0, 2.0, -2.0, 2.0, -2.0])
+    got = ne.obs_clamp2(probe)
+    ok &= record('obs_clamp2 reproduces the C branch incl. the NaN trap '
+                 '(NaN -> -2.0)', np.array_equal(got, want),
+                 f'{got.tolist()}')
+
+    # A saturating estimate must land on +/-2 in 21-28 and on +/-nav_clip
+    # elsewhere — this is what a uniform nav_clip = 4.0 would get wrong.
+    wild = tt['cart'].copy()
+    wild[:, :3] *= 4.0
+    o4 = obs_c.copy()
+    enc.write(o4, st, wild)
+    c2 = np.abs(o4[:, np.array(ne.CLAMP2_SLOTS)]).max()
+    ok &= record('saturating estimate: slots 21-28 bounded by 2.0, not 4.0',
+                 c2 <= 2.0 + 1e-6, f'max |obs[21..28]| = {c2:.4f}')
+
+    env.close()
+    return dict(ok=bool(ok))
+
+
 # ext-3d (dim3_mode=1) configuration: the X3 rung the campaign warm-starts from.
 _D3_KW = dict(_MIN_KW,
               e_max_target=0.05, e_max_sat=0.05,
@@ -366,7 +575,8 @@ _D3_KW = dict(_MIN_KW,
               shaping_mode=2, shape_w_lambda=1.0, shape_w_match=0.8166667,
               shape_dv_ref_ms=700.0)
 
-STAGES = {'a1': stage_a1, 'a2': stage_a2, 'b1': stage_b1}
+STAGES = {'a1': stage_a1, 'a2': stage_a2, 'b1': stage_b1,
+          'c1': stage_c1}
 
 
 def main():
