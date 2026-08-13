@@ -43,7 +43,9 @@
 #   stage 3  T-BO3D-TB5    50M warm, bearings_only, trained AT TB5-3D. The
 #                          treatment.
 #   stage 4  rung-1 multi-seed: T-BO3 at the X3 LOOSE box, seeds 7 and 1337.
-#                          Last, so the flagship TB5 result lands first.
+#                          After the flagship, so TB5 lands first.
+#   stage 5  TB5 treatment multi-seed: T-BO3D-TB5 at seeds 7 and 1337,
+#                          identical to stage 3 but for --train.seed.
 #
 # ── WARM STARTS: TWO FILES, AND THEY ARE NOT INTERCHANGEABLE ────────────────
 # TB stages (2, 3): models/t3/n3dnav_warm_TB5.pt
@@ -87,10 +89,10 @@ EVAL_SEED=123
 # Which stages to run. Default: all. Set to resume after an interruption
 # (skip-logic already prevents retraining a finished arm, but this also skips
 # the finished arm's EVALS, which the skip-logic does not cover):
-#   N3DNAV_TB_STAGES=0,3,4 bash scripts/orbital/nav/n3dnav_tb_campaign.sh
+#   N3DNAV_TB_STAGES=0,5 bash scripts/orbital/nav/n3dnav_tb_campaign.sh
 # Stage 0 (the anchor) runs unless explicitly excluded, and its failure always
 # aborts — no stage list can turn that off.
-STAGES=${N3DNAV_TB_STAGES:-0,1,2,3,4}
+STAGES=${N3DNAV_TB_STAGES:-0,1,2,3,4,5}
 want() { [[ ",$STAGES," == *",$1,"* ]]; }
 STEPS=50000000
 FINAL_CKPT_TAG=000382        # 50M steps at the shipped 8w x 256 shape
@@ -301,6 +303,32 @@ for SEED in 7 1337; do
         say "FAIL train $ARM (no final ckpt)"
     fi
     say "---- stage 4 seed $SEED done ----"
+done
+
+# ── stage 5: TB5 treatment multi-seed ───────────────────────────────────────
+# Replicates stage 3 exactly — same warm start n3dnav_warm_TB5.pt, same
+# w_match 0.35, bearings_only, 50M, TB5-3D box — changing only --train.seed.
+# Seed 42 is stage 3 itself (98.0% @TB5-3D / 99.5% @TB4-3D).
+#
+# No cross-mode row here: flying a checkpoint in a mode it was not trained for
+# is a CONTROL-arm diagnostic. On the control it answers "does estimate-training
+# with range measured transfer to the blind problem" (it does not — 13-18% at
+# TB5). On the treatment it would just re-run the native row under a different
+# name, since bearings-only IS its native mode.
+want 5 || say "---- stage 5 SKIPPED (not in STAGES=$STAGES) ----"
+for SEED in 7 1337; do
+    want 5 || break
+    ARM="T-BO3D-TB5-s${SEED}"
+    if train_arm "$ARM" bearings_only 0.35 TB5_BOX "$WS_TB" "$SEED"; then
+        CK=$(last_ckpt "$ARM"); cp "$CK" "$MAIN/models/t3/n3dnav_${ARM}.pt" 2>/dev/null
+        for BOX in TB5-3D TB4-3D; do
+            one_eval "$ARM" "$CK" "${BOX}_bo"    bearings_only real "$BOX" 0.35
+            one_eval "$ARM" "$CK" "${BOX}_truth" truth         surrogate "$BOX" 0.35
+        done
+    else
+        say "FAIL train $ARM (no final ckpt)"
+    fi
+    say "---- stage 5 seed $SEED done ----"
 done
 
 say "=========== 3D-nav x tight-box campaign COMPLETE ==========="
