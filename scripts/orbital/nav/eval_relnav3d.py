@@ -598,7 +598,11 @@ def stage_anchor(args):
         return 1
 
     base = dict(RUNGS[args.rung]); base.update(over)
-    _plain = Orbital(num_envs=1, **base)
+    # nav_* keys are OrbitalNav wrapper kwargs (e.g. nav_r_min_m, the blind
+    # range prior's inner shell) — the plain C env does not accept them.
+    _plain = Orbital(num_envs=1,
+                     **{k: v for k, v in base.items()
+                        if not k.startswith('nav_')})
     _plain._box_radius_m = float(base['rendezvous_radius_m'])
     _plain._box_vel_ms = float(base['rel_vel_tol_ms'])
     a = rollout(_plain, ck,
