@@ -1,0 +1,17 @@
+=== crlb_online acquisition surrogate under J2 truth ===
+    N=128, nav60, LEO 300-800 km, i_t ~ U(30,60) deg
+    truth is J2 in BOTH arms; only the STM that CHAINS Phi differs
+    gate 0.2, acquisition floor 45 min
+
+     arc      sigma_LOS shipped     sigma_LOS J2-aware  ratio p50  ratio p95 |log2| > 0.1
+     45m         18377.0 m             18378.5 m     1.0002     1.0441        3.1%
+     90m          3827.7 m              3836.3 m     0.9997     1.0252        5.5%
+    180m          1492.4 m              1491.8 m     0.9923     1.0140        5.5%
+    360m           960.9 m              1046.5 m     0.9674     1.0229       32.8%
+
+  --- does the ACQUISITION DECISION move? ---
+    acquired by BOTH         128/128
+    shipped only               0   (would acquire on a bound the J2-aware FIM does not support)
+    J2-aware only              0
+    latency delta (shipped - J2-aware), minutes: p05 +0.00  p50 +0.00  p95 +0.00  max|.| 0.00
+    fraction with |delta| >= 1 tick (60 s): 0.0%

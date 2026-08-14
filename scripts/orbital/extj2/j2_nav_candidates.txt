@@ -1,0 +1,63 @@
+=== J2 x NAV: covariance-consistency candidates ===
+    N=128, nav60, arcs [6.0, 24.0] h, LEO 300-800 km, e<=0.05,
+    i_t ~ U(30,60) deg, rel plane <= 1 deg; truth is J2 in every arm
+    except MATCHED. Filter seeded from truth + post-IOD covariance.
+
+--- C1 sanity: analytic dPhi vs the finite-difference reference ---
+    |Phi_fdJ2 - Phi_2body| max        = 5.014e-01  (the term being modelled)
+    |Phi_fdJ2 - Phi_analyticJ2| max   = 2.183e-01
+    fraction of the two-body STM error removed: p50 0.5904, p05 0.4103
+
+arm                                           arc         pos p50 [95% CI] (m)   vel p50        NEES p50 [95% CI]  in band  repole
+MATCHED    2body/2body  (control)              6h    1604.8 [  1410.6,  1744.9]    1.639      1.02 [  0.93,   1.29]   82.8%    0.05
+MATCHED    2body/2body  (control)             24h     458.0 [   394.8,   570.5]    0.501      1.00 [  0.90,   1.14]   89.1%    0.15
+
+FIXED      J2 state, 2body cov                 6h    1693.9 [  1446.0,  1911.7]    1.797      1.40 [  1.10,   1.85]   66.4%    0.05
+FIXED      J2 state, 2body cov                24h    1202.7 [   922.9,  1722.7]    1.298     11.37 [  7.80,  28.02]   21.9%    0.16
+
+C1-an      J2 state, J2 cov (analytic)         6h    1653.9 [  1436.6,  1878.5]    1.772      1.34 [  1.14,   1.72]   65.6%    0.05
+C1-an      J2 state, J2 cov (analytic)        24h    1234.5 [   941.0,  1766.9]    1.324     11.46 [  7.54,  26.46]   18.8%    0.16
+
+C1-fd      J2 state, J2 cov (fin-diff ref)     6h    1632.8 [  1396.1,  1752.0]    1.661      1.02 [  0.93,   1.29]   83.6%    0.05
+C1-fd      J2 state, J2 cov (fin-diff ref)    24h     457.3 [   389.2,   580.9]    0.481      1.01 [  0.90,   1.16]   87.5%    0.16
+
+C2-T4      J2 state, re-init every 4 h         6h    2809.7 [  2334.9,  3157.0]    2.593      1.11 [  0.84,   1.26]   87.5%    0.05
+C2-T4      J2 state, re-init every 4 h        24h    1842.0 [  1667.5,  2199.9]    1.885      0.93 [  0.76,   1.11]   88.3%    0.16
+
+C2-T8      J2 state, re-init every 8 h         6h    1693.9 [  1446.0,  1911.7]    1.797      1.40 [  1.10,   1.85]   66.4%    0.05
+C2-T8      J2 state, re-init every 8 h        24h    1288.3 [  1031.3,  1497.1]    1.282      1.30 [  1.10,   1.47]   73.4%    0.16
+
+C2-T12     J2 state, re-init every 12 h        6h    1693.9 [  1446.0,  1911.7]    1.797      1.40 [  1.10,   1.85]   66.4%    0.05
+C2-T12     J2 state, re-init every 12 h       24h    1159.6 [   870.4,  1357.1]    1.193      1.79 [  1.38,   2.03]   63.3%    0.16
+
+C3         J2 state, structured inflation      6h    1694.5 [  1447.6,  1911.6]    1.802      1.40 [  1.10,   1.85]   66.4%    0.05
+C3         J2 state, structured inflation     24h    1202.7 [   921.6,  1710.8]    1.294     11.34 [  7.79,  28.01]   21.9%    0.16
+
+--- C2 transients (the cost of throwing the covariance away) ---
+  C2-T4      J2 state, re-init every 4 h       n_reinit  5  median position-error jump at re-init      +0.0 m  sigma_pos inflation 150.15x
+  C2-T8      J2 state, re-init every 8 h       n_reinit  2  median position-error jump at re-init      +0.0 m  sigma_pos inflation 226.18x
+  C2-T12     J2 state, re-init every 12 h      n_reinit  1  median position-error jump at re-init      +0.0 m  sigma_pos inflation 307.49x
+
+--- tick cost (predict() only; the sole part any candidate changes) ---
+  2body           0.603 ms/tick     1.00x the two-body path
+  j2              0.823 ms/tick     1.36x the two-body path
+  j2cov_an        1.026 ms/tick     1.70x the two-body path
+  j2cov_fd        3.072 ms/tick     5.09x the two-body path
+  j2struct        1.024 ms/tick     1.70x the two-body path
+
+=== 24 h SUMMARY (the operating point) ===
+  arm                                                 pos   vs ctl       NEES  in band
+  MATCHED    2body/2body  (control)                458.0m    1.00x      1.00   89.1%
+  FIXED      J2 state, 2body cov                  1202.7m    2.63x     11.37   21.9%
+  C1-an      J2 state, J2 cov (analytic)          1234.5m    2.70x     11.46   18.8%
+  C1-fd      J2 state, J2 cov (fin-diff ref)       457.3m    1.00x      1.01   87.5%
+  C2-T4      J2 state, re-init every 4 h          1842.0m    4.02x      0.93   88.3%
+  C2-T8      J2 state, re-init every 8 h          1288.3m    2.81x      1.30   73.4%
+  C2-T12     J2 state, re-init every 12 h         1159.6m    2.53x      1.79   63.3%
+  C3         J2 state, structured inflation       1202.7m    2.63x     11.34   21.9%
+
+--- predict() as a fraction of a full nav step (N=64, bearings_only) ---
+  OrbitalNav(bearings_only) full step: 1.771 ms/step  (27.67 us per env-step)
+  predict 2body     0.441 ms  = 24.9% of a full nav step
+  predict j2        0.626 ms  -> full step becomes 110.4% of baseline
+  predict j2cov_fd  2.517 ms  -> full step becomes 217.2% of baseline
