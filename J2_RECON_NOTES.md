@@ -224,3 +224,142 @@ web_data/results/extj2_rung/
 
 No data-dir or wandb-group collisions; the flatline tripwire label is
 seed-suffixed too.
+
+---
+
+## 4. Covariance consistency under J2 — the binding decision
+
+Follow-up to §1's open item: `MSC6J2` restores position at 24 h but leaves the
+covariance ~11× overconfident, and 24 h is the rung's operating point. Four
+candidates, same protocol, N=128, truth J2 in every arm but the control.
+Record: `scripts/orbital/extj2/j2_nav_candidates.txt`.
+
+### 4.1 Head-to-head at 24 h (the operating point)
+
+| arm | pos p50 | vs control | NEES p50 | in band | tick cost |
+|---|---|---|---|---|---|
+| MATCHED 2body/2body (control) | 458.0 m | 1.00× | 1.00 | 89.1% | 1.00× |
+| FIXED — J2 state, 2body cov | 1202.7 m | 2.63× | **11.37** | 21.9% | 1.36× |
+| C1-an — analytic ΔΦ | 1234.5 m | 2.70× | **11.46** | 18.8% | 1.70× |
+| **C1-fd — FD J2 STM** | **457.3 m** | **1.00×** | **1.01** | **87.5%** | **5.09×** |
+| C2-T4 — re-init every 4 h | 1842.0 m | 4.02× | 0.93 | 88.3% | 1.36× |
+| C2-T8 — re-init every 8 h | 1288.3 m | 2.81× | 1.30 | 73.4% | 1.36× |
+| C2-T12 — re-init every 12 h | 1159.6 m | 2.53× | 1.79 | 63.3% | 1.36× |
+| C3 — structured inflation | 1202.7 m | 2.63× | **11.34** | 21.9% | 1.70× |
+
+At 6 h: C1-fd is 1.02 NEES / 83.6% in band vs the control's 1.02 / 82.8%;
+every other arm sits at 1.34–1.40 NEES / ~66%.
+
+**C1-fd is the only candidate that restores BOTH.** It reproduces the control
+to three digits on position (457.3 vs 458.0 m) and on NEES (1.01 vs 1.00). The
+covariance error was not a nuisance term — it was feeding back through the
+Kalman gain and costing 2.6× in position error as well.
+
+### 4.2 Why the two cheap options failed, and it is the same reason
+
+**C1-an (analytic ΔΦ) — 59% effective, and it overshoots.** The partials are
+not the problem: `_dq_dx` matches finite differences to 1.2e−9, and the
+e-route is provably negligible (∂Ω̇/∂e = Ω̇·4e/(1−e²) is 5e−5 of the a-route at
+e ≤ 0.05). The problem is a **440:1 cancellation**. The exact chain is
+
+```
+ΔΦ = [∂G_J2 − ∂G_2body]·(∂angles/∂x + dt·∂rates/∂q·∂q/∂x)
+   +  ∂G_J2·dt·∂(rates − n·e_M)/∂q·∂q/∂x
+```
+
+and the two pieces are individually ~150 while their difference is 0.34.
+Truncating to the second leaves a residual of the same order as the quantity
+being modelled — measured |model| max 4.82e−1 against |truth| max 3.41e−1, i.e.
+it overshoots. Kept in the tree with the derivation in its docstring, because
+the negative result is what stops someone re-deriving it.
+
+**C3 (structured inflation) — indistinguishable from doing nothing** (NEES
+11.34 vs FIXED's 11.37). Inflating the node and along-track directions by the
+right *magnitude* does not help because the defect is not an additive rank-2
+term: it is a **multiplicative** error in the transition, so it compounds
+across 1440 ticks in directions that rotate with the orbit. An additive
+correction applied in the instantaneous node/along-track frame cannot track
+that. This is the same lesson as the Q sweep in §1: the bias is structural, and
+no amount of inflation — scalar or structured — repairs a wrong Φ.
+
+**C2 (periodic re-init) — buys consistency by destroying information.** It does
+fix NEES (T4: 0.93, 88.3% in band) but the position error goes the wrong way:
+1842 m, **4.02× the control and 1.5× worse than doing nothing**. The measured
+transient explains it: the position-error jump at re-init is **+0.0 m** (the
+mean is untouched, as it must be) while σ_pos inflates **150–307×**. Nothing is
+corrected; the filter simply forgets what it knew and must re-converge, and at
+T=4 h it never gets to. The T sweep is monotone in the obvious direction —
+shorter T buys consistency and costs accuracy — with no setting that gets both.
+
+### 4.3 Cost in context
+
+`predict()` is **24.9%** of a full `OrbitalNav(bearings_only)` step (0.441 ms of
+1.771 ms at N=64). So the 5.09× on predict is:
+
+| filter | predict | full nav step |
+|---|---|---|
+| two-body (today) | 0.441 ms | 100% |
+| J2 state only | 0.626 ms | **110%** |
+| J2 state + FD J2 covariance | 2.517 ms | **217%** |
+
+**The full fix roughly doubles the nav step**, which on the nav lineage's ~99 min
+per 50M arm is ~3.6 h. Real but affordable, and it buys a 2.6× position
+improvement alongside the consistency.
+
+### 4.4 Binding recommendation for the campaign spec
+
+**Ship `MSC6J2Cov(stm_j2='fd')` — J2 in the state propagation AND a
+finite-difference J2 STM in the covariance propagation — for every J2 × nav
+arm.** It is the only measured option that restores both the estimate and its
+covariance to the matched control (457 m / NEES 1.01 vs 458 m / 1.00), and the
+covariance is not cosmetic: the two-body-STM arms pay 2.6× in position error
+because an overconfident covariance shrinks the Kalman gain. Reject the cheap
+options on evidence, not taste — the analytic ΔΦ is 59% effective and
+overshoots because of a 440:1 cancellation in the exact chain, structured
+inflation is statistically identical to doing nothing (NEES 11.34 vs 11.37)
+because the defect is multiplicative rather than additive, and periodic re-init
+fixes NEES only by discarding information, landing at 4.02× the control's
+position error with a 150–307× σ excursion at each re-init. The price is
+2.17× a nav step (predict is 24.9% of it), ~3.6 h per 50M arm. **One
+optimization is identified but unmeasured**: propagating the covariance in
+element space, where the secular-J2 Jacobian is exactly `I + dt·∂rates/∂(a,e,i)`,
+would be exact and cheaper than 12 finite-difference propagations — it needs
+the coe2rv/rv2coe Jacobian chain that C1-an tried to shortcut. Do not attempt it
+mid-campaign; measure it as its own item if the 2.17× ever binds.
+
+### 4.5 Interaction with nav60 and with the acquisition surrogate
+
+**nav60 cadence: no interaction.** Every candidate acts inside `predict(dt)`
+and is exact in dt; the choice is cadence-independent. C2 is the exception in
+principle — its re-init period is wall-clock, not tick-count — but it is
+rejected anyway.
+
+**The acquisition surrogate: exposed in principle, immune in practice AT THIS
+RUNG — and the reason is the arc length, not the e-immunity argument.**
+`AcqSurrogate._accumulate6` chains `Phi_k = stm_analytic_nd(...) @ Phi_{k-1}`
+— the two-body transition — while the measurement kernel is built from the
+realized geometry. So the geometry is J2-correct for free (that IS why the
+surrogate is e-immune: e enters only through realized geometry) but the
+*transition* is not, and that exposure is genuinely different in kind.
+
+Measured (`scripts/orbital/extj2/j2_acq_surrogate.txt`), identical J2 truth,
+only the chaining STM differs:
+
+| arc | σ_LOS shipped | σ_LOS J2-aware | ratio p50 | ratio p95 | \|log2\| > 0.1 |
+|---|---|---|---|---|---|
+| **45 min (the floor)** | 18377.0 m | 18378.5 m | **1.0002** | 1.0441 | 3.1% |
+| 90 min | 3827.7 m | 3836.3 m | 0.9997 | 1.0252 | 5.5% |
+| 3 h | 1492.4 m | 1491.8 m | 0.9923 | 1.0140 | 5.5% |
+| 6 h | 960.9 m | 1046.5 m | **0.9674** | 1.0229 | **32.8%** |
+
+And the decision itself: **128/128 acquired by both arms, latency delta
+identically 0.00 min, 0.0% differing by even one 60 s tick.**
+
+So the shipped surrogate needs **no change** for the J2 × nav campaign as
+configured, because `nav_acq_min_sec = 2700` and rung 1 measured acquisition at
+exactly that 46-min floor — at which the bias is 0.02%. But the immunity is a
+property of the short arc: by 6 h the shipped surrogate runs **3.3% optimistic**
+at the median with a third of scenarios past 7% error, and optimistic is the
+dangerous direction (it declares acquisition on a bound the information does not
+support). **Re-measure this if any future rung allows a long blind window or a
+re-acquisition after an extended coast.** That boundary belongs in the spec.

@@ -176,6 +176,218 @@ class MSC6J2(n3.BatchedBearingMSC6):
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# Candidate 1 — the J2 term in the COVARIANCE propagation
+# ══════════════════════════════════════════════════════════════════════════
+def stm_fd_j2(X, dt, h_pos=1.0, h_vel=1e-3):
+    """Central-difference STM of `propagate_cartesian_j2`.
+
+    Correct by construction, 12 extra propagations per tick. This is the
+    REFERENCE the cheap analytic form is scored against, not a shippable path.
+    """
+    n = X.shape[0]
+    Y, ok = propagate_cartesian_j2(X, dt)
+    F = np.empty((n, 6, 6))
+    h = np.array([h_pos] * 3 + [h_vel] * 3)
+    for j in range(6):
+        Xp = X.copy(); Xp[:, j] += h[j]
+        Xm = X.copy(); Xm[:, j] -= h[j]
+        Yp, _ = propagate_cartesian_j2(Xp, dt)
+        Ym, _ = propagate_cartesian_j2(Xm, dt)
+        F[:, :, j] = (Yp - Ym) / (2.0 * h[j])
+    return F, ok, Y
+
+
+def _dq_dx(X):
+    """Closed-form partials of the rate arguments (a, i) w.r.t. the Cartesian
+    state. e is DELIBERATELY omitted — see `stm_analytic_j2`."""
+    r = X[:, :3]; v = X[:, 3:]
+    rn = np.linalg.norm(r, axis=1); vn2 = np.einsum('ni,ni->n', v, v)
+    a = 1.0 / (2.0 / rn - vn2 / MU)
+    da = np.concatenate([(2.0 * a**2 / rn**3)[:, None] * r,
+                         (2.0 * a**2 / MU)[:, None] * v], axis=1)
+    h = np.cross(r, v); hn = np.linalg.norm(h, axis=1)
+    hh = h / hn[:, None]
+    inc = np.arccos(np.clip(hh[:, 2], -1.0, 1.0))
+    si = np.maximum(np.sin(inc), 1e-9)
+    z = np.zeros_like(hh); z[:, 2] = 1.0
+    g = -(z - hh[:, 2:3] * hh) / (hn * si)[:, None]      # di/dh
+    di = np.concatenate([np.cross(v, g), np.cross(g, r)], axis=1)
+    return a, inc, da, di
+
+
+def stm_analytic_j2(X, dt):
+    """Phi_J2 = Phi_2body + dt * (angle-column) x (rate-partial) outer products.
+
+    In ELEMENT space the secular map is trivial — (a, e, i) are invariant and
+    the three angles gain constant rates — so its Jacobian is
+    I + dt * d(rates)/d(a,e,i) in the (Omega, omega, M) rows. Pushing that
+    through coe2rv gives, exactly,
+
+        dPhi = dt * [ dG/dOmega (x) dOmdot/dq + dG/domega (x) domdot/dq
+                                              + dG/dM     (x) dMdot_J2/dq ] dq/dx
+
+    and every factor is closed form:
+        dG/dOmega = (z_hat x r,  z_hat x v)      (rotation about z)
+        dG/domega = (h_hat x r,  h_hat x v)      (rotation about h)
+        dG/dM     = (v/n,       -mu r/(r^3 n))   (motion along the orbit)
+        dOmdot/da = -3.5 Omdot/a ,  dOmdot/di = +k sin i , etc.
+
+    THREE OUTER PRODUCTS, and MEASURED TO BE INSUFFICIENT — kept in the tree
+    because the negative result is the useful part.
+
+    It removes only ~59% (p05 41%) of the two-body STM's error and it
+    OVERSHOOTS (|model| max 4.82e-1 vs |truth| max 3.41e-1). The partials
+    themselves are right: `_dq_dx` agrees with finite differences to 1.2e-9,
+    and the e-route is provably negligible here (dOmdot/de = Omdot*4e/(1-e^2)
+    is 5e-5 of the a-route at e <= 0.05). What breaks it is that the exact
+    chain has the form
+
+        dPhi = [dG_J2 - dG_2body] (dangles/dx + dt d(rates)/dq dq/dx)
+             + dG_J2 dt d(rates - n e_M)/dq dq/dx
+
+    and the two pieces are individually ~150 while their difference is 0.34 —
+    a 440:1 cancellation. Truncating to the second piece keeps a residual of
+    the same order as the quantity being modelled. Getting it right needs the
+    full coe2rv/rv2coe Jacobian chain, at which point the finite-difference
+    form is simpler AND correct. See J2_RECON_NOTES.md.
+    """
+    Phi, ok, _ = n3.stm_analytic_nd(X, dt)
+    Y, ok2 = propagate_cartesian_j2(X, dt)
+    a, inc, da_dx, di_dx = _dq_dx(X)
+
+    e = np.zeros_like(a)                      # e-partials omitted by design
+    n_mm = np.sqrt(MU / a ** 3)
+    p = a * (1.0 - e * e)
+    k = 1.5 * n_mm * J2_COEF * (J2_R_EQ / p) ** 2
+    ci, si = np.cos(inc), np.sin(inc)
+    Om_d = -k * ci
+    om_d = 0.5 * k * (4.0 - 5.0 * si * si)
+    Mj_d = 0.5 * k * np.sqrt(1.0 - e * e) * (2.0 - 3.0 * si * si)   # J2 part only
+
+    dOm_da = -3.5 * Om_d / a
+    dOm_di = k * si
+    dom_da = -3.5 * om_d / a
+    dom_di = -2.5 * k * np.sin(2.0 * inc)
+    dMj_da = -3.5 * Mj_d / a
+    dMj_di = -1.5 * k * np.sin(2.0 * inc)
+
+    rN, vN = Y[:, :3], Y[:, 3:]
+    rnN = np.linalg.norm(rN, axis=1)
+    hN = np.cross(rN, vN); hhN = hN / np.linalg.norm(hN, axis=1)[:, None]
+    z = np.zeros_like(rN); z[:, 2] = 1.0
+    colOm = np.concatenate([np.cross(z, rN), np.cross(z, vN)], axis=1)
+    colom = np.concatenate([np.cross(hhN, rN), np.cross(hhN, vN)], axis=1)
+    nN = np.sqrt(MU / a ** 3)
+    colM = np.concatenate([vN / nN[:, None],
+                           (-MU / (rnN ** 3 * nN))[:, None] * rN], axis=1)
+
+    rowOm = dOm_da[:, None] * da_dx + dOm_di[:, None] * di_dx
+    rowom = dom_da[:, None] * da_dx + dom_di[:, None] * di_dx
+    rowM = dMj_da[:, None] * da_dx + dMj_di[:, None] * di_dx
+
+    dPhi = dt * (colOm[:, :, None] * rowOm[:, None, :]
+                 + colom[:, :, None] * rowom[:, None, :]
+                 + colM[:, :, None] * rowM[:, None, :])
+    return Phi + dPhi, ok & ok2, Y
+
+
+class MSC6J2Cov(MSC6J2):
+    """C1: J2 state propagation AND a J2-aware covariance propagation."""
+
+    def __init__(self, *a, stm_j2='analytic', **kw):
+        super().__init__(*a, **kw)
+        self.stm_j2 = stm_j2
+
+    def predict(self, idx, dt, sat_from, sat_to, **_):
+        if idx.size == 0:
+            return np.zeros(0, dtype=bool)
+        Rp = self.Rp[idx]
+        y = self.y[idx]
+        x_old = n3.msc6_decode(y, sat_from, Rp)
+        if self.stm_j2 == 'fd':
+            Phi, ok, x_new = stm_fd_j2(x_old, dt)
+        else:
+            Phi, ok, x_new = stm_analytic_j2(x_old, dt)
+        y_new = n3.msc6_encode(sat_to, x_new, Rp)
+        Jold = n3.msc6_decode_jac(y, Rp)
+        Jnew = n3.msc6_decode_jac(y_new, Rp)
+        with np.errstate(all='ignore'):
+            try:
+                Gnew = np.linalg.inv(Jnew)
+            except np.linalg.LinAlgError:                # pragma: no cover
+                Gnew = np.linalg.pinv(Jnew)
+            A = Phi @ Jold
+            M = A @ self.Py[idx] @ np.swapaxes(A, 1, 2) + self._Q(dt)
+            Py = Gnew @ M @ np.swapaxes(Gnew, 1, 2)
+        self.y[idx] = y_new
+        self.Py[idx] = 0.5 * (Py + np.swapaxes(Py, 1, 2))
+        self.sat[idx] = sat_to
+        return ok & np.all(np.isfinite(y_new), axis=1) \
+            & np.all(np.isfinite(Py), axis=(1, 2))
+
+
+class MSC6J2Struct(MSC6J2):
+    """C3: J2 state, two-body STM, STRUCTURED inflation.
+
+    The neglected covariance term is a rank-2 object: the secular bias feeds
+    the node direction (via dOmdot/da) and the along-track direction (via
+    dMdot/da), driven by the state's own semi-major-axis uncertainty. So
+    inflate exactly those two directions by exactly that amount,
+
+        dP = dt^2 * sigma_a^2 [ (dOmdot/da)^2 colOm colOm^T
+                              + (dMdot_J2/da)^2 colM colM^T ]
+
+    with sigma_a^2 = (da/dx)^T P (da/dx) read off the current covariance. Two
+    outer products and no i-partials — cheaper than C1, and it is the honest
+    middle option rather than a scalar fudge, because it inflates only the
+    subspace the bias actually occupies.
+    """
+
+    def predict(self, idx, dt, sat_from, sat_to, **_):
+        if idx.size == 0:
+            return np.zeros(0, dtype=bool)
+        Rp = self.Rp[idx]
+        y = self.y[idx]
+        x_old = n3.msc6_decode(y, sat_from, Rp)
+        Phi, ok, _ = n3.stm_analytic_nd(x_old, dt)
+        x_new, ok2 = propagate_cartesian_j2(x_old, dt)
+        y_new = n3.msc6_encode(sat_to, x_new, Rp)
+        Jold = n3.msc6_decode_jac(y, Rp)
+        Jnew = n3.msc6_decode_jac(y_new, Rp)
+
+        a, inc, da_dx, _ = _dq_dx(x_old)
+        n_mm = np.sqrt(MU / a ** 3)
+        k = 1.5 * n_mm * J2_COEF * (J2_R_EQ / a) ** 2
+        ci, si = np.cos(inc), np.sin(inc)
+        dOm_da = -3.5 * (-k * ci) / a
+        dMj_da = -3.5 * (0.5 * k * (2.0 - 3.0 * si * si)) / a
+        rN, vN = x_new[:, :3], x_new[:, 3:]
+        rnN = np.linalg.norm(rN, axis=1)
+        z = np.zeros_like(rN); z[:, 2] = 1.0
+        colOm = np.concatenate([np.cross(z, rN), np.cross(z, vN)], axis=1)
+        colM = np.concatenate([vN / n_mm[:, None],
+                               (-MU / (rnN ** 3 * n_mm))[:, None] * rN], axis=1)
+        with np.errstate(all='ignore'):
+            try:
+                Gnew = np.linalg.inv(Jnew)
+            except np.linalg.LinAlgError:                # pragma: no cover
+                Gnew = np.linalg.pinv(Jnew)
+            A = Phi @ Jold
+            Pcart = Jold @ self.Py[idx] @ np.swapaxes(Jold, 1, 2)
+            sig_a2 = np.einsum('ni,nij,nj->n', da_dx, Pcart, da_dx)
+            dP = (dt ** 2) * sig_a2[:, None, None] * (
+                (dOm_da ** 2)[:, None, None] * colOm[:, :, None] * colOm[:, None, :]
+                + (dMj_da ** 2)[:, None, None] * colM[:, :, None] * colM[:, None, :])
+            M = A @ self.Py[idx] @ np.swapaxes(A, 1, 2) + self._Q(dt) + dP
+            Py = Gnew @ M @ np.swapaxes(Gnew, 1, 2)
+        self.y[idx] = y_new
+        self.Py[idx] = 0.5 * (Py + np.swapaxes(Py, 1, 2))
+        self.sat[idx] = sat_to
+        return ok & ok2 & np.all(np.isfinite(y_new), axis=1) \
+            & np.all(np.isfinite(Py), axis=(1, 2))
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # Scenario sampling — the A3b distribution
 # ══════════════════════════════════════════════════════════════════════════
 def sample(n, rng, i_lo=30.0, i_hi=60.0, di_max_deg=1.0, e_max=0.05):
@@ -226,8 +438,24 @@ def seed_cov(rng, n, sep):
 
 
 # ══════════════════════════════════════════════════════════════════════════
+def make_filter(kind, n, sigma_beta, q_a):
+    if kind == '2body':
+        return n3.BatchedBearingMSC6(n, sigma_beta=sigma_beta, q_a=q_a, stm='analytic')
+    if kind == 'j2':
+        return MSC6J2(n, sigma_beta=sigma_beta, q_a=q_a, stm='analytic')
+    if kind == 'j2cov_an':
+        return MSC6J2Cov(n, sigma_beta=sigma_beta, q_a=q_a, stm='analytic',
+                         stm_j2='analytic')
+    if kind == 'j2cov_fd':
+        return MSC6J2Cov(n, sigma_beta=sigma_beta, q_a=q_a, stm='analytic',
+                         stm_j2='fd')
+    if kind == 'j2struct':
+        return MSC6J2Struct(n, sigma_beta=sigma_beta, q_a=q_a, stm='analytic')
+    raise ValueError(kind)
+
+
 def run_arm(label, truth_j2, filt_j2, hours, n, seed, sigma_beta, q_a,
-            verbose=False):
+            verbose=False, kind=None, reinit_h=0.0):
     rng = np.random.default_rng(seed)
     sat, tgt = sample(n, rng)
     ticks = int(round(max(hours) * 3600.0 / DT))
@@ -238,8 +466,12 @@ def run_arm(label, truth_j2, filt_j2, hours, n, seed, sigma_beta, q_a,
     sep0 = np.linalg.norm(tgt_c[:, :3] - sat_c[:, :3], axis=1)
     P0, x0err = seed_cov(rng, n, sep0)
 
-    F = (MSC6J2 if filt_j2 else n3.BatchedBearingMSC6)(
-        n, sigma_beta=sigma_beta, q_a=q_a, stm='analytic')
+    if kind is None:
+        kind = 'j2' if filt_j2 else '2body'
+    F = make_filter(kind, n, sigma_beta, q_a)
+    reinit_ticks = int(round(reinit_h * 3600.0 / DT)) if reinit_h > 0 else 0
+    spike = []          # position-error jump caused by each re-init
+    sig_jump = []       # sigma_pos jump, for the acquisition-gate question
     idx = np.arange(n)
     F.set_pole(idx, sat_c)
     F.set_cart(idx, tgt_c + x0err, P0, sat_c)
@@ -267,6 +499,29 @@ def run_arm(label, truth_j2, filt_j2, hours, n, seed, sigma_beta, q_a,
         x_est, P_est = F.mean_cov(idx)
         alive &= np.all(np.isfinite(x_est), axis=1)
 
+        # C2: periodic covariance re-initialisation. A real system re-acquires
+        # rather than reading truth, so the prior is rebuilt from the CURRENT
+        # estimate's range, exactly as the seed was.
+        if reinit_ticks and t % reinit_ticks == 0 and t < ticks:
+            rho_est = np.linalg.norm(x_est[:, :3] - sat_to[:, :3], axis=1)
+            sp = np.maximum(0.02 * rho_est, 500.0)
+            sv = np.maximum(2e-5 * rho_est, 0.5)
+            e_before = np.linalg.norm(x_est[:, :3] - tgt_to[:, :3], axis=1)
+            s_before = np.sqrt(np.maximum(
+                np.trace(P_est[:, :3, :3], axis1=1, axis2=2), 0.0))
+            Pn = np.zeros((n, 6, 6))
+            for kk in range(3):
+                Pn[:, kk, kk] = sp ** 2
+                Pn[:, 3 + kk, 3 + kk] = sv ** 2
+            F.set_cart(idx, x_est, Pn, sat_to)
+            x2, P2 = F.mean_cov(idx)
+            e_after = np.linalg.norm(x2[:, :3] - tgt_to[:, :3], axis=1)
+            s_after = np.sqrt(np.maximum(
+                np.trace(P2[:, :3, :3], axis1=1, axis2=2), 0.0))
+            spike.append(float(np.median(e_after - e_before)))
+            sig_jump.append(float(np.median(s_after / np.maximum(s_before, 1e-9))))
+            x_est, P_est = x2, P2
+
         if t in marks:
             perr = np.linalg.norm(x_est[:, :3] - tgt_to[:, :3], axis=1)
             verr = np.linalg.norm(x_est[:, 3:] - tgt_to[:, 3:], axis=1)
@@ -292,6 +547,9 @@ def run_arm(label, truth_j2, filt_j2, hours, n, seed, sigma_beta, q_a,
                 nonfinite=float((~good).mean()),
                 sep=sep[good],
                 repole=float(np.mean(F.n_repole)),
+                reinit_spike=float(np.median(spike)) if spike else 0.0,
+                reinit_sig_jump=float(np.median(sig_jump)) if sig_jump else 1.0,
+                n_reinit=len(spike),
                 label=label)
             if verbose:
                 print(f'    {label} @{marks[t]}h: perr p50 '
@@ -309,75 +567,126 @@ def ci95(v):
     return float(np.median(v)), float(np.percentile(b, 2.5)), float(np.percentile(b, 97.5))
 
 
+def tick_cost(kind, n, sigma_beta, q_a, reps=40):
+    """Wall time per predict() call, the only part any candidate changes."""
+    import time as _t
+    rng = np.random.default_rng(7)
+    sat, tgt = sample(n, rng)
+    sat_c, tgt_c = sat.cart(), tgt.cart()
+    sep = np.linalg.norm(tgt_c[:, :3] - sat_c[:, :3], axis=1)
+    P0, err = seed_cov(rng, n, sep)
+    F = make_filter(kind, n, sigma_beta, q_a)
+    idx = np.arange(n)
+    F.set_pole(idx, sat_c); F.set_cart(idx, tgt_c + err, P0, sat_c)
+    F.predict(idx, DT, sat_c, sat_c)                    # warm
+    t0 = _t.perf_counter()
+    for _ in range(reps):
+        F.predict(idx, DT, sat_c, sat_c)
+    return (_t.perf_counter() - t0) / reps * 1e3        # ms per tick
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--n', type=int, default=256)
+    ap.add_argument('--n', type=int, default=128)
     ap.add_argument('--seed', type=int, default=20260814)
-    ap.add_argument('--hours', default='1,6,24')
+    ap.add_argument('--hours', default='6,24')
     ap.add_argument('--noise-mult', type=float, default=1.0)
-    ap.add_argument('--q-mult', type=float, default=1.0,
-                    help='process-noise PSD multiplier (the "absorb it with Q" arm)')
+    ap.add_argument('--stage', default='candidates',
+                    help="'base' = the original 3-arm + Q table; "
+                         "'candidates' = the C1/C2/C3 head-to-head")
     args = ap.parse_args()
     hours = [float(x) for x in args.hours.split(',')]
     sb = nm.SIGMA_BETA_RAD * args.noise_mult
-    qa = nm.Q_ACCEL_PSD_BO * args.q_mult
+    qa = nm.Q_ACCEL_PSD_BO
 
-    print('=== J2 x NAV filter-health gate ===')
-    print(f'    N={args.n} scenarios, nav60 cadence, arcs {hours} h')
-    print(f'    LEO 300-800 km, e<=0.05, i_t ~ U(30,60) deg, rel plane <= 1 deg')
-    print(f'    sigma_beta {sb:.2e} rad, q_a {qa:.2e} m^2/s^3'
-          f'{" (x%g)" % args.q_mult if args.q_mult != 1 else ""}')
-    print(f'    filter seeded from truth + post-IOD covariance (2% of separation)')
+    print('=== J2 x NAV: covariance-consistency candidates ===')
+    print(f'    N={args.n}, nav60, arcs {hours} h, LEO 300-800 km, e<=0.05,')
+    print(f'    i_t ~ U(30,60) deg, rel plane <= 1 deg; truth is J2 in every arm')
+    print(f'    except MATCHED. Filter seeded from truth + post-IOD covariance.')
     print()
 
-    # The 'absorb it with Q' question, answered rather than asserted: the
-    # mismatched filter is re-run with the process-noise PSD inflated by
-    # 1e2 / 1e4 / 1e6. If two-body + Q suffices, one of these recovers the
-    # matched arm; if it does not, the margin is the table.
-    arms = [('MATCHED    truth 2body, filt 2body        ', 0, 0, 1.0),
-            ('MISMATCHED truth J2,    filt 2body        ', 1, 0, 1.0),
-            ('MISMATCHED truth J2,    filt 2body, Q x1e2', 1, 0, 1e2),
-            ('MISMATCHED truth J2,    filt 2body, Q x1e4', 1, 0, 1e4),
-            ('MISMATCHED truth J2,    filt 2body, Q x1e6', 1, 0, 1e6),
-            ('FIXED      truth J2,    filt J2           ', 1, 1, 1.0),
-            ('FIXED      truth J2,    filt J2,    Q x1e1', 1, 1, 1e1),
-            ('FIXED      truth J2,    filt J2,    Q x1e2', 1, 1, 1e2)]
-    res = {}
-    for label, tj, fj, qm in arms:
-        res[label] = run_arm(label, tj, fj, hours, args.n, args.seed, sb,
-                             qa * qm)
+    # ── first: is the cheap analytic STM correction right? ────────────────
+    rng = np.random.default_rng(11)
+    sat, tgt = sample(64, rng)
+    X = tgt.cart()
+    Ffd, _, _ = stm_fd_j2(X, DT)
+    Fan, _, _ = stm_analytic_j2(X, DT)
+    F2b, _, _ = n3.stm_analytic_nd(X, DT)
+    d_j2 = np.abs(Ffd - F2b)
+    d_an = np.abs(Ffd - Fan)
+    # score the CORRECTION, not the matrix: how much of the two-body error
+    # does the analytic form actually remove?
+    frac = 1.0 - d_an.max(axis=(1, 2)) / np.maximum(d_j2.max(axis=(1, 2)), 1e-300)
+    print('--- C1 sanity: analytic dPhi vs the finite-difference reference ---')
+    print(f'    |Phi_fdJ2 - Phi_2body| max        = {d_j2.max():.3e}  '
+          f'(the term being modelled)')
+    print(f'    |Phi_fdJ2 - Phi_analyticJ2| max   = {d_an.max():.3e}')
+    print(f'    fraction of the two-body STM error removed: p50 {np.median(frac):.4f}, '
+          f'p05 {np.percentile(frac, 5):.4f}')
+    print()
 
-    print(f'{"arm":42s} {"arc":>4s} {"pos err p50 [95% CI] (m)":>30s} '
-          f'{"vel p50":>9s} {"NEES p50 [95% CI]":>24s} {"NEES>band":>9s} '
-          f'{"err>sep":>8s} {"nonfin":>7s} {"repole":>7s}')
-    for label, _, _, _ in arms:
+    if args.stage == 'base':
+        arms = [('MATCHED    truth 2body, filt 2body        ', 0, 0, None, 0.0),
+                ('MISMATCHED truth J2,    filt 2body        ', 1, 0, None, 0.0),
+                ('FIXED      truth J2,    filt J2           ', 1, 1, None, 0.0)]
+    else:
+        arms = [
+            ('MATCHED    2body/2body  (control)         ', 0, 0, '2body',    0.0),
+            ('FIXED      J2 state, 2body cov            ', 1, 1, 'j2',       0.0),
+            ('C1-an      J2 state, J2 cov (analytic)    ', 1, 1, 'j2cov_an', 0.0),
+            ('C1-fd      J2 state, J2 cov (fin-diff ref)', 1, 1, 'j2cov_fd', 0.0),
+            ('C2-T4      J2 state, re-init every 4 h    ', 1, 1, 'j2',       4.0),
+            ('C2-T8      J2 state, re-init every 8 h    ', 1, 1, 'j2',       8.0),
+            ('C2-T12     J2 state, re-init every 12 h   ', 1, 1, 'j2',      12.0),
+            ('C3         J2 state, structured inflation ', 1, 1, 'j2struct', 0.0),
+        ]
+
+    res = {}
+    for label, tj, fj, kind, rh in arms:
+        res[label] = run_arm(label, tj, fj, hours, args.n, args.seed, sb, qa,
+                             kind=kind, reinit_h=rh)
+
+    print(f'{"arm":44s} {"arc":>4s} {"pos p50 [95% CI] (m)":>28s} {"vel p50":>9s} '
+          f'{"NEES p50 [95% CI]":>24s} {"in band":>8s} {"repole":>7s}')
+    for label, _, _, _, _ in arms:
         for h in hours:
             c = res[label][h]
             pm, plo, phi = ci95(c['perr'])
             vm, _, _ = ci95(c['verr'])
             nmed, nlo, nhi = ci95(c['nees'])
-            print(f'{label:42s} {h:3.0f}h {pm:10.1f} [{plo:8.1f},{phi:8.1f}] '
+            print(f'{label:44s} {h:3.0f}h {pm:9.1f} [{plo:8.1f},{phi:8.1f}] '
                   f'{vm:8.3f} {nmed:9.2f} [{nlo:6.2f},{nhi:7.2f}] '
-                  f'{c["nees_bad"]:8.1%} {c["perr_bad"]:7.1%} '
-                  f'{c["nonfinite"]:6.1%} {c["repole"]:7.2f}')
+                  f'{1.0 - c["nees_bad"]:7.1%} {c["repole"]:7.2f}')
         print()
 
-    print(f'    NEES 6-dof 95% band: [{n3.NEES6_LO:.3f}, {n3.NEES6_HI:.3f}]'
-          '  (1.0 = consistent)')
+    print('--- C2 transients (the cost of throwing the covariance away) ---')
+    for label, _, _, kind, rh in arms:
+        if rh <= 0:
+            continue
+        c = res[label][hours[-1]]
+        print(f'  {label:44s} n_reinit {c["n_reinit"]:2d}  '
+              f'median position-error jump at re-init {c["reinit_spike"]:+9.1f} m  '
+              f'sigma_pos inflation {c["reinit_sig_jump"]:6.2f}x')
     print()
-    print('=== VERDICT INPUTS (ratios vs the MATCHED control) ===')
-    base = arms[0][0]
-    for h in hours:
-        a = res[base][h]
-        pa, na = np.median(a['perr']), np.median(a['nees'])
-        print(f'  --- {h:.0f} h arc ---   matched: pos {pa:.1f} m, NEES {na:.2f}, '
-              f'NEES>band {a["nees_bad"]:.1%}')
-        for label, _, _, _ in arms[1:]:
-            c = res[label][h]
-            pc, nc = np.median(c['perr']), np.median(c['nees'])
-            print(f'      {label:42s} pos {pc:10.1f} m ({pc/max(pa,1e-9):7.2f}x)  '
-                  f'NEES {nc:10.2f} ({nc/max(na,1e-9):8.2f}x)  '
-                  f'NEES>band {c["nees_bad"]:6.1%}')
+
+    print('--- tick cost (predict() only; the sole part any candidate changes) ---')
+    base = None
+    for kind in ('2body', 'j2', 'j2cov_an', 'j2cov_fd', 'j2struct'):
+        ms = tick_cost(kind, args.n, sb, qa)
+        if base is None:
+            base = ms
+        print(f'  {kind:12s} {ms:8.3f} ms/tick   {ms/base:6.2f}x the two-body path')
+    print()
+
+    print('=== 24 h SUMMARY (the operating point) ===')
+    h = hours[-1]
+    ctl = res[arms[0][0]][h]
+    print(f'  {"arm":44s} {"pos":>10s} {"vs ctl":>8s} {"NEES":>10s} {"in band":>8s}')
+    for label, _, _, _, _ in arms:
+        c = res[label][h]
+        print(f'  {label:44s} {np.median(c["perr"]):9.1f}m '
+              f'{np.median(c["perr"])/np.median(ctl["perr"]):7.2f}x '
+              f'{np.median(c["nees"]):9.2f} {1.0 - c["nees_bad"]:7.1%}')
     return 0
 
 
