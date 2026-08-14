@@ -84,7 +84,66 @@ X3_KW = dict(
     dim3_mode=1, di_max_rad=0.017453,          # 1.0 deg relative inclination
     legacy_action_space=30,
 )
-RUNGS = {'X3': X3_KW}
+# ── the eccentricity ladder ─────────────────────────────────────────────────
+# Eccentricity and ALTITUDE are not independent in this env: c_reset
+# rejection-samples until perigee a(1-e) >= EARTH_KEEPOUT, so a high e is only
+# reachable at a high a. Measured on the sampler at the X3 LEO band
+# (a 6.671-7.171e6): raising e_max_target 0.05 -> 0.30 moves the REALIZED
+# target eccentricity from 0.0228 to 0.0285. The knob is inert — a rung
+# labelled e0.30 would train at e ~ 0.03.
+#
+# So the ladder must widen the altitude band, which forces the WIDE
+# observation normalizers (obs_alt_scale_m 8e6, lvlh_scale_m 1.5e7) or the
+# encoder sees altitudes 3-9x outside its trained range. Phase 5.5 already
+# diagnosed that trap: the reported "cliff at e >= 0.075" was altitude OOD via
+# the widening band, not an eccentricity limit.
+#
+# Per-rung (de_max, da_max, a-band, di_max, cap) follow t5_vladder.sh, which
+# scored 200/200/200/199 across its rungs; E3 IS V5 exactly, E1/E2 interpolate
+# between its validated neighbours. Measured realized eccentricity and
+# infeasible mass at 1024 draws:
+#     E0 e0.05  realized e_t 0.023 (p90 0.042)  gave_up 0.0000  |obs0| p99 0.10
+#     E1 e0.10  realized e_t 0.041 (p90 0.081)  gave_up 0.0000  |obs0| p99 0.19
+#     E2 e0.20  realized e_t 0.085 (p90 0.166)  gave_up 0.0000  |obs0| p99 0.43
+#     E3 e0.30  realized e_t 0.126 (p90 0.257)  gave_up 0.0000  |obs0| p99 0.99
+# Realized e is ~0.42x the requested cap because e is drawn uniformly on
+# [0, e_max] and then perigee-filtered. Quote the cap as a SETTING and the
+# realized distribution as the result; they are not the same number.
+_E_COMMON = dict(
+    num_debris_min=0, num_debris_max=0, same_orbit_init=0,
+    init_phase_gap_max=3.14159, valid_init_only=1,
+    gave_up_action='terminate', max_valid_init_attempts=4096,
+    obs_alt_scale_m=8e6, lvlh_scale_m=1.5e7,
+    rendezvous_radius_m=30000.0, rel_vel_tol_ms=50.0,
+    shaping_mode=2, shape_w_lambda=1.0, shape_w_match=0.8166667,
+    shape_dv_ref_ms=700.0, shape_gamma=1.0,
+    phase_gap_mode=1, phase_obs_mode=1, cap_terminal_reward=0.0,
+    dim3_mode=1, legacy_action_space=30,
+    # The blind range prior's inner shell, floored at EARTH_KEEPOUT. The env
+    # rejection-samples until perigee >= this, so the default
+    # `a_min*(1-e_max)` admits radii it has already ruled out — 4.67e6 m at
+    # E3, inside the Earth. Set here rather than changed in the wrapper's
+    # default because the floor also binds at e_max = 0.05 and would move the
+    # already-published rung-1 and tight-box action streams.
+    nav_r_min_m=6.571e6,
+)
+E0_KW = dict(_E_COMMON, e_max_target=0.05, e_max_sat=0.05,
+             a_min_override=6.671e6, a_max_override=7.171e6,
+             di_max_rad=0.017453, episode_cap_steps=3000)
+# From E1 on, de_max governs the CHASER's eccentricity (sat e-vector = target
+# e-vector + area-uniform disc(de_max)) and OVERRIDES e_max_sat sampling, so
+# e_max_sat is deliberately absent rather than set-and-ignored.
+E1_KW = dict(_E_COMMON, e_max_target=0.10, de_max=0.05, da_max_m=300e3,
+             a_min_override=6.671e6, a_max_override=7.871e6,
+             di_max_rad=0.017453, episode_cap_steps=3000)
+E2_KW = dict(_E_COMMON, e_max_target=0.20, de_max=0.065, da_max_m=450e3,
+             a_min_override=6.671e6, a_max_override=9.871e6,
+             di_max_rad=0.013090, episode_cap_steps=4500)
+E3_KW = dict(_E_COMMON, e_max_target=0.30, de_max=0.08, da_max_m=600e3,
+             a_min_override=6.671e6, a_max_override=14.371e6,
+             di_max_rad=0.013090, episode_cap_steps=6000)
+
+RUNGS = {'X3': X3_KW, 'E0': E0_KW, 'E1': E1_KW, 'E2': E2_KW, 'E3': E3_KW}
 
 # ── success boxes ───────────────────────────────────────────────────────────
 # The 3D task is held fixed and ONLY the box moves, exactly as the TB3D ladder
@@ -122,7 +181,7 @@ class RealAcq3D:
     def __init__(self, n, sigma_beta, dt_tick, gate=0.20,
                  min_sec=2700.0, cov_inflate=4.0, r_min=None, r_max=None,
                  arc_max=400, retry_every=15, retry_growth=1.6,
-                 retry_max=240):
+                 retry_max=240, e_max=0.0):
         self.n = n
         self.sigma_beta = float(sigma_beta)
         self.dt = float(dt_tick)
@@ -153,6 +212,22 @@ class RealAcq3D:
         self.retry_max = int(retry_max)
         self.n_attempt = 0
         self.r_min, self.r_max = r_min, r_max
+        # ── the velocity lattice must bracket v_c * e ──────────────────────
+        # NAV-G section 2 diagnosed exactly this on the arm it REJECTED: the
+        # range-parameterized bank "works at LEO, fails at e >= 0.2", because
+        # each component carries a CIRCULAR velocity prior, wrong by
+        # ~v_c * e = 1730 m/s at e = 0.30 — outside every component's
+        # linearization basin. `ray_init3` builds the same circular guess, and
+        # the shipped tangential bracket is +/-0.20 v_c, so at e_max = 0.30 the
+        # true velocity sits OUTSIDE the lattice.
+        #
+        # Batch least squares is not the bank — it re-linearizes, which is why
+        # NAV-G's BO-BLS-MPC survived its wide-eccentric G4 cell where the bank
+        # did not — so this is a risk, not a certainty. Widening the bracket to
+        # cover the rung's own e_max costs one extra node per axis and removes
+        # the question; stage 0b measures whether it was needed.
+        f = max(0.20, float(e_max) * 1.15)
+        self.v_tang = (1.0 - f, 1.0, 1.0 + f)
         self.acquired = np.zeros(n, dtype=bool)
         self.elapsed = np.zeros(n)
         self.ticks = np.zeros(n, dtype=np.int64)
@@ -232,7 +307,7 @@ class RealAcq3D:
             res = bls3d.bls_acquire_adaptive3(
                 a['t'][-w:], a['sat'][-w:], a['az'][-w:], a['el'][-w:], iv,
                 self.sigma_beta, Rp, w0=min(self.w0, w), gate=self.gate,
-                cov_inflate=self.cov_inflate)
+                cov_inflate=self.cov_inflate, v_tang=self.v_tang)
             if res is None:
                 self.n_fail += 1
                 continue
@@ -305,6 +380,7 @@ def make_env(rung, nav_mode, acq='surrogate', noise_mult=1.0, nav_seed=20260812,
     # not the capture). Stash it explicitly.
     env._box_radius_m = float(kw['rendezvous_radius_m'])
     env._box_vel_ms = float(kw['rel_vel_tol_ms'])
+    env._e_max_target = float(kw.get('e_max_target', 0.0))
     return env
 
 
@@ -313,7 +389,8 @@ def _install_real_acq(env):
     env._acq = RealAcq3D(env.num_agents, env._s_beta, env._nav_dt,
                          gate=env._acq_gate, min_sec=env._acq_min_sec,
                          cov_inflate=env._cov_inflate,
-                         r_min=env._r_min, r_max=env._r_max)
+                         r_min=env._r_min, r_max=env._r_max,
+                         e_max=getattr(env, '_e_max_target', 0.0))
 
 
 def load_policy(env, ckpt):
@@ -590,9 +667,69 @@ def _cli_over(args):
     return over
 
 
+def stage_acqcheck(args):
+    """Stage 0b: does the TRAINING surrogate agree with the REAL batch IOD?
+
+    Everything the nav lineage has published was measured at e <= 0.05. Two
+    specific things could break at wide eccentricity, and they break in
+    opposite directions:
+
+      * the surrogate is `crlb_online`, which accumulates the exact Fisher
+        information of the REALIZED arc — it has no eccentricity parameter and
+        cannot go stale. Its calibration to a real filter runs through
+        `BLSRatioTable`, whose cells include NAV-G's wide-eccentric G4.
+      * the REAL solver seeds a CIRCULAR velocity and brackets it at
+        +/-0.20 v_c. NAV-G section 2 diagnosed exactly this on the arm it
+        rejected: the range-parameterized bank "fails at e >= 0.2" because a
+        circular prior is wrong by ~v_c*e = 1730 m/s at e = 0.30. Batch least
+        squares re-linearizes and survived G4 where the bank did not, so this
+        is a risk rather than a certainty — and `RealAcq3D` now widens the
+        bracket to cover the rung's own e_max.
+
+    If training acquires on a schedule the real solver cannot reproduce, every
+    downstream number is measuring the surrogate. This compares acquired
+    fraction and latency between the two on the SAME episodes.
+    """
+    ck = args.ckpt or ANCHOR_CKPT
+    print('== STAGE 0b  surrogate vs REAL acquisition =======================')
+    print(f'  rung {args.rung}  ckpt {os.path.basename(ck)}  '
+          f'{args.episodes} eps @ seed {args.seed}')
+    over = _cli_over(args)
+    out = {}
+    for acq in ('surrogate', 'real'):
+        env = make_env(args.rung, 'bearings_only', acq=acq, nav_seed=args.nav_seed,
+                       **over)
+        if acq == 'real':
+            _install_real_acq(env)
+        r = rollout(env, ck, args.episodes, args.seed, f'{args.rung}/{acq}',
+                    verbose=False)
+        show(r)
+        out[acq] = r
+    a, b = out['surrogate'], out['real']
+    la = a.get('acq_latency_med_s') or 0.0
+    lb = b.get('acq_latency_med_s') or 0.0
+    fa, fb = a.get('acq_per_ep', 0.0), b.get('acq_per_ep', 0.0)
+    d_lat = abs(lb - la) / max(la, 1.0)
+    d_frac = abs(fb - fa)
+    ok = (d_lat <= 0.50) and (d_frac <= 0.20) and b.get('acq_fail', 0) == 0
+    print(f"\n  acquired/ep  surrogate {fa:.2f}  real {fb:.2f}   "
+          f"(|diff| {d_frac:.2f}, gate <= 0.20)")
+    print(f"  latency med  surrogate {la:.0f} s  real {lb:.0f} s   "
+          f"(rel {d_lat:.2f}, gate <= 0.50)")
+    print(f"  real solver failures {b.get('acq_fail', 0)} (gate 0)")
+    print(f"\n  ACQUISITION AGREEMENT: {'PASS' if ok else 'FAIL'}")
+    if args.out:
+        os.makedirs(os.path.dirname(args.out), exist_ok=True)
+        json.dump(dict(agreement_pass=bool(ok), surrogate=a, real=b),
+                  open(args.out, 'w'), indent=1)
+        print(f'  wrote {args.out}')
+    return 0 if ok else 1
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--stage', default='anchor', choices=['anchor', 'eval'])
+    p.add_argument('--stage', default='anchor',
+                   choices=['anchor', 'eval', 'acqcheck'])
     p.add_argument('--rung', default='X3', choices=sorted(RUNGS))
     p.add_argument('--ckpt', default=ANCHOR_CKPT)
     p.add_argument('--nav-mode', default='truth',
@@ -616,7 +753,8 @@ def main():
     p.add_argument('--label', default='')
     p.add_argument('--out', default='')
     args = p.parse_args()
-    return stage_anchor(args) if args.stage == 'anchor' else stage_eval(args)
+    return {'anchor': stage_anchor, 'eval': stage_eval,
+            'acqcheck': stage_acqcheck}[args.stage](args)
 
 
 if __name__ == '__main__':

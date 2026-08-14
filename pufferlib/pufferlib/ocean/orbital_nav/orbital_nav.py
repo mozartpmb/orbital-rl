@@ -241,6 +241,24 @@ class OrbitalNav(Orbital):
         a_min = a_min if a_min >= nm.R_EARTH else nm.R_EARTH + 300e3
         a_max = a_max if a_max > a_min else nm.R_EARTH + 800e3
         e_max = max(float(kwargs.get('e_max_target', 0.0)), 0.0)
+        # The blind range prior's inner shell.
+        #
+        # KNOWN LOOSE, deliberately not fixed by default. `a_min*(1-e_max)` is
+        # the smallest perigee the (a, e) box could produce, but the ENV
+        # guarantees more: c_reset rejection-samples until both orbits have
+        # perigee >= EARTH_KEEPOUT (6.571e6 m), so this prior admits target
+        # radii the sampler has already ruled out — and at e_max = 0.30 with
+        # a_min = 6.671e6 it admits 4.67e6 m, i.e. INSIDE THE EARTH. Flooring
+        # it at the keepout narrows the log-range prior by 25% there for free.
+        #
+        # It is not floored by default because the default is not free: the
+        # floor binds at e_max = 0.05 too (6.337e6 -> 6.571e6), so it would
+        # change the blind seed, hence the observation, hence the action
+        # stream, of the ALREADY-PUBLISHED rung-1 and tight-box bearings-only
+        # results. Campaigns that want the tighter prior — the eccentricity
+        # ladder does, and it is the only place it materially matters — set
+        # `nav_r_min_m` explicitly. Worth promoting to the default at the next
+        # deliberate re-baseline of those numbers, not silently.
         self._r_min = nav_r_min_m if nav_r_min_m > 0 else a_min * (1.0 - e_max)
         self._r_max = nav_r_max_m if nav_r_max_m > 0 else a_max * (1.0 + e_max)
         # Eccentricity-driven velocity-guess error (T4 §8.2: the circular-guess
