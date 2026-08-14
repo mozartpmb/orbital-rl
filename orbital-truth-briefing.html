@@ -215,7 +215,7 @@
     <div class="stat"><div class="v">≈ 0 pp</div><div class="k">truth-tax: the same checkpoints score 98.5–99.5% when handed perfect state — estimate-flying costs essentially nothing</div></div>
     <div class="stat"><div class="v">50 µs</div><div class="k">single-core inference for the embedded C port of the policy — bit-identical to the PyTorch closed loop (10⁶× real-time margin)</div></div>
   </div>
-  <p class="lede">The one-sentence version: <strong>training with angles-only observability in the loop is the load-bearing ingredient</strong> — proven by negative controls on both sides — and it produces a policy that flies the tightest terminal boxes in the project on passive bearings alone, in 3D, with no loss of truth-state capability.</p>
+  <p class="lede">The one-sentence version: <strong>training with angles-only observability in the loop is the load-bearing ingredient</strong> — proven by negative controls on both sides — and it produces a policy that flies the tightest terminal boxes in the project on passive bearings alone, in 3D, across a realized eccentricity distribution reaching p90&nbsp;≈&nbsp;0.26, with no loss of truth-state capability. Separately, tight-box precision under secular J2 was recovered from a 0/200 zero-shot floor to 99.0% (mean elements) by a two-rung curriculum.</p>
   <p>The second sentence, which matters as much for a navigation organization: <strong>this project found its own physics bug, retired every number built on it, and rebuilt from a corrected baseline with regression anchors on every change since.</strong> The verification machinery is §4; it is the part of this project most representative of how I want to work.</p>
 </section>
 
@@ -245,8 +245,8 @@
     <tr><td>3D rendezvous, truth</td><td>ΔI ≤ 1.0°, e ≤ 0.05 → wide e ≤ 0.30</td><td class="num">200/200 ×3 · V-ladder 799/800</td><td>3</td><td><span class="chip ok">verified</span></td></tr>
     <tr><td><strong>3D bearings-only</strong>, loose box</td><td>ΔI ≤ 1.0°, e ≤ 0.05</td><td class="num">200/200 ×3 (floor: 58.0%)</td><td>3</td><td><span class="chip ok">verified</span></td></tr>
     <tr><td><strong>3D bearings-only, tight box</strong> — the flagship</td><td>5&nbsp;km/1&nbsp;m/s · 5&nbsp;km/2&nbsp;m/s</td><td class="num">98.0–98.5% · 99.0–99.5%</td><td>3</td><td><span class="chip ok">verified</span></td></tr>
-    <tr><td>3D bearings-only at e &gt; 0.05</td><td>e-ladder 0.10 → 0.30</td><td class="num">in flight</td><td>—</td><td><span class="chip warn">running</span></td></tr>
-    <tr><td>Secular J2 rendezvous rung</td><td>inclined targets under nodal precession</td><td class="num">—</td><td>—</td><td><span class="chip info">active dev</span></td></tr>
+    <tr><td><strong>3D bearings-only, eccentric</strong> (4-rung ladder)</td><td>realized e to mean 0.126 / p90 0.257, bands to 8,000&nbsp;km</td><td class="num">95.0–100% per rung <span class="small">(floors 5.5–70.5%)</span></td><td>1</td><td><span class="chip ok">verified</span></td></tr>
+    <tr><td><strong>Secular J2, tight box</strong> (truth state, inclined targets 30–60°)</td><td>5&nbsp;km/1&nbsp;m/s, <em>mean elements</em></td><td class="num">99.0% <span class="small">(zero-shot floor 0/200)</span></td><td>1</td><td><span class="chip ok">verified</span></td></tr>
   </table></div>
   <p class="small">All numbers post-date the 2026-08-10 dynamics correction (§4); nothing above inherits from the retired lineage. Eval seeds are held out from training; scenario sets are paired across arms within a campaign, so arm-vs-arm deltas are exact.</p>
 </section>
@@ -316,10 +316,11 @@
   <p class="sec-eyebrow">§7</p>
   <h2>Active development</h2>
   <div class="tablebox"><table>
-    <tr><th>thread</th><th>state</th><th>next gate</th></tr>
-    <tr><td><strong>Eccentricity expansion under bearings-only nav</strong> (e 0.10 → 0.30 ladder, 3D, real IOD)</td><td><span class="chip warn">running</span></td><td>per-rung floors + retention rows; results land incrementally</td></tr>
-    <tr><td><strong>Secular J2</strong> — propagator merged, bitwise-safe default-off; rates validated against published values (sun-synchronous +0.9887°/day vs +0.9857 textbook; critical-inclination ω̇ exactly 0; warp bitwise ≡ stepped)</td><td><span class="chip info">active dev</span></td><td>inclined-target sampler, then first training rung under differential nodal precession</td></tr>
-    <tr><td>Deferred by design: continuous thrust, rendezvous phasing beyond ±180°, mean↔osculating conversion, multi-deputy</td><td><span class="chip info">roadmap</span></td><td>—</td></tr>
+    <tr><th>thread</th><th>state</th><th>notes</th></tr>
+    <tr><td><strong>Eccentricity ladder under bearings-only nav</strong> — E0–E3, chained warm starts</td><td><span class="chip ok">landed</span></td><td>95.0–100% per rung, truth 200/200 everywhere, retention ≥ 97.5%; headline quotes the <em>realized</em> e distribution (p90 ≈ 0.26), not the sampler cap — the cap runs ~0.42× inert-knob-checked</td></tr>
+    <tr><td><strong>Secular J2 training</strong> — rates validated vs published values; two prep catches (a gauge bug in the e-sampler fix, and an LVLH frame that was only LVLH at equatorial targets, 56.5%→90.0% zero-shot when corrected)</td><td><span class="chip ok">landed</span></td><td>loose box 200/200; tight-box recovery 0/200 → 99.0% via 10&nbsp;km/10&nbsp;m/s intermediate rung; retention with J2 off 98–100%; all J2 rows are mean-element claims</td></tr>
+    <tr><td><strong>J2 × angles-only navigation</strong> (one new variable per campaign — nav stayed out of the first J2 rung by design)</td><td><span class="chip info">next</span></td><td>also: multi-seed on E-ladder and J2 arms; mean↔osculating layer if osculating-grade claims are ever wanted</td></tr>
+    <tr><td>Deferred by design: continuous thrust, rendezvous phasing beyond ±180°, multi-deputy</td><td><span class="chip info">roadmap</span></td><td>—</td></tr>
   </table></div>
 </section>
 
