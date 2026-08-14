@@ -21,17 +21,46 @@
 # orbit, so a tight-box J2 arm must NOT also claim osculating-grade terminal
 # fidelity. Every eval label carries the "MEAN ELEMENTS" tag for this reason.
 #
-# ── WHAT THE PRE-LAUNCH MEASUREMENTS SAY (read this before re-scoping) ──────
-# Zero-shot, 200 eps, seed 123, each box evaluated with its OWN parent
-# checkpoint so the control sits at ceiling, i_t = 0 so the PLANE channel is
-# provably inert and only the in-plane secular drift is active:
+# ── WHY TIGHT-BOX IS THE EXPERIMENT (read this before anything else) ────────
+# The loose box is the warm-up; the tight-box recovery is the headline. The
+# zero-shot survey (scripts/orbital/extj2/j2_zeroshot_survey.sh, output
+# committed beside it) measured the J2 gap as a monotone function of box
+# tightness, at i_t = 0 so the PLANE channel is provably inert and only the
+# in-plane secular drift is active, each box with its OWN parent checkpoint so
+# the control sits at ceiling:
 #
 #   box                 ckpt                  j2=0     j2=1     gap
 #   30 km / 50 m/s      seed42_X3_3d_di1deg   200/200  200/200    0.0 pp
 #   10 km / 10 m/s      seed42_TB3D_box10k10  199/200  113/200  -43.0 pp
 #    5 km /  1 m/s      seed42_TB3D_box5k1    194/200    0/200  -97.0 pp
 #
-# And at the LOOSE box with inclined targets (lvlh_frame_mode=1, raan fixed),
+# At the loose box J2 is a NON-EVENT at an equatorial target and reaches at
+# most -10.5 pp through the inclination-dependent plane channel. At the tight
+# boxes it is decisive, and it is NOT the plane channel — it is present at
+# i_t = 0 where that channel cannot act at all. The failure mode is ALWAYS
+# safety_cap, median episode length exactly the cap: the policy never crashes,
+# it just never closes the box against a secular drift it cannot null.
+#
+# WHERE THE DRIFT COMES FROM, which is also not what the design predicted.
+# Omega-dot = -k(a,e)*cos(i) depends on BOTH a and i, and the chaser and target
+# differ in both — the transfer task ITSELF puts them at different altitudes.
+# Decomposing |Omega-dot_s - Omega-dot_t| over 2000 sampled draws:
+#
+#   delta-a only (planes cloned)   median 0.4379 deg/day   closed form 0.4551
+#   delta-i only (orbits cloned)   median 0.0347 deg/day   closed form 0.0392
+#
+# The ALTITUDE difference dominates by 13x. di_max is a 7% correction on top.
+# Over a 3000-substep (50 h) cap that injects a mean 0.692 deg of relative
+# inclination = 183% of the 0.3775 deg free-plane zone = 92 m/s = 19% of the
+# 478 m/s budget. The J2 signal is order-unity in the units that bind; what the
+# loose box lacks is not signal but HEADROOM to demonstrate it in.
+#
+# Hence the ladder: stages 3a and 3b walk the box down 30km/50 -> 10km/10 ->
+# 5km/1, each warm-started from the previous stage's child, so the arm never
+# has to bootstrap from a 0/200 floor in one jump.
+#
+# ── WHAT THE PRE-LAUNCH MEASUREMENTS SAY (read this before re-scoping) ──────
+# At the LOOSE box with inclined targets (lvlh_frame_mode=1, raan fixed),
 # which is the only way J2 reaches the loose box at all:
 #
 #   i_t band     j2=0     j2=1     gap
@@ -40,16 +69,9 @@
 #   U(25,50)     199/200  186/200   -6.5 pp
 #   U(30,60)     180/200  159/200  -10.5 pp
 #
-# Two consequences the coordinator should weigh:
-#   (a) At the loose box the J2 headroom is <= 10.5 pp and ALL of it comes from
-#       the inclination-dependent plane channel. That is a small target for a
-#       50M-step arm.
-#   (b) The tight boxes have 43-97 pp of headroom, and the effect there is NOT
-#       the plane channel (it is present at i_t = 0). The failure mode is
-#       ALWAYS safety_cap — the policy never crashes, it just never closes the
-#       box against a secular drift it cannot null.
-# Stage 3 exists for (b) and is NOT in the default stage list. One new variable
-# per campaign: stages 0-2 are exactly the specified loose-box design.
+# Stages 0-2 are exactly the specified loose-box design (the warm-up). Stages
+# 3a/3b are the tight-box ladder (the headline) and are NOT in the default
+# stage list -- pass J2_RUNG_STAGES=0,1,2,3a,3b at launch to run everything.
 #
 # ── ONE CONFOUND THAT HAD TO BE CLOSED BEFORE STAGE 1 MEANT ANYTHING ────────
 # obs[33-36] — the policy's PRIMARY rendezvous channel — was built by rotating
@@ -87,6 +109,8 @@ SAMP_C=$MAIN/scripts/orbital/extj2/j2_sampler_gates.c
 VERIFY=$MAIN/scripts/orbital/extj2/verify_extj2.py
 WARM=$MAIN/models/t3/seed42_X3_3d_di1deg.pt
 TB_WARM=$MAIN/models/t3/seed42_TB3D_box5k1.pt
+TB1_REF=$MAIN/models/t3/seed42_TB3D_box10k10.pt
+TRIP=$MAIN/scripts/orbital/extj2/j2_flatline_check.py
 PROG=/tmp/j2_rung_progress.log
 JSON_DIR=$MAIN/web_data/results/extj2_rung
 EPS=200
@@ -98,7 +122,7 @@ WATCHDOG_S=900               # 15 min after the final ckpt appears
 # Which stages to run. Stage 0 (anchors) runs unless explicitly excluded and
 # its failure ALWAYS aborts — no stage list can turn that off.
 #   J2_RUNG_STAGES=0,3 bash scripts/orbital/extj2/j2_rung_campaign.sh
-STAGES=${J2_RUNG_STAGES:-0,1,2}
+STAGES=${J2_RUNG_STAGES:-0,1,2}      # launch: 0,1,2,3a,3b
 want() { [[ ",$STAGES," == *",$1,"* ]]; }
 
 # The rung band. 30-60 deg keeps sin(2i) in [0.866, 1.0] — the J2 plane channel
@@ -137,6 +161,7 @@ J2_ENV=(
   --env.lvlh-frame-mode 1
 )
 X3_BOX=(--env.rendezvous-radius-m 30000.0 --env.rel-vel-tol-ms 50.0)
+B1_BOX=(--env.rendezvous-radius-m 10000.0 --env.rel-vel-tol-ms 10.0)
 TB5_BOX=(--env.rendezvous-radius-m 5000.0 --env.rel-vel-tol-ms 1.0)
 
 preflight() {
@@ -147,7 +172,8 @@ preflight() {
         say "       runs whatever the MAIN checkout has checked out."
         return 1
     fi
-    for f in "$WARM" "$TB_WARM" "$EVAL" "$GATES_C" "$SAMP_C" "$VERIFY"; do
+    for f in "$WARM" "$TB_WARM" "$TB1_REF" "$EVAL" "$GATES_C" "$SAMP_C" \
+             "$VERIFY" "$TRIP"; do
         [ -f "$f" ] || { say "ABORT: missing $f"; return 1; }
     done
     mkdir -p "$JSON_DIR"
@@ -203,6 +229,27 @@ one_eval() {
     local g
     g=$(grep -E 'causes:' $L | head -1 | sed 's/^ *//'); [ -n "$g" ] && say "  $tag $g"
     g=$(grep -E 'MEAN-ELEMENT' $L | head -1 | sed 's/^ *//'); [ -n "$g" ] && say "  $tag $g"
+    # The claim boundary, in the progress log as well as the eval output, so it
+    # survives being read out of context. Only j2=1 rows are mean-element
+    # claims; j2=0 rows are two-body, where mean == osculating identically.
+    if [ "$j2" = "1" ]; then
+        # The mean-element approximation's RELATIVE-state error is 83 m /
+        # 0.094 m/s per orbit at 5 km separation (j2_A_design §1.4). As a
+        # fraction of the box's VELOCITY tolerance that is 0.19%/orbit at
+        # 50 m/s, 0.94%/orbit at 10 m/s and 9.4%/orbit at 1 m/s — so the
+        # caveat is quoted at the strength this box actually earns, never
+        # borrowed from the tightest one.
+        local slip
+        slip=$(awk -v b="$bv" 'BEGIN{printf "%.2f", 0.094/b*100}')
+        say "  $tag CLAIM: meets the ${br}m/${bv}m/s box IN MEAN ELEMENTS. No"
+        say "      $tag mean/osculating conversion anywhere; the osculating"
+        say "      $tag VELOCITY slip is ${slip}% of this box's tolerance per orbit."
+        if [ "${bv%.*}" -le 1 ]; then
+            say "      $tag At this box that is the binding caveat: the honest"
+            say "      $tag statement is 'meets the box in mean elements', FULL STOP"
+            say "      $tag — never 'osculating-grade rendezvous'."
+        fi
+    fi
 }
 
 # ── train <arm> <warm> <box-array-name> <extra...> ──────────────────────────
@@ -260,6 +307,64 @@ last_ckpt() {
     ls -t "$PUF/experiments_extj2/$1"/*/model_*${FINAL_CKPT_TAG}.pt 2>/dev/null | head -1
 }
 
+# ── flatline <arm> <floor_json> ─────────────────────────────────────────────
+# cap_terminal_reward=0 + shape_gamma=1 means a capped episode pays NOTHING and
+# still collects the telescoped Phi_T - Phi_0. If the warm start never samples a
+# success, the +10 is never seen and PPO has nothing to climb — the T3 red-team
+# #1 mechanism. At 5 km / 1 m/s the J2-blind policy fails 200/200 on safety_cap,
+# so this is live. Name it in the log rather than discover it two stages later.
+# A FLATLINE verdict is a FINDING: it never aborts the campaign.
+flatline() {
+    local arm="$1" fj="$2" floor out
+    floor=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['rate'])" \
+            "$fj" 2>/dev/null)
+    if [ -z "${floor:-}" ]; then
+        say "RESULT FLATLINE-CHECK $arm: SKIPPED (no floor json at $fj)"
+        return 0
+    fi
+    out=$(python3 "$TRIP" --log "/tmp/j2_rung_${arm}_train.log" --floor "$floor" \
+          --after-steps 20e6 --margin 0.05 --label "$arm" 2>&1)
+    say "RESULT $out"
+    return 0
+}
+
+# ── ladder_arm <arm> <warm> <boxvar> <box_r> <box_v> <ref_ckpt> <ref_wm> ────
+# The tight-box ladder rung. Floor rows run BEFORE training so the tripwire has
+# a floor to compare against even if the trainer dies, and so the campaign is
+# self-contained (no reliance on the pre-launch survey's numbers).
+#   <ref_ckpt>/<ref_wm>: the box's own published parent, evaluated at i_t = 0
+#   under J2. Reproduces the survey row for continuity (10 km: 113/200;
+#   5 km: 0/200) and pins the "J2-blind at this box" number in-campaign.
+ladder_arm() {
+    local arm="$1" warm="$2" boxvar="$3" br="$4" bv="$5" refck="$6" refwm="$7"
+    if [ ! -f "$warm" ]; then
+        say "RESULT $arm ABORTED: warm start missing ($warm)."
+        say "      $arm needs the previous ladder stage's child. Run the stages"
+        say "      in order, or pass the full list J2_RUNG_STAGES=0,1,2,3a,3b."
+        return 1
+    fi
+    say "START $arm (box ${br}m/${bv}m/s, warm=$(basename $warm))"
+    # the bootstrap floor the arm must actually beat: ITS OWN warm start,
+    # at this box, under J2 and the sampler
+    one_eval "${arm}_floor_chain" "$warm"  1 "$BAND" 1 0 "$br" "$bv" 0.8166667
+    # and the box's published parent, i_t = 0, for continuity with the survey
+    one_eval "${arm}_floor_ref"   "$refck" 1 off     1 0 "$br" "$bv" "$refwm"
+    if train_arm "$arm" "$warm" "$boxvar"; then
+        flatline "$arm" "$JSON_DIR/${arm}_floor_chain.json"
+        local ck; ck=$(last_ckpt "$arm")
+        say "  $arm ckpt $ck"
+        one_eval "${arm}_native"    "$ck" 1 "$BAND" 1 0 "$br" "$bv" 0.8166667
+        one_eval "${arm}_retention" "$ck" 0 "$BAND" 1 0 "$br" "$bv" 0.8166667
+        say "---- $arm done ----"
+        return 0
+    fi
+    # Training that produces no final ckpt is still worth a tripwire read: the
+    # log may show a clean flatline rather than a crash, and that is the finding.
+    flatline "$arm" "$JSON_DIR/${arm}_floor_chain.json"
+    say "---- $arm FAILED (no final ckpt) — see the flatline check above ----"
+    return 1
+}
+
 # ═══════════════════════════════════════════════════════════════════════════
 say "=========== ext-j2 rung campaign start (pid $$) ==========="
 say "ALL CLAIMS ARE IN MEAN ELEMENTS (no mean/osculating conversion anywhere)"
@@ -314,24 +419,48 @@ if want 2; then
   fi
 else say "---- stage 2 SKIPPED (not in STAGES=$STAGES) ----"; fi
 
-# ── stage 3: OPTIONAL. The tight box, where J2 actually bites. ──────────────
-# NOT in the default stage list: it is a second new variable (the box), and
-# this campaign changes one. Run it with J2_RUNG_STAGES=0,3 once stages 0-2
-# have been read. Warm start is the TB3D parent, whose lineage used
-# shape_w_match = 0.35 — an arm must inherit its OWN parent's value or the
-# reward moves alongside the dynamics.
-if want 3; then
-  say "START stage 3 (OPTIONAL tight-box J2 arm, 50M warm from TB3D)"
-  if train_arm "A3_j2_tightbox" "$TB_WARM" TB5_BOX --env.shape-w-match 0.35; then
-      ck=$(last_ckpt A3_j2_tightbox)
-      say "  ckpt $ck"
-      one_eval "s3_A3_native"    "$ck" 1 $BAND 1 0 5000 1 0.35
-      one_eval "s3_A3_equatorial" "$ck" 1 off  1 0 5000 1 0.35
-      one_eval "s3_A3_retention" "$ck" 0 $BAND 1 0 5000 1 0.35
-      say "---- stage 3 done ----"
+# ── stages 3a/3b: THE TIGHT-BOX LADDER — the headline experiment ────────────
+# Not in the default stage list; pass J2_RUNG_STAGES=0,1,2,3a,3b at launch.
+# Each rung warm-starts from the PREVIOUS rung's child, so the policy walks
+# 30km/50 -> 10km/10 -> 5km/1 instead of bootstrapping from a 0/200 floor in
+# one jump. shape_w_match stays 0.8166667 throughout: the chain's parent is the
+# stage-2 child, which is X3 lineage, and an arm must inherit its OWN parent's
+# value — mixing in the TB3D ladder's 0.35 here would move the reward alongside
+# the box, and every T3-era collapse in this project traces to a compound
+# change. (The 0.35 lineage still appears, correctly, in the *_floor_ref rows,
+# which evaluate the TB3D parents under their own training config.)
+#
+# The zero-shot floors these arms start from, from the pre-launch survey:
+#   10 km / 10 m/s under J2:  113/200 = 56.5%   (safety_cap 87)
+#    5 km /  1 m/s under J2:    0/200 =  0.0%   (safety_cap 200)
+# The 5 km rung is the one at genuine risk of not bootstrapping — hence the
+# tripwire, and hence the 10 km rung existing at all.
+if want 3a; then
+  say "START stage 3a (tight-box ladder rung 1: 10 km / 10 m/s)"
+  W3A=$(last_ckpt A2_j2trained)
+  if [ -z "${W3A:-}" ]; then
+      say "RESULT 3a ABORTED: stage 2 child not found. Run stage 2 first."
   else
-      say "---- stage 3 FAILED (no final ckpt) ----"
+      ladder_arm "A3a_j2_box10k10" "$W3A" B1_BOX 10000 10 "$TB1_REF" 0.35
   fi
-else say "---- stage 3 SKIPPED (not in STAGES=$STAGES) ----"; fi
+else say "---- stage 3a SKIPPED (not in STAGES=$STAGES) ----"; fi
+
+if want 3b; then
+  say "START stage 3b (tight-box ladder rung 2: 5 km / 1 m/s — the headline)"
+  W3B=$(last_ckpt A3a_j2_box10k10)
+  if [ -z "${W3B:-}" ]; then
+      say "RESULT 3b ABORTED: stage 3a child not found. Run stage 3a first."
+  else
+      ladder_arm "A3b_j2_box5k1" "$W3B" TB5_BOX 5000 1 "$TB_WARM" 0.35
+      # The claim boundary, once more, where a reader of the log will hit it.
+      say "NOTE 3b: every j2=1 row above is a MEAN-ELEMENT claim. At 5 km / 1 m/s"
+      say "     3b: the osculating velocity slip is 9.4% of tolerance per orbit,"
+      say "     3b: so the honest statement is 'meets the box in mean elements',"
+      say "     3b: full stop — never 'osculating-grade rendezvous'."
+      say "NOTE 3b: if 3b flatlined, that is a FINDING, not a failed campaign:"
+      say "     3b: it would be the first measured case of J2 defeating the"
+      say "     3b: warm-start ladder, and the tripwire names where it stalled."
+  fi
+else say "---- stage 3b SKIPPED (not in STAGES=$STAGES) ----"; fi
 
 say "=========== ext-j2 rung campaign end ==========="

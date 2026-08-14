@@ -322,7 +322,76 @@ J2-blind floor is 56.5% rather than 0%) as a rung between them.
 
 ---
 
-## 5. Recommendations
+## 5. The tight-box ladder (stages 3a / 3b)
+
+Added after the survey, on the §4/§5(c) finding that the loose box is the
+warm-up and the tight-box recovery is the headline.
+
+| stage | box | warm start | floor rows run in-campaign |
+|---|---|---|---|
+| 2 | 30 km / 50 m/s | `seed42_X3_3d_di1deg` | — |
+| **3a** | **10 km / 10 m/s** | **stage-2 child** | chain floor + `seed42_TB3D_box10k10` @ j2=1 (survey: 113/200) |
+| **3b** | **5 km / 1 m/s** | **stage-3a child** | chain floor + `seed42_TB3D_box5k1` @ j2=1 (survey: 0/200) |
+
+Each rung warm-starts from the previous rung's child, so the policy walks the
+box down rather than bootstrapping from a 0/200 floor in one jump. Two floor
+rows per rung, run **before** training: the *chain* floor (the arm's own warm
+start at this box under J2 — the number it must actually beat, and the
+tripwire's reference) and the *reference* floor (the box's published parent at
+i_t = 0, reproducing the survey row so the campaign is self-contained).
+
+`shape_w_match` stays **0.8166667** through 2 → 3a → 3b: the chain's parent is
+the stage-2 child, which is X3 lineage, and an arm must inherit its *own*
+parent's value. The TB3D ladder's 0.35 appears only in the `_floor_ref` rows,
+which evaluate the TB3D parents under their own training config.
+
+### 5.1 Bootstrap tripwire
+
+`scripts/orbital/extj2/j2_flatline_check.py`. With `cap_terminal_reward = 0`
+and `shape_gamma = 1` a capped episode pays nothing and still collects the
+telescoped Φ_T − Φ_0, so if the warm start never samples a success the +10 is
+never seen — the T3 red-team #1 mechanism. At 5 km / 1 m/s the J2-blind policy
+fails **200/200 on `safety_cap`**, so this is live.
+
+The checker parses the trainer's own dashboard frames (`Steps` then `perf`,
+once per frame; verified against a real 384-frame log) and emits one RESULT
+line: **FLATLINE** if `perf` never exceeded `floor + 5 pp` after 20M steps,
+else OK, plus INCOMPLETE / UNREADABLE / SKIPPED for degenerate inputs. All four
+paths tested. **A FLATLINE verdict never aborts the campaign** — it is a
+finding, named in the log rather than discovered in the eval two stages later,
+and the campaign completes and reports it.
+
+### 5.2 Claim labelling
+
+Every `j2_mode=1` row emits a mean-element claim line into the progress log,
+with the caveat quoted **at the strength that box earns** rather than borrowed
+from the tightest one. The relative-state error is 0.094 m/s per orbit at 5 km
+separation, so as a fraction of the box's velocity tolerance:
+
+| box | slip per orbit | wording |
+|---|---|---|
+| 30 km / 50 m/s | **0.19%** | mean-element claim |
+| 10 km / 10 m/s | **0.94%** | mean-element claim |
+| 5 km / 1 m/s | **9.40%** | *…and* "meets the box in mean elements, **FULL STOP** — never osculating-grade rendezvous" |
+
+### 5.3 ETA
+
+Measured on this machine, not estimated:
+
+| component | wall |
+|---|---|
+| stage 0 (C gates 1 s + sampler gates 2 s + Python ladder 18 s) | **~21 s** |
+| stage 1 (8 eval cells) | **~10 s** |
+| one 50M `puffer_orbital` arm | **~8–15 min** (3 historical runs: ckpt 5→382 in 7–8 min) |
+| each eval cell | 0–3 s |
+
+**Full `0,1,2,3a,3b`: ~25–50 min**, dominated by the three 50M arms. The nav
+lineage's ~99 min per 50M arm was the Python-side EKF, which this rung does not
+use.
+
+---
+
+## 6. Recommendations
 
 1. **Run every training arm at `lvlh_frame_mode = 1`.** It is bit-exact for
    every shipped checkpoint and the confound it removes is 33.5 pp.
