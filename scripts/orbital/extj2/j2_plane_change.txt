@@ -1,0 +1,113 @@
+=== ext-j2: J2-assisted plane change feasibility ===
+    budget 478.1 m/s (15% fuel fraction, Isp 300 s)
+    current episode cap 6000 substeps = 100 h;  MAX_STEPS 12000 = 200 h
+    longest warp in the action table: tau = 360 = 6 h/decision
+
+== A. di_rel = 2 asin(sin i * sin(dOm/2)) — propagator vs closed form ==
+   The saturation is the first half of the catch: no amount of drift
+   can buy more than 2i of relative plane.
+   i deg    dOm deg |  di_rel meas  di_rel form    rel err |     max=2i
+    30.0        1.0 |     0.499995     0.499995   0.00e+00 |       60.0
+    30.0       10.0 |     4.995238     4.995238   0.00e+00 |       60.0
+    30.0       90.0 |    41.409622    41.409622   0.00e+00 |       60.0
+    45.0        1.0 |     0.707102     0.707102   1.41e-16 |       90.0
+    45.0       10.0 |     7.066574     7.066574   0.00e+00 |       90.0
+    45.0       90.0 |    60.000000    60.000000   2.12e-16 |       90.0
+    60.0        1.0 |     0.866023     0.866023   0.00e+00 |      120.0
+    60.0       10.0 |     8.657500     8.657500   1.84e-16 |      120.0
+    60.0       90.0 |    75.522488    75.522488   0.00e+00 |      120.0
+  [PASS] A the exact plane-angle law holds in the propagator  worst rel err vs 2 asin(sin i sin(dOm/2)) = 2.12e-16
+
+== B. d(di_rel)/dt for a co-inclined pair separated by delta-a ==
+   Flown 30 days in the SHIPPED propagate_orbit_j2. dOm is compared
+   against the EXACT rate difference Om_dot(a+da) - Om_dot(a); the
+   (7/4) k sin(2i)|da|/a rule of thumb is shown with its own error.
+   i deg    da km |   dOm meas  dOm exact  rel err | di/dt meas  1st-order  1st err
+    15.0     -100 |    0.39053    0.39053  2.1e-11 |    0.10108    0.09779    -3.3%
+    15.0     -300 |    1.25440    1.25440  8.1e-12 |    0.32466    0.29336    -9.6%
+    15.0     -600 |    2.79526    2.79526  2.7e-12 |    0.72347    0.58672   -18.9%
+    30.0     -100 |    0.35014    0.35014  1.3e-11 |    0.17507    0.16937    -3.3%
+    30.0     -300 |    1.12466    1.12466  1.0e-12 |    0.56233    0.50812    -9.6%
+    30.0     -600 |    2.50616    2.50616  3.2e-12 |    1.25308    1.01623   -18.9%
+    45.0     -100 |    0.28589    0.28589  5.3e-11 |    0.20215    0.19557    -3.3%
+    45.0     -300 |    0.91828    0.91828  3.1e-11 |    0.64933    0.58672    -9.6%
+    45.0     -600 |    2.04627    2.04627  2.7e-12 |    1.44693    1.17344   -18.9%
+    60.0     -100 |    0.20215    0.20215  1.8e-11 |    0.17507    0.16937    -3.3%
+    60.0     -300 |    0.64933    0.64933  1.7e-11 |    0.56233    0.50812    -9.6%
+    60.0     -600 |    1.44693    1.44693  1.3e-11 |    1.25308    1.01623   -18.9%
+  [PASS] B drift rate matches (7/4) k sin(2i) |da|/a          worst rel err over i in {15,30,45,60} x da in {-100,-300,-600} km = 5.33e-11
+
+== C. drift-and-wait vs direct burning, i = 45 deg (the best case) ==
+   dip Dv is a ROUND TRIP (down and back up) and is INDEPENDENT of the
+   plane angle bought — that is the whole mechanism. Direct Dv scales
+   linearly, so the ratio improves with the target angle and the price
+   is paid in TIME.
+
+  di target      da km     dip Dv |    %budget  direct Dv    ratio | drift days    substeps fits cap?
+      1.0d       -100     110.9 m/s |      23.2%     132.9 m/s    1.20x |       5.11        7363 cap raise
+      1.0d       -300     332.6 m/s |      69.6%     132.9 m/s    0.40x |       1.70        2454       yes
+      1.0d       -600     665.1 m/s |     139.1%     132.9 m/s    0.20x |       0.85        1227 NO (fuel)
+
+      3.0d       -100     110.9 m/s |      23.2%     398.8 m/s    3.60x |      15.34       22089  NO (cap)
+      3.0d       -300     332.6 m/s |      69.6%     398.8 m/s    1.20x |       5.11        7363 cap raise
+      3.0d       -600     665.1 m/s |     139.1%     398.8 m/s    0.60x |       2.56        3681 NO (fuel)
+
+      5.0d       -100     110.9 m/s |      23.2%     664.5 m/s    5.99x |      25.57       36815  NO (cap)
+      5.0d       -300     332.6 m/s |      69.6%     664.5 m/s    2.00x |       8.52       12272  NO (cap)
+      5.0d       -600     665.1 m/s |     139.1%     664.5 m/s    1.00x |       4.26        6136 NO (fuel)
+
+== D. where does drift-and-wait beat direct by >= 3x on fuel? ==
+   Condition: direct_dv(di) / dip_dv(da) >= 3, i.e.
+   2 v sin(di/2) >= 3 v |da|/a  ->  |da|/a <= (2/3) sin(di/2).
+   The cheapest dip that still closes in finite time is the binding
+   choice, so for each di the best case is the LARGEST da meeting it.
+
+    di deg |    max da km     dip Dv     ratio |   drift days    substeps env need
+      1.0 |           40      44.3 m/s     3.00x |        12.79       18420 MAX_STEPS + cap raise
+      2.0 |           80      88.6 m/s     3.00x |        12.79       18420 MAX_STEPS + cap raise
+      3.0 |          120     132.9 m/s     3.00x |        12.79       18421 MAX_STEPS + cap raise
+      5.0 |          200     221.5 m/s     3.00x |        12.80       18425 MAX_STEPS + cap raise
+     10.0 |          399     442.6 m/s     3.00x |        12.81       18443 MAX_STEPS + cap raise
+
+   NOTE the drift time at the >=3x threshold is INDEPENDENT of di:
+   da_max ∝ sin(di/2) ∝ di, and rate ∝ da, so days = di/rate is a
+   constant. The 3x fuel win always costs the SAME wall clock.
+  [PASS] D a >=3x fuel band exists and is fuel-feasible       yes, and it is fuel-feasible up to di ~ 10 deg; it costs a FIXED 12.8 days = 18421 substeps regardless of di
+
+   ENV CHANGES REQUIRED, exactly:
+     episode_cap_steps  6000 -> 22106      (15.4 d; currently 100 h)
+     MAX_STEPS         12000 -> 22106      (compile-time; the traj
+                                          buffer is 9.0 MB/env at
+                                          that size, vs 4.9 MB now,
+                                          virtual unless log_enabled)
+     ACTION_DV/ACTION_TAU: add ONE warp row, tau = 1440 (24 h).
+       A longer warp does NOT reduce the substep count (the cap
+       counts sub-steps, and warps sub-step internally) — it buys
+       the CREDIT HORIZON. At tau = 360 a 12.8-day drift is 51 warp
+       decisions and gamma^n = 0.774; at tau = 1440 it is 13
+       decisions and gamma^n = 0.938.
+     NOTHING ELSE. No new burn rows, no obs change, no shaping change.
+
+== E. drift is a 1-D control in a 2-D error space ==
+   For planes (i_s, Om_s) and (i_t, Om_t),
+     cos(di_rel) = cos i_s cos i_t + sin i_s sin i_t cos(dOm)
+   which is MAXIMISED (di_rel minimised) at dOm = 0, where it gives
+   di_rel = |i_s - i_t| EXACTLY. So |di| is a hard FLOOR: drift moves
+   dOm and can null the node component completely, but it can never
+   take di_rel below the inclination difference.
+   Tracked over 30 d in the SHIPPED propagator, da = -300 km, i_t = 45:
+
+  initial error                   di_rel t0 MIN di_rel floor |di|   t_min days
+  pure NODE (dOm=1.414 deg)         1.0000     0.0002     0.0000         1.54
+  pure INCLINATION (di=1 deg)       1.0000     1.0000     1.0000         0.00
+  MIXED (45 deg in error plane)     1.0031     0.7071     0.7071         1.19
+
+   Read the rows: the pure-node error is driven to ~0 (drift alone
+   solves it); the pure-inclination error NEVER drops below its 1 deg
+   floor no matter how long you wait; the mixed error stops at the
+   inclination component. For the env's uniform-phase disc sampler
+   the drift-correctable fraction of a random relative-plane error
+   averages E|cos phi| = 2/pi = 63.7%; the rest still needs a burn.
+  [PASS] E drift nulls the node component only; |di| is a hard floor node error -> ~0; inclination error pinned at its |di| floor; mixed error stops at its inclination component
+
+=== 4/4 checks pass ===

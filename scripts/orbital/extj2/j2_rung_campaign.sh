@@ -131,6 +131,15 @@ want() { [[ ",$STAGES," == *",$1,"* ]]; }
 # degeneracy is not mixed into the arm. Overridable: J2_BAND=25,50 gives a
 # 99.5% control ceiling instead of 90.0%, at 6.5 pp of headroom instead of 10.5.
 BAND=${J2_BAND:-30,60}
+
+# Training seed. Flows into --train.seed AND into every data-dir and wandb
+# group name, so concurrent or sequential seeds never collide on either the
+# checkpoint directory or the wandb run grouping. Floors and refs are EVAL-ONLY
+# and therefore seed-independent: they are written once under the shared
+# JSON_DIR and skipped on later seeds (SEED_SFX is empty for them by design).
+J2_SEED=${J2_SEED:-42}
+SEED_SFX=""
+[ "$J2_SEED" != "42" ] && SEED_SFX="_s${J2_SEED}"
 BAND_LO_RAD=$(python3 -c "import math,sys;print(math.radians(float('$BAND'.split(',')[0])))")
 BAND_HI_RAD=$(python3 -c "import math,sys;print(math.radians(float('$BAND'.split(',')[1])))")
 
@@ -220,6 +229,20 @@ one_eval() {
     local tag="$1" ck="$2" j2="$3" band="$4" lvlh="$5" raan="$6"
     local br="$7" bv="$8" wm="$9"
     cd "$MAIN" || return 1
+    # Floor/ref rows are eval-only and depend on no training seed, so they are
+    # shared across seeds and skipped once written. Everything else is a
+    # property of THIS seed's checkpoint and gets the suffix.
+    # NOTE the trailing * on _floor_chain: that tag is ALREADY seed-suffixed at
+    # the call site (it is the previous stage's child, so it IS seed-dependent);
+    # matching it here only prevents a second suffix being appended.
+    case "$tag" in
+        *_floor_chain*|*_floor_ref|s1_*)
+            if [ -s "$JSON_DIR/${tag}.json" ]; then
+                say "SKIP eval $tag (seed-independent, already present)"
+                return 0
+            fi ;;
+        *) tag="${tag}${SEED_SFX}" ;;
+    esac
     local L=/tmp/j2_rung_${tag}.log
     python3 "$EVAL" --ckpt "$ck" --label "$tag" --episodes $EPS --seed $EVAL_SEED \
         --j2-mode "$j2" --i-band "$band" --lvlh-frame-mode "$lvlh" \
@@ -256,23 +279,23 @@ one_eval() {
 train_arm() {
     local arm="$1" warm="$2" boxvar="$3[@]"; shift 3
     local box=("${!boxvar}")
-    local dir="$PUF/experiments_extj2/${arm}"
+    local dir="$PUF/experiments_extj2/${arm}${SEED_SFX}"
     if ls "$dir"/*/model_*${FINAL_CKPT_TAG}.pt >/dev/null 2>&1; then
-        say "SKIP train $arm (final ckpt already present)"
+        say "SKIP train $arm (final ckpt already present for seed $J2_SEED)"
         return 0
     fi
-    say "START train $arm (warm=$(basename $warm) box=${box[1]}/${box[3]} band=$BAND)"
+    say "START train $arm seed=$J2_SEED (warm=$(basename $warm) box=${box[1]}/${box[3]} band=$BAND)"
     cd "$PUF" || return 1
     # NO inner `caffeinate`: the whole script runs under one, and wrapping the
     # trainer again would make $! the wrapper's PID. caffeinate does not forward
     # signals, so the watchdog would kill the wrapper and leave the trainer
     # ORPHANED on 14 cores under the next stage.
     python3 -m pufferlib.pufferl train puffer_orbital \
-        --train.device cpu --train.total-timesteps $STEPS --train.seed 42 \
+        --train.device cpu --train.total-timesteps $STEPS --train.seed "$J2_SEED" \
         --train.data-dir "$dir" --load-model-path "$warm" \
         "${BASE_ENV[@]}" "${J2_ENV[@]}" "${box[@]}" "$@" \
-        --wandb --wandb-project orbital-rl --wandb-group "t6-j2-${arm}" \
-        --tag "t6_j2_${arm}" > "/tmp/j2_rung_${arm}_train.log" 2>&1 &
+        --wandb --wandb-project orbital-rl --wandb-group "t6-j2-${arm}${SEED_SFX}" \
+        --tag "t6_j2_${arm}${SEED_SFX}" > "/tmp/j2_rung_${arm}${SEED_SFX}_train.log" 2>&1 &
     local pid=$!
     say "  trainer pid $pid, log /tmp/j2_rung_${arm}_train.log"
 
@@ -297,14 +320,15 @@ train_arm() {
     done
     wait "$pid" 2>/dev/null
     local rc=$? perf
-    perf=$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' "/tmp/j2_rung_${arm}_train.log" \
+    perf=$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' "/tmp/j2_rung_${arm}${SEED_SFX}_train.log" \
            | grep -oE 'perf +[0-9.]+' | tail -1)
-    say "END train $arm rc=$rc last=${perf:-n/a}"
+    say "END train $arm seed=$J2_SEED rc=$rc last=${perf:-n/a}"
     ls "$dir"/*/model_*${FINAL_CKPT_TAG}.pt >/dev/null 2>&1
 }
 
 last_ckpt() {
-    ls -t "$PUF/experiments_extj2/$1"/*/model_*${FINAL_CKPT_TAG}.pt 2>/dev/null | head -1
+    ls -t "$PUF/experiments_extj2/$1${SEED_SFX}"/*/model_*${FINAL_CKPT_TAG}.pt \
+        2>/dev/null | head -1
 }
 
 # ── flatline <arm> <floor_json> ─────────────────────────────────────────────
@@ -322,8 +346,9 @@ flatline() {
         say "RESULT FLATLINE-CHECK $arm: SKIPPED (no floor json at $fj)"
         return 0
     fi
-    out=$(python3 "$TRIP" --log "/tmp/j2_rung_${arm}_train.log" --floor "$floor" \
-          --after-steps 20e6 --margin 0.05 --label "$arm" 2>&1)
+    out=$(python3 "$TRIP" --log "/tmp/j2_rung_${arm}${SEED_SFX}_train.log" \
+          --floor "$floor" --after-steps 20e6 --margin 0.05 \
+          --label "${arm}${SEED_SFX}" 2>&1)
     say "RESULT $out"
     return 0
 }
@@ -346,11 +371,11 @@ ladder_arm() {
     say "START $arm (box ${br}m/${bv}m/s, warm=$(basename $warm))"
     # the bootstrap floor the arm must actually beat: ITS OWN warm start,
     # at this box, under J2 and the sampler
-    one_eval "${arm}_floor_chain" "$warm"  1 "$BAND" 1 0 "$br" "$bv" 0.8166667
+    one_eval "${arm}_floor_chain${SEED_SFX}" "$warm" 1 "$BAND" 1 0 "$br" "$bv" 0.8166667
     # and the box's published parent, i_t = 0, for continuity with the survey
     one_eval "${arm}_floor_ref"   "$refck" 1 off     1 0 "$br" "$bv" "$refwm"
     if train_arm "$arm" "$warm" "$boxvar"; then
-        flatline "$arm" "$JSON_DIR/${arm}_floor_chain.json"
+        flatline "$arm" "$JSON_DIR/${arm}_floor_chain${SEED_SFX}.json"
         local ck; ck=$(last_ckpt "$arm")
         say "  $arm ckpt $ck"
         one_eval "${arm}_native"    "$ck" 1 "$BAND" 1 0 "$br" "$bv" 0.8166667
@@ -360,7 +385,7 @@ ladder_arm() {
     fi
     # Training that produces no final ckpt is still worth a tripwire read: the
     # log may show a clean flatline rather than a crash, and that is the finding.
-    flatline "$arm" "$JSON_DIR/${arm}_floor_chain.json"
+    flatline "$arm" "$JSON_DIR/${arm}_floor_chain${SEED_SFX}.json"
     say "---- $arm FAILED (no final ckpt) — see the flatline check above ----"
     return 1
 }
@@ -372,7 +397,7 @@ say "task: dim3=1 di_max=1.0deg e<=0.05 LEO gap=pi D30 shaping2 dv_ref=700"
 say "      gamma=1.0 phase modes 1 cap=3000 no debris, truth state (nav is OUT)"
 say "J2:   j2_mode=1 i_t ~ U($BAND) deg, raan fixed, lvlh_frame_mode=1"
 say "warm: $(basename $WARM)"
-say "stages requested: $STAGES"
+say "stages requested: $STAGES     train seed: $J2_SEED${SEED_SFX:+ (dirs/groups suffixed ${SEED_SFX})}"
 
 preflight || exit 1
 if want 0; then anchor || exit 1; else say "---- stage 0 SKIPPED (explicitly excluded) ----"; fi

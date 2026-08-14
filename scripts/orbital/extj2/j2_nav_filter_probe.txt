@@ -1,0 +1,69 @@
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+=== J2 x NAV filter-health gate ===
+    N=256 scenarios, nav60 cadence, arcs [1.0, 6.0, 24.0] h
+    LEO 300-800 km, e<=0.05, i_t ~ U(30,60) deg, rel plane <= 1 deg
+    sigma_beta 1.00e-03 rad, q_a 1.00e-13 m^2/s^3
+    filter seeded from truth + post-IOD covariance (2% of separation)
+
+arm                                         arc       pos err p50 [95% CI] (m)   vel p50        NEES p50 [95% CI] NEES>band  err>sep  nonfin  repole
+MATCHED    truth 2body, filt 2body           1h     6679.0 [  5979.6,  7830.8]    7.480      1.31 [  1.13,   1.48]    25.4%    0.0%   0.0%    0.00
+MATCHED    truth 2body, filt 2body           6h     1358.0 [  1161.6,  1471.3]    1.399      1.07 [  0.89,   1.21]    10.9%    0.0%   0.0%    0.04
+MATCHED    truth 2body, filt 2body          24h      454.8 [   397.9,   533.7]    0.477      0.90 [  0.83,   1.04]     8.6%    0.0%   0.0%    0.32
+
+MISMATCHED truth J2,    filt 2body           1h    13391.7 [ 12138.4, 14727.9]   14.371     21.01 [ 17.93,  24.99]    97.7%    0.4%   0.0%    0.00
+MISMATCHED truth J2,    filt 2body           6h    38097.1 [ 33633.1, 43325.5]   38.763   3315.74 [2674.56,4253.40]   100.0%    0.0%   0.0%    0.04
+MISMATCHED truth J2,    filt 2body          24h   190613.6 [172631.8,218434.7]  212.069 6162180.87 [3384187.14,20032494.00]   100.0%    0.4%   0.0%    0.34
+
+MISMATCHED truth J2,    filt 2body, Q x1e2   1h    13391.7 [ 12138.4, 14727.9]   14.371     21.01 [ 17.93,  24.99]    97.7%    0.4%   0.0%    0.00
+MISMATCHED truth J2,    filt 2body, Q x1e2   6h    38097.1 [ 33633.1, 43325.5]   38.763   3315.43 [2674.42,4253.09]   100.0%    0.0%   0.0%    0.04
+MISMATCHED truth J2,    filt 2body, Q x1e2  24h   190565.0 [172628.8,218417.9]  211.992 5525181.83 [3183678.40,11903385.57]   100.0%    0.4%   0.0%    0.35
+
+MISMATCHED truth J2,    filt 2body, Q x1e4   1h    13391.7 [ 12138.4, 14727.9]   14.371     21.01 [ 17.93,  24.99]    97.7%    0.4%   0.0%    0.00
+MISMATCHED truth J2,    filt 2body, Q x1e4   6h    38097.1 [ 33633.0, 43325.4]   38.763   3290.44 [2660.30,4222.21]   100.0%    0.0%   0.0%    0.04
+MISMATCHED truth J2,    filt 2body, Q x1e4  24h   186295.0 [167131.6,217762.2]  207.266 1643826.55 [1005743.30,2529579.66]   100.0%    0.4%   0.0%    0.36
+
+MISMATCHED truth J2,    filt 2body, Q x1e6   1h    13391.6 [ 12138.5, 14727.8]   14.371     21.00 [ 17.92,  24.98]    97.7%    0.4%   0.0%    0.00
+MISMATCHED truth J2,    filt 2body, Q x1e6   6h    37841.8 [ 33621.5, 43322.3]   38.760   2063.42 [1807.81,2488.27]   100.0%    0.0%   0.0%    0.04
+MISMATCHED truth J2,    filt 2body, Q x1e6  24h   148566.2 [127239.3,162527.6]  159.481 398978.35 [272123.24,553642.96]   100.0%    0.0%   0.0%    0.34
+
+FIXED      truth J2,    filt J2              1h     6782.3 [  6000.1,  7766.3]    7.683      1.27 [  1.11,   1.47]    25.8%    0.0%   0.0%    0.00
+FIXED      truth J2,    filt J2              6h     1472.9 [  1256.7,  1661.4]    1.524      1.35 [  1.16,   1.52]    25.0%    0.0%   0.0%    0.05
+FIXED      truth J2,    filt J2             24h     1074.4 [   918.1,  1329.1]    1.181     10.91 [  6.23,  14.73]    71.5%    0.0%   0.0%    0.31
+
+FIXED      truth J2,    filt J2,    Q x1e1   1h     6782.3 [  6000.1,  7766.3]    7.683      1.27 [  1.11,   1.47]    25.8%    0.0%   0.0%    0.00
+FIXED      truth J2,    filt J2,    Q x1e1   6h     1472.9 [  1256.7,  1661.4]    1.524      1.35 [  1.16,   1.52]    25.0%    0.0%   0.0%    0.05
+FIXED      truth J2,    filt J2,    Q x1e1  24h     1074.2 [   918.0,  1329.0]    1.181     10.88 [  6.07,  14.40]    71.5%    0.0%   0.0%    0.31
+
+FIXED      truth J2,    filt J2,    Q x1e2   1h     6782.3 [  6000.1,  7766.3]    7.683      1.27 [  1.11,   1.47]    25.8%    0.0%   0.0%    0.00
+FIXED      truth J2,    filt J2,    Q x1e2   6h     1472.9 [  1256.7,  1661.4]    1.524      1.35 [  1.16,   1.52]    25.0%    0.0%   0.0%    0.05
+FIXED      truth J2,    filt J2,    Q x1e2  24h     1073.8 [   916.6,  1327.6]    1.181      9.97 [  5.02,  12.90]    68.4%    0.0%   0.0%    0.31
+
+    NEES 6-dof 95% band: [0.206, 2.408]  (1.0 = consistent)
+
+=== VERDICT INPUTS (ratios vs the MATCHED control) ===
+  --- 1 h arc ---   matched: pos 6679.0 m, NEES 1.31, NEES>band 25.4%
+      MISMATCHED truth J2,    filt 2body         pos    13391.7 m (   2.01x)  NEES      21.01 (   16.07x)  NEES>band  97.7%
+      MISMATCHED truth J2,    filt 2body, Q x1e2 pos    13391.7 m (   2.01x)  NEES      21.01 (   16.07x)  NEES>band  97.7%
+      MISMATCHED truth J2,    filt 2body, Q x1e4 pos    13391.7 m (   2.01x)  NEES      21.01 (   16.07x)  NEES>band  97.7%
+      MISMATCHED truth J2,    filt 2body, Q x1e6 pos    13391.6 m (   2.01x)  NEES      21.00 (   16.06x)  NEES>band  97.7%
+      FIXED      truth J2,    filt J2            pos     6782.3 m (   1.02x)  NEES       1.27 (    0.98x)  NEES>band  25.8%
+      FIXED      truth J2,    filt J2,    Q x1e1 pos     6782.3 m (   1.02x)  NEES       1.27 (    0.98x)  NEES>band  25.8%
+      FIXED      truth J2,    filt J2,    Q x1e2 pos     6782.3 m (   1.02x)  NEES       1.27 (    0.98x)  NEES>band  25.8%
+  --- 6 h arc ---   matched: pos 1358.0 m, NEES 1.07, NEES>band 10.9%
+      MISMATCHED truth J2,    filt 2body         pos    38097.1 m (  28.05x)  NEES    3315.74 ( 3099.19x)  NEES>band 100.0%
+      MISMATCHED truth J2,    filt 2body, Q x1e2 pos    38097.1 m (  28.05x)  NEES    3315.43 ( 3098.90x)  NEES>band 100.0%
+      MISMATCHED truth J2,    filt 2body, Q x1e4 pos    38097.1 m (  28.05x)  NEES    3290.44 ( 3075.54x)  NEES>band 100.0%
+      MISMATCHED truth J2,    filt 2body, Q x1e6 pos    37841.8 m (  27.87x)  NEES    2063.42 ( 1928.66x)  NEES>band 100.0%
+      FIXED      truth J2,    filt J2            pos     1472.9 m (   1.08x)  NEES       1.35 (    1.26x)  NEES>band  25.0%
+      FIXED      truth J2,    filt J2,    Q x1e1 pos     1472.9 m (   1.08x)  NEES       1.35 (    1.26x)  NEES>band  25.0%
+      FIXED      truth J2,    filt J2,    Q x1e2 pos     1472.9 m (   1.08x)  NEES       1.35 (    1.26x)  NEES>band  25.0%
+  --- 24 h arc ---   matched: pos 454.8 m, NEES 0.90, NEES>band 8.6%
+      MISMATCHED truth J2,    filt 2body         pos   190613.6 m ( 419.14x)  NEES 6162180.87 (6832677.02x)  NEES>band 100.0%
+      MISMATCHED truth J2,    filt 2body, Q x1e2 pos   190565.0 m ( 419.03x)  NEES 5525181.83 (6126367.24x)  NEES>band 100.0%
+      MISMATCHED truth J2,    filt 2body, Q x1e4 pos   186295.0 m ( 409.64x)  NEES 1643826.55 (1822688.45x)  NEES>band 100.0%
+      MISMATCHED truth J2,    filt 2body, Q x1e6 pos   148566.2 m ( 326.68x)  NEES  398978.35 (442390.49x)  NEES>band 100.0%
+      FIXED      truth J2,    filt J2            pos     1074.4 m (   2.36x)  NEES      10.91 (   12.09x)  NEES>band  71.5%
+      FIXED      truth J2,    filt J2,    Q x1e1 pos     1074.2 m (   2.36x)  NEES      10.88 (   12.06x)  NEES>band  71.5%
+      FIXED      truth J2,    filt J2,    Q x1e2 pos     1073.8 m (   2.36x)  NEES       9.97 (   11.05x)  NEES>band  68.4%
