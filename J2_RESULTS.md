@@ -66,13 +66,30 @@ signal alive.
    The sampler band U(30°,60°) stays below the cliff and outside both channel
    zeros (0°, 90°) and the critical inclination (63.43°).
 
+## Multi-seed — 3/3 (2026-08-14)
+
+Full recovery chain re-trained per seed (loose → 10 km/10 m/s → 5 km/1 m/s):
+
+| seed | loose native | 10 km/10 native | **5 km/1 native** | 5 km/1 retention (j2=0) |
+|---|---|---|---|---|
+| 42 | 200/200 | 200/200 | **198/200 = 99.0%** | 98.0% |
+| 7 | 200/200 | 200/200 | **199/200 = 99.5%** | 99.0% |
+| 1337 | 200/200 | 200/200 | **198/200 = 99.0%** | 99.0% |
+
+Pooled at the tight box: **595/600 (99.2%), 0.5 pp spread, zero flatlines**
+(tripwire crossings 1.2–11.9M steps). The J2 recovery is a capability, not a
+seed artifact.
+
 ## Claim boundaries
 
 - Mean elements only, everywhere j2_mode=1 (no mean↔osculating layer exists).
-- Truth-state navigation: J2 × angles-only nav is future work (one new
-  variable per campaign).
-- Single seed (42), single inclination band U(30°,60°), Ω gauge verified flat
-  (5% split, a leak detector not a knob).
+- Truth-state navigation: J2 × angles-only nav campaign in flight (its prep
+  found and fixed the 13th metric-vs-implementation-class defect: the nav
+  harness sub-propagated truth states two-body under a J2 env — the filter
+  was consistently tracking a fiction; filter-vs-filter validation is
+  structurally blind to a harness wrong the same way for both arms).
+- Single inclination band U(30°,60°), Ω gauge verified flat (5% split, a leak
+  detector not a knob).
 
 Checkpoints `models/t3/extj2_{A2_j2trained,A3a_j2_box10k10,A3b_j2_box5k1}.pt`;
 per-cell JSON `web_data/results/extj2_rung/`; wandb `t6-j2-*`; full analysis
