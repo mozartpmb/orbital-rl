@@ -187,6 +187,32 @@ class Orbital(pufferlib.PufferEnv):
         # i_target_rad=0 the plane channel is provably inert (C warns).
         # Enables obs[29] = cos i_sat, obs[30] = cos i_target; 31/32 stay 0.
         j2_mode=0,
+        # ── ext-j2 rung: inclined-target sampler. Defaults off, and the OFF
+        # path consumes zero rand() draws, so every anchor stays bit-exact by
+        # RNG-stream identity (not merely by value).
+        #
+        # i_target_{min,max}_rad: when both >= 0 and max > min, the TARGET
+        # inclination is sampled U(min, max) per episode, overriding
+        # i_target_rad. This is what makes J2 non-inert: the plane channel is
+        # 1.75*J2*(R_EQ/p)^2*sin(2i) per radian of phase closed, which is
+        # identically ZERO at an equatorial target. Recommended rung band is
+        # 30..60 deg (0.5236 .. 1.0472): sin(2i) stays in [0.866, 1.0] and the
+        # critical inclination 63.43 deg (where omega-dot = 0) stays outside.
+        i_target_min_rad=-1.0,
+        i_target_max_rad=-1.0,
+        # raan_target_sample: 1 => Omega_t = raan_target_rad + U(0, 2pi) per
+        # episode. J2's potential is axisymmetric about z-hat, so Omega_t is
+        # still pure GAUGE under J2 and this adds no task content — it is the
+        # SO(2)-about-z leak detector (the reduced form of the ext-3d SO(3)
+        # frame gate). Differential Omega-dot does NOT depend on Omega.
+        raan_target_sample=0,
+        # obs[33-36] frame. 0 = LEGACY (bit-exact; the only mode any shipped
+        # checkpoint was trained under). The legacy block rotates the INERTIAL
+        # x,y offset by the in-plane angle omega+theta, which equals LVLH only
+        # at i_t = Omega_t = 0 — true of every shipped lineage, false the
+        # moment the target plane is sampled. 1 = the true target orbital
+        # frame (R = r_hat_t in 3D, C = h_hat_t, T = C x R).
+        lvlh_frame_mode=0,
         # Trajectory logging
         traj_log_dir=None,   # if set, save .npz files here
         traj_log_every=500,  # save trajectory every N episodes (per env 0)
@@ -274,6 +300,10 @@ class Orbital(pufferlib.PufferEnv):
             obs_de_scale=obs_de_scale,
             shape_match_squash=shape_match_squash,
             j2_mode=j2_mode,
+            i_target_min_rad=i_target_min_rad,
+            i_target_max_rad=i_target_max_rad,
+            raan_target_sample=raan_target_sample,
+            lvlh_frame_mode=lvlh_frame_mode,
             # Red-team #4: per-sub-step trajectory recording (352 B/record,
             # ~1 MB/env buffer) only when trajectories are actually saved.
             log_enabled=1 if traj_log_dir else 0,
