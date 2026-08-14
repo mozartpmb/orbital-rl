@@ -29,8 +29,41 @@
 # The analytic O(J2) STM removes only ~59% of the two-body STM's error and is
 # refused outright by the filter class.
 #
-# Cost, measured: predict() 0.603 -> 3.072 ms/tick (5.09x), taking a full
-# bearings_only nav step to ~217% of baseline.
+# Cost: the probe projected ~217% of a nav step from predict() alone
+# (0.603 -> 3.072 ms/tick, 5.09x). The INTEGRATED cost is higher and the
+# difference is a real finding, not an accounting error: the wrapper also
+# sub-propagates BOTH TRUTH states between decision epochs, and that had to
+# become J2-aware too (see the mechanism note below), which the probe could not
+# have known because it never ran the wrapper. Measured end to end at B=256,
+# interleaved against the two-body arm in the same process:
+#
+#     X3  (two-body filter)  188.4 ms/step
+#     J2X (J2 filter)        837.7 ms/step      ratio 4.45x
+#
+# So budget ~4.5x a two-body nav arm, i.e. ~7.5 h per 50M arm against rung-1's
+# ~101 min, not the ~3.6 h the predict-only projection implied. Absolute
+# numbers were taken on a contended machine; the RATIO is the robust part and
+# is what the schedule should be built on.
+#
+# ── THE MECHANISM THAT COST A DAY, WRITTEN DOWN SO IT IS NOT REDISCOVERED ───
+# The filter was consistent standalone (NEES ~2 through 24 h) and wildly
+# inconsistent in the loop (NEES 25520, azimuth innovation ramping to +38
+# sigma). The cause was NOT the filter: its J2 propagation matched the env to
+# 0.0 m at 6 h, its FD STM sat 4e-3 from the two-body STM exactly as O(J2)
+# predicts, and re-poling the chart EVERY tick changed nothing (the chart is a
+# shared basis, so a stale one cancels).
+#
+# The cause was that `OrbitalNav._nav_step` sub-propagates the truth states
+# between decision epochs with the TWO-BODY propagator. tau reaches 360
+# sub-steps (6 h), where two-body drifts ~132 km from the env's own J2 truth,
+# so the filter was being fed measurements built from a fiction. It is now
+# J2-aware when nav_j2_mode=1, which restores in-loop NEES to 1.20 acquired /
+# 1.37 at handoff against the two-body reference of 0.66 / 1.02, and flattens
+# the azimuth innovation to mean -0.05 +/- 1.0 across 40 h.
+#
+# The general lesson for any future perturbation: a filter is only as good as
+# the truth the harness hands it, and filter-vs-filter validation cannot see a
+# harness that is wrong in the same way for both arms.
 #
 # NOT TAKEN: the element-space covariance optimisation. Identified but
 # unmeasured; a mid-campaign swap of the covariance path is exactly the

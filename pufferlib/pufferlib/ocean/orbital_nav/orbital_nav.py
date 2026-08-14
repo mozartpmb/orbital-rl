@@ -811,8 +811,21 @@ class OrbitalNav(Orbital):
         elif live.any():
             sc = self._prev_sat.copy()
             tc = self._prev_tgt.copy()
-            prop = (n3.propagate_cartesian_nd if self._dim3
-                    else nm.propagate_cartesian)
+            # The wrapper sub-propagates BOTH TRUTH states between decision
+            # epochs at the nav cadence, and the filter is fed measurements
+            # built from those states. Under j2_mode that propagation must be
+            # J2-aware or the "truth" handed to the filter is a two-body
+            # extrapolation: tau reaches 360 sub-steps (6 h), where two-body
+            # drifts ~132 km from the env's own J2 truth (measured). The filter
+            # then tracks a fiction, which is what produced a secular azimuth
+            # innovation ramp to +38 sigma and in-loop NEES 25520 while the
+            # filter's OWN propagation, its STM and its chart were all exact.
+            if self._nav_j2:
+                prop = n3.propagate_cartesian_j2
+            elif self._dim3:
+                prop = n3.propagate_cartesian_nd
+            else:
+                prop = nm.propagate_cartesian
             n_tick = int(n_tick_row[live].max())
             for i in range(n_tick):
                 idx = np.flatnonzero(live & (n_tick_row > i))
