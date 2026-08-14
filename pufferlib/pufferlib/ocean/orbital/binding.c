@@ -325,8 +325,13 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->obs_di_scale_rad        = (double)unpack(kwargs, "obs_di_scale_rad");
     env->obs_de_scale            = (double)unpack(kwargs, "obs_de_scale");
     env->shape_match_squash      = (int)unpack(kwargs, "shape_match_squash");
-    /* ext-j2 kwarg (default 0 = verbatim legacy propagator, bit-exact) */
+    /* ext-j2 kwargs (defaults = verbatim legacy propagator + pinned target
+     * plane; both reached by branching, both bit-exact) */
     env->j2_mode                 = (int)unpack(kwargs, "j2_mode");
+    env->i_target_min_rad        = (double)unpack(kwargs, "i_target_min_rad");
+    env->i_target_max_rad        = (double)unpack(kwargs, "i_target_max_rad");
+    env->raan_target_sample      = (int)unpack(kwargs, "raan_target_sample");
+    env->lvlh_frame_mode         = (int)unpack(kwargs, "lvlh_frame_mode");
     env->last_terminal_cause     = TERM_NONE;
     env->last_traj_records       = 0;
 
@@ -360,12 +365,31 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
                 "the 3D/J2 obs block occupies body slots 21-32).");
             return -1;
         }
-        if (env->i_target_rad == 0.0) {
+        int i_sampled = (env->i_target_min_rad >= 0.0
+                         && env->i_target_max_rad > env->i_target_min_rad);
+        if (!i_sampled && env->i_target_rad == 0.0) {
             fprintf(stderr,
-                "[orbital/j2] WARNING: j2_mode=1 with i_target_rad=0. The J2 "
-                "plane channel is provably INERT at an equatorial target "
-                "(j2_A_design §2.2: d(dv_pl) = 0.00 m/s over a full cap at "
-                "every di). Fine for the J-A3/J-A5 anchors; wrong for training.\n");
+                "[orbital/j2] WARNING: j2_mode=1 with an EQUATORIAL target and no "
+                "inclination sampler (i_target_rad=0, i_target_{min,max}_rad off). "
+                "The J2 plane channel is provably INERT there (j2_A_design §2.2: "
+                "d(dv_pl) = 0.00 m/s over a full cap at every di). Fine for the "
+                "J-A3/J-A5 anchors; wrong for training — set i_target_min_rad / "
+                "i_target_max_rad (rung band 0.5236..1.0472 = 30..60 deg).\n");
+        }
+        /* The channel strength goes as sin(2 i_t): identically zero at 0 and
+         * 90 deg. A band that straddles 90 deg is half-inert, and the design's
+         * suggested U(20,100) does exactly that — warn rather than silently
+         * train on a population whose median cell has nothing to learn. */
+        if (i_sampled) {
+            double lo = env->i_target_min_rad, hi = env->i_target_max_rad;
+            if (lo < M_PI/2.0 && hi > M_PI/2.0) {
+                fprintf(stderr,
+                    "[orbital/j2] WARNING: inclination band straddles 90 deg "
+                    "(%.2f..%.2f deg). The J2 plane channel goes as sin(2 i) and "
+                    "is EXACTLY zero at 90 deg, so part of the sampled population "
+                    "has no channel to learn and will dilute the arm.\n",
+                    lo * 180.0 / M_PI, hi * 180.0 / M_PI);
+            }
         }
     }
     return 0;

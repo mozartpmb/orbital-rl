@@ -35,7 +35,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              cap_terminal_reward=-10.0, de_max=-1.0, da_max_m=-1.0,
              dim3_mode=0, di_max_rad=-1.0, i_target_rad=0.0, raan_target_rad=0.0,
              obs_di_scale_rad=-1.0, obs_de_scale=-1.0, shape_match_squash=0,
-             j2_mode=0):
+             j2_mode=0, i_target_min_rad=-1.0, i_target_max_rad=-1.0,
+             raan_target_sample=0, lvlh_frame_mode=0):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -89,6 +90,10 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         obs_de_scale=obs_de_scale,
         shape_match_squash=shape_match_squash,
         j2_mode=j2_mode,
+        i_target_min_rad=i_target_min_rad,
+        i_target_max_rad=i_target_max_rad,
+        raan_target_sample=raan_target_sample,
+        lvlh_frame_mode=lvlh_frame_mode,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
     )
@@ -315,6 +320,22 @@ def main():
                              'M-dot corrections; exact under warps). Requires dim3-mode 1 '
                              'and num_debris 0. Writes obs[29]=cos i_sat, obs[30]=cos i_tgt. '
                              'Default 0 = verbatim legacy propagator.')
+    parser.add_argument('--i-target-min-rad', type=float, default=-1.0,
+                        help='ext-j2: sample target inclination U(min, max) per episode. '
+                             'Both >= 0 and max > min to enable. THIS is what makes J2 '
+                             'non-inert (channel goes as sin 2i, zero at 0 and 90 deg). '
+                             'Rung band 0.5236..1.0472 = 30..60 deg.')
+    parser.add_argument('--i-target-max-rad', type=float, default=-1.0,
+                        help='ext-j2: see --i-target-min-rad.')
+    parser.add_argument('--raan-target-sample', type=int, default=0,
+                        help='ext-j2: 1 = Omega_t = raan_target_rad + U(0, 2pi) per episode. '
+                             'GAUGE under J2 (axisymmetric about z), so this is the '
+                             'SO(2)-about-z leak detector, not task variation.')
+    parser.add_argument('--lvlh-frame-mode', type=int, default=0,
+                        help='ext-j2: obs[33-36] frame. 0 = legacy (equatorial projection '
+                             'rotated by omega+theta; correct ONLY at i_t = Omega_t = 0). '
+                             '1 = true target orbital frame. Default 0 keeps every trained '
+                             "checkpoint's primary rendezvous channel bit-identical.")
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
@@ -332,7 +353,8 @@ def main():
              args.cap_terminal_reward, args.de_max, args.da_max_m,
              args.dim3_mode, args.di_max_rad, args.i_target_rad, args.raan_target_rad,
              args.obs_di_scale_rad, args.obs_de_scale, args.shape_match_squash,
-             args.j2_mode)
+             args.j2_mode, args.i_target_min_rad, args.i_target_max_rad,
+             args.raan_target_sample, args.lvlh_frame_mode)
 
 
 if __name__ == '__main__':

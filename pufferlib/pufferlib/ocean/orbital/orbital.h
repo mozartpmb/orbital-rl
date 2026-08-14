@@ -458,6 +458,50 @@ typedef struct {
 
     /* ── ext-j2 (2026-08-13). Binding spec: j2_A_design.md. Default 0 is the
      * verbatim legacy propagator, reached by branching, not by a zero term. */
+    /* ── ext-j2 rung: inclined-target sampler ────────────────────────────────
+     * Under two-body the target plane is pure gauge, so the env has always
+     * pinned it (i_t = Ω_t = 0). Under J2 the EQUATOR IS PHYSICAL and that
+     * default makes the whole upgrade inert: at an equatorial target
+     * Δi_rel = i_s regardless of Ω_s, so differential Ω̇ cannot move the plane
+     * term at all (measured Δ(dv_pl) = 0.000000000 m/s over a full cap —
+     * J-G6/J-A5). These two knobs turn the target plane into a sampled
+     * quantity. Defaults are off, and the OFF path consumes ZERO rand() draws,
+     * so every pre-existing anchor stays bit-exact by RNG-stream identity.
+     *
+     * The two are NOT the same kind of knob, and conflating them is the trap:
+     *   i_t  is TASK VARIATION. The channel strength is
+     *        1.75·J2·(R_EQ/p)²·sin 2i per radian of λ closed, so it peaks at
+     *        45° and is identically ZERO at 0° and 90°.
+     *   Ω_t  is GAUGE. J2's potential is axisymmetric about ẑ, so rotating the
+     *        whole scene about ẑ maps solutions to solutions exactly. Sampling
+     *        Ω_t adds no task content; it is a LEAK DETECTOR (SO(2)-about-ẑ,
+     *        the reduced form of the ext-3d SO(3) frame gate — j2_A_design
+     *        §4.1). Differential Ω̇ does NOT depend on Ω. */
+    double           i_target_min_rad;   /* < 0 off. Else i_t ~ U(min, max) per episode,
+                                          * overriding i_target_rad. Recommended rung band
+                                          * U(30°, 60°): sin 2i ∈ [0.866, 1.0], i.e. the J2
+                                          * plane channel is within 13% of its maximum
+                                          * everywhere in the band, and 63.43° (the critical
+                                          * inclination, where ω̇ = 0) stays OUTSIDE so a
+                                          * second unrelated degeneracy is not mixed in. */
+    double           i_target_max_rad;   /* < 0 off (see above)                            */
+    /* ext-j2 rung: obs[33-36] frame. 0 = LEGACY (bit-exact, and the only mode
+     * any shipped checkpoint was trained under): the "LVLH" block is built
+     * from the INERTIAL x,y offset rotated by the in-plane angle omega+theta.
+     * That is exactly the LVLH frame when i_t = Omega_t = 0 — which every
+     * shipped lineage pinned — and is neither LVLH nor rotation-invariant
+     * about ẑ once i_t != 0: the equatorial projection of r̂_t is
+     * (cos u, sin u · cos i) at Omega_t = 0, not (cos u, sin u), and Δz is
+     * dropped outright. 1 = the true target orbital frame (R̂ = r̂_t 3D,
+     * Ĉ = ĥ_t, T̂ = Ĉ × R̂), which reduces to the legacy construction at
+     * i = Omega = 0 up to float round-off but NOT bitwise, hence the gate. */
+    int              lvlh_frame_mode;
+
+    int              raan_target_sample; /* 0 = Ω_t = raan_target_rad exactly (legacy);
+                                          * 1 = Ω_t = raan_target_rad + U(0, 2π). Gauge
+                                          * under J2, so this is an invariance test, not
+                                          * task enrichment.                                */
+
     int              j2_mode;            /* 0 = off (bit-exact anchor); 1 = secular
                                           * mean-element J2 on Ω, ω, M. Requires
                                           * dim3_mode = 1 (asserted in my_init):
@@ -1291,7 +1335,8 @@ static inline void fill_observations(Orbital* env) {
     {
         double tx, ty, tz, tvx, tvy, tvz;
         orbit_to_cartesian(&env->target, &tx, &ty, &tz, &tvx, &tvy, &tvz);
-        (void)tz; (void)tvz;   /* in-plane block by design; cross-track is obs[24,25] */
+        /* tz/tvz are used only by lvlh_frame_mode = 1 below; the legacy
+         * in-plane block deliberately ignores them (cross-track is obs[24,25]). */
         /* Target inertial angle: ω + θ (perifocal→inertial) */
         double theta_t = env->target.theta + env->target.omega;
         double ct = cos(theta_t), st = sin(theta_t);
@@ -1306,6 +1351,32 @@ static inline void fill_observations(Orbital* env) {
         double dy_l  = -st * dxi  + ct * dyi;
         double dvx_l =  ct * dvxi + st * dvyi;
         double dvy_l = -st * dvxi + ct * dvyi;
+
+        /* ext-j2 rung, lvlh_frame_mode = 1: the TRUE target orbital frame.
+         * The block above projects onto the EQUATORIAL plane and rotates by
+         * the in-plane angle u = omega + theta, which coincides with LVLH only
+         * at i_t = Omega_t = 0. At i_t != 0 it is wrong twice over — the
+         * along-track axis picks up a cos i_t squash, and the whole thing
+         * rotates with Omega_t instead of with the scene, so it is not even
+         * invariant under the SO(2)-about-ẑ symmetry that J2 still has. The
+         * inclined-target sampler makes both live, so the corrected frame is
+         * available here; default 0 keeps every trained checkpoint's primary
+         * rendezvous channel bit-identical. */
+        if (env->lvlh_frame_mode == 1) {
+            double rtx, rty, rtz, htx2, hty2, htz2;
+            double rn = sqrt(tx*tx + ty*ty + tz*tz);
+            rtx = tx/rn; rty = ty/rn; rtz = tz/rn;
+            orb_hhat(&env->target, &htx2, &hty2, &htz2);
+            double ttx = hty2*rtz - htz2*rty;
+            double tty = htz2*rtx - htx2*rtz;
+            double ttz = htx2*rty - hty2*rtx;
+            double dzi  = sz  - tz;
+            double dvzi = svz - tvz;
+            dx_l  = dxi*rtx  + dyi*rty  + dzi*rtz;
+            dy_l  = dxi*ttx  + dyi*tty  + dzi*ttz;
+            dvx_l = dvxi*rtx + dvyi*rty + dvzi*rtz;
+            dvy_l = dvxi*ttx + dvyi*tty + dvzi*ttz;
+        }
 
         /* Subtract frame-rotation term n × r (so velocity is relative to
          * rotating LVLH frame, not inertial frame rotated). */
@@ -1899,6 +1970,19 @@ static inline void c_reset(Orbital* env) {
         if (env->dim3_mode) {
             i_t = env->i_target_rad;
             O_t = env->raan_target_rad;
+            /* ── ext-j2 rung: sample the target plane. BOTH branches are gated
+             * so that the OFF path consumes zero rand() draws — the sampler
+             * must not shift the RNG stream, or every bit-exact anchor moves
+             * for a reason that has nothing to do with physics. */
+            if (env->i_target_min_rad >= 0.0
+                && env->i_target_max_rad > env->i_target_min_rad) {
+                i_t = env->i_target_min_rad
+                    + (rand() / (double)RAND_MAX)
+                      * (env->i_target_max_rad - env->i_target_min_rad);
+            }
+            if (env->raan_target_sample) {
+                O_t = wrap_2pi(O_t + (rand() / (double)RAND_MAX) * 2.0 * M_PI);
+            }
         }
         env->target.inc    = i_t;
         env->target.raan   = O_t;
@@ -1966,9 +2050,23 @@ static inline void c_reset(Orbital* env) {
              * omega relative to the new node. Guarded on the de-disc branch,
              * so e_max_sat-sampled lineages (W1/W2/X3) are bit-exact. */
             if (env->de_max >= 0.0 && env->e_sat_fixed < 0.0) {
-                env->sat.orbit.omega -= env->sat.orbit.raan;
+                /* ext-j2 rung FIX: subtract the node offset RELATIVE TO THE
+                 * TARGET, not the chaser's absolute RAAN. The de_max disc is
+                 * drawn in the TARGET's node-relative 2-vector, so what must be
+                 * preserved is varpi_s - varpi_t, i.e. the correction is
+                 * (raan_s - raan_t). Subtracting raan_s alone is only right
+                 * when raan_t == 0, which every shipped lineage happened to
+                 * satisfy because the target plane was PINNED. With a sampled
+                 * target RAAN it over-rotates the chaser's e-vector by a
+                 * uniform-random Omega_t and re-opens the exact W3/W4 failure
+                 * this block was written to close: measured realized |de|
+                 * 0.111 against a 0.020 knob, 55.6% of draws over.
+                 * BIT-EXACT for every shipped lineage: raan_t is exactly 0.0
+                 * there and x - 0.0 == x for all finite x. */
+                env->sat.orbit.omega -= (env->sat.orbit.raan - env->target.raan);
                 while (env->sat.orbit.omega < 0.0)
                     env->sat.orbit.omega += 2.0 * M_PI;
+                env->sat.orbit.omega = fmod(env->sat.orbit.omega, 2.0 * M_PI);
             }
         }
     }

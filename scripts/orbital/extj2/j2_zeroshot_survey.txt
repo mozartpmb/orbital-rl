@@ -1,0 +1,60 @@
+### A. J2 gap vs BOX TIGHTNESS (i_t = 0 => plane channel provably inert)
+###    each box with its OWN parent ckpt so the control sits at ceiling
+  A_box30km-50ms_j2=0      success 200/200 = 100.0%   gave_up 0   md5 62f66b07eadf   0s
+                           causes: success=200
+  A_box30km-50ms_j2=1      success 200/200 = 100.0%   gave_up 0   md5 9473e65a42ef   0s
+                           causes: success=200
+  A_box10km-10ms_j2=0      success 199/200 =  99.5%   gave_up 0   md5 399fb306cce7   0s
+                           causes: success=199, safety_cap=1
+  A_box10km-10ms_j2=1      success 113/200 =  56.5%   gave_up 0   md5 0325a02a667b   1s
+                           causes: success=113, safety_cap=87
+  A_box5km-1ms_j2=0        success 194/200 =  97.0%   gave_up 0   md5 721def1b9d72   1s
+                           causes: success=194, safety_cap=6
+  A_box5km-1ms_j2=1        success 0/200 =   0.0%   gave_up 0   md5 674f3b0a95f2   3s
+                           causes: safety_cap=200
+
+### B. INCLINATION BAND sweep at the loose box (lvlh_frame_mode=1, raan fixed)
+  B_band(5,10)_j2=0        success 200/200 = 100.0%   gave_up 0   md5 f7ac41aaf964   0s
+                           causes: success=200
+  B_band(5,10)_j2=1        success 200/200 = 100.0%   gave_up 0   md5 dd9d38855926   0s
+                           causes: success=200
+  B_band(20,30)_j2=0       success 200/200 = 100.0%   gave_up 0   md5 086aa7c6d7e1   0s
+                           causes: success=200
+  B_band(20,30)_j2=1       success 200/200 = 100.0%   gave_up 0   md5 f062d4f751eb   0s
+                           causes: success=200
+  B_band(20,45)_j2=0       success 200/200 = 100.0%   gave_up 0   md5 19b7a61bbc97   0s
+                           causes: success=200
+  B_band(20,45)_j2=1       success 191/200 =  95.5%   gave_up 0   md5 901b4c65356d   0s
+                           causes: success=191, safety_cap=8, stranded=1
+  B_band(25,50)_j2=0       success 199/200 =  99.5%   gave_up 0   md5 0bfdf21501c7   0s
+                           causes: success=199, safety_cap=1
+  B_band(25,50)_j2=1       success 186/200 =  93.0%   gave_up 0   md5 66ab7763d162   0s
+                           causes: success=186, safety_cap=14
+  B_band(30,60)_j2=0       success 180/200 =  90.0%   gave_up 0   md5 40953be36a9a   0s
+                           causes: success=180, safety_cap=19, stranded=1
+  B_band(30,60)_j2=1       success 159/200 =  79.5%   gave_up 0   md5 8848fe8cfd27   1s
+                           causes: success=159, safety_cap=38, stranded=3
+  B_band(60,80)_j2=0       success 11/200 =   5.5%   gave_up 0   md5 de6b7ba4c489   1s
+                           causes: success=11, safety_cap=102, stranded=87
+  B_band(60,80)_j2=1       success 13/200 =   6.5%   gave_up 0   md5 34b28f0e4d25   1s
+                           causes: success=13, safety_cap=102, stranded=85
+  B_band(80,89)_j2=0       success 1/200 =   0.5%   gave_up 0   md5 59e01fd1f957   1s
+                           causes: success=1, safety_cap=23, stranded=176
+  B_band(80,89)_j2=1       success 2/200 =   1.0%   gave_up 0   md5 9452a566130f   1s
+                           causes: success=2, safety_cap=17, stranded=181
+
+### C. THE LVLH CONFOUND — same scenarios, only the obs frame differs
+  C_band30-60_lvlh0_j20    success 113/200 =  56.5%   gave_up 0   md5 279381e0ffc8   0s
+                           causes: success=113, collision=36, safety_cap=8, stranded=43
+  C_band30-60_lvlh0_j21    success 102/200 =  51.0%   gave_up 0   md5 8e557dc6ac69   0s
+                           causes: success=102, collision=35, safety_cap=10, stranded=53
+  C_band30-60_lvlh1_j20    success 180/200 =  90.0%   gave_up 0   md5 40953be36a9a   0s
+                           causes: success=180, safety_cap=19, stranded=1
+  C_band30-60_lvlh1_j21    success 159/200 =  79.5%   gave_up 0   md5 8848fe8cfd27   1s
+                           causes: success=159, safety_cap=38, stranded=3
+
+### D. THE SO(2) LEAK — raan sampled vs fixed, everything else identical
+  D_raansample=0_j2=1      success 159/200 =  79.5%   gave_up 0   md5 8848fe8cfd27   1s
+                           causes: success=159, safety_cap=38, stranded=3
+  D_raansample=1_j2=1      success 138/200 =  69.0%   gave_up 0   md5 e258130172ed   1s
+                           causes: success=138, safety_cap=61, stranded=1

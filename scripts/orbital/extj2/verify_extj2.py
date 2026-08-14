@@ -352,7 +352,49 @@ def stage_a3(args):
     return out
 
 
-STAGES = {'a1': stage_a1, 'a2': stage_a2, 'a3': stage_a3}
+def stage_a4(args):
+    """ext-j2 rung: the anchors must survive BOTH new env changes."""
+    print('== A4  rung changes vs the anchors ================================')
+    print('  Two changes land in this branch that touch code the anchors run:')
+    print('   (1) the de_max inertial-varpi correction is now node-relative to')
+    print('       the TARGET ((raan_s - raan_t), not raan_s). raan_t is exactly')
+    print('       0.0 in every shipped lineage and x - 0.0 == x, so bit-exact.')
+    print('   (2) lvlh_frame_mode=1 builds obs[33-36] in the true target orbital')
+    print('       frame. At i = Omega = 0 that must reduce to the legacy block.')
+    print('  Both are re-run through the CHECKPOINT anchors, not just at reset.')
+    out = {}
+    for label, ckpt, kw, eps, seed, want, want_causes, md5_expect in [
+        ('legacy lvlh1', LEGACY_CKPT, dict(LEGACY_KW, lvlh_frame_mode=1), 200, 42, 26,
+         'success=26, collision=1, safety_cap=142, stranded=31', 'f8a2388f0992'),
+        ('T3 lvlh1', T3_CKPT, dict(T3_KW, lvlh_frame_mode=1), args.eps, 123, args.eps,
+         f'success={args.eps}', '68b267bed369'),
+        ('X3 lvlh1', X3_CKPT, dict(X3_KW, lvlh_frame_mode=1), args.eps, 123, args.eps,
+         f'success={args.eps}', '003105f29898'),
+    ]:
+        if not os.path.exists(ckpt):
+            record(f'{label} anchor', False, f'checkpoint missing: {ckpt}')
+            continue
+        r = rollout(Orbital(num_envs=1, **kw), ckpt, eps, seed, label)
+        out[label] = r
+        print(f"    {label:14s} {r['success']}/{r['n_valid']}   md5 {r['md5'][:12]}   "
+              f"{r['wall']:.0f}s   causes: {r['cause_str']}")
+        record(f'{label}: lvlh_frame_mode=1 is md5-IDENTICAL to the legacy frame',
+               r['success'] == want and r['cause_str'] == want_causes
+               and r['md5'][:12] == md5_expect,
+               f"expected {want}/{r['n_valid']} md5 {md5_expect}, got "
+               f"{r['success']}/{r['n_valid']} md5 {r['md5'][:12]}")
+
+    # the sampler must be inert when off, through a full closed loop
+    a = rollout(Orbital(num_envs=1, **X3_KW), X3_CKPT, 50, 123, 'X3 sampler-off')
+    b = rollout(Orbital(num_envs=1, i_target_min_rad=-1.0, i_target_max_rad=-1.0,
+                        raan_target_sample=0, **X3_KW), X3_CKPT, 50, 123, 'X3 explicit-off')
+    record('sampler kwargs present-but-off are a no-op (md5 identical)',
+           a['md5'] == b['md5'],
+           f"md5 {a['md5'][:12]} vs {b['md5'][:12]}")
+    return out
+
+
+STAGES = {'a1': stage_a1, 'a2': stage_a2, 'a3': stage_a3, 'a4': stage_a4}
 
 
 def main():
