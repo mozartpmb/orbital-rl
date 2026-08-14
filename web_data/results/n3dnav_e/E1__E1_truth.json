@@ -1,0 +1,26 @@
+{
+ "label": "E1/E1_truth",
+ "success": 200,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 200
+ },
+ "md5": "e97ec7c3cc17f1c1619b4c5b603f5fc4",
+ "n_actions": 3854,
+ "mean_len": 19.27,
+ "dv_med_ms": 226.42135483286074,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.27542805671691895,
+ "rung": "E1",
+ "box": "rung default",
+ "nav_mode": "truth",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/pufferlib/experiments_n3dnav_e/E1/puffer_orbital_nav_r7pes8nz/model_puffer_orbital_nav_000382.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}

@@ -122,6 +122,39 @@ and seed 1337 (which failed Phase 4 Stage-1 fresh training outright) is
 indistinguishable from the others here. Checkpoints
 `models/t3/n3dnav_T-BO3D-TB5-s{7,1337}.pt`.
 
+## Rung 3 — the eccentricity ladder (2026-08-14, `n3dnav_e_campaign.sh`)
+
+Extends the flagship along eccentricity. Two prep findings shaped the design:
+the `e_max` knob is **inert at the nav altitude band** (perigee-keepout
+rejection caps realized e ≈ 0.03 regardless of setting — the Phase 5.5
+"eccentricity cliff" failure class), so rungs widen the altitude band per the
+validated V-ladder tuples and re-root the warm start in the wide-normalizer
+lineage (`seed42_V2_wide3d.pt`, columns 29–32 zeroed, bit-identical to parent).
+**Realized e runs ~0.42× the cap** (E3: mean 0.126, p90 0.257) — the cap is a
+setting, the realized distribution is the result. Stage-0b gated
+surrogate-vs-real acquisition agreement at E3 before any training (PASS).
+Chain: E0←warm, E1←E0, E2←E1, E3←E2; `shape_w_match 0.35` (V-ladder parent's
+own value). Bearings-only rows use the real batch IOD with the widened
+velocity bracket (1.15·e_max); `nav_r_min_m` floored at the keepout shell
+per-campaign (the wrapper default would silently move published streams).
+
+| rung | e cap (realized mean / p90) | floor blind / truth | trained BO | trained truth | retention (BO, rung below) |
+|---|---|---|---|---|---|
+| E0 | 0.05 (0.023 / 0.042) | 70.5% / 100% | **200/200** | 200/200 | — |
+| E1 | 0.10 (0.041 / 0.081) | 70.5% / 96.0% | **198/200 = 99.0%** | 200/200 | 99.5% |
+| E2 | 0.20 (0.085 / 0.166) | 19.5% / 24.0% | **191/200 = 95.5%** | 200/200 | 99.5% |
+| E3 | 0.30 (0.126 / 0.257) | 5.5% / 6.0% | **190/200 = 95.0%** | 200/200 | 97.5% |
+
+Verdict: **bearings-only rendezvous holds at 95.0–100% across a realized
+eccentricity distribution reaching p90 ≈ 0.26** — from floors as low as 5.5%.
+The floor structure splits into two regimes: at E0/E1 the deficit is
+navigation (truth floors 96–100%); at E2/E3 the untrained deficit is
+capability itself (truth floors 24%/6%), and the ladder builds both at once —
+trained truth rows are 200/200 at every rung, so the residual 4.5–5 pp
+bearings-only gap at E2/E3 is pure navigation under eccentric geometry.
+Retention never drops below 97.5%, and E3 *improved* E2's own score.
+Checkpoints `models/t3/n3dnav_e_E{0..3}.pt`.
+
 ## Caveats
 - Both boxes share eval seed 123 (paired scenarios across arms — valid for
   arm-vs-arm deltas).

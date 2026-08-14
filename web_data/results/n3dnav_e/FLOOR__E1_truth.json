@@ -1,0 +1,28 @@
+{
+ "label": "FLOOR/E1_truth",
+ "success": 192,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 0.96,
+ "causes": {
+  "success": 192,
+  "safety_cap": 7,
+  "stranded": 1
+ },
+ "md5": "0767cadfaf3949aebab3c2a2f881e657",
+ "n_actions": 6538,
+ "mean_len": 32.69,
+ "dv_med_ms": 300.0000032254283,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.4109468460083008,
+ "rung": "E1",
+ "box": "rung default",
+ "nav_mode": "truth",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/models/t3/n3dnav_warm_E0.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}
