@@ -1,0 +1,32 @@
+{
+  "label": "s1_A1_incl_j2on",
+  "ckpt": "seed42_X3_3d_di1deg.pt",
+  "j2_mode": 1,
+  "i_band": "30,60",
+  "raan_sample": 0,
+  "lvlh_frame_mode": 1,
+  "box": [
+    30000.0,
+    50.0
+  ],
+  "shape_w_match": 0.8166667,
+  "episodes": 200,
+  "seed": 123,
+  "success": 159,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.795,
+  "causes": {
+    "success": 159,
+    "safety_cap": 38,
+    "stranded": 3
+  },
+  "md5": "8848fe8cfd2730a8d988eebceaaf1aa5",
+  "n_decisions": 5449,
+  "ep_len_median": 1665.5,
+  "i_target_mean_deg": 44.54857410908047,
+  "dOmega_dot_median_deg_day": 0.41900548572806184,
+  "di_rel_init_median_deg": 0.7748373806227502,
+  "wall_s": 0.5072968006134033,
+  "state": "MEAN ELEMENTS (no mean/osculating conversion anywhere)"
+}

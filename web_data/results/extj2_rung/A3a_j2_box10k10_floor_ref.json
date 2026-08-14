@@ -1,0 +1,31 @@
+{
+  "label": "A3a_j2_box10k10_floor_ref",
+  "ckpt": "seed42_TB3D_box10k10.pt",
+  "j2_mode": 1,
+  "i_band": "off",
+  "raan_sample": 0,
+  "lvlh_frame_mode": 1,
+  "box": [
+    10000.0,
+    10.0
+  ],
+  "shape_w_match": 0.35,
+  "episodes": 200,
+  "seed": 123,
+  "success": 113,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.565,
+  "causes": {
+    "success": 113,
+    "safety_cap": 87
+  },
+  "md5": "0325a02a667b6b76b27706b0bd4f48d2",
+  "n_decisions": 14080,
+  "ep_len_median": 2400.0,
+  "i_target_mean_deg": 0.0,
+  "dOmega_dot_median_deg_day": 0.6400830452448268,
+  "di_rel_init_median_deg": 0.7008536664721093,
+  "wall_s": 0.7769410610198975,
+  "state": "MEAN ELEMENTS (no mean/osculating conversion anywhere)"
+}

@@ -1,0 +1,30 @@
+{
+  "label": "s1_A1_equatorial",
+  "ckpt": "seed42_X3_3d_di1deg.pt",
+  "j2_mode": 1,
+  "i_band": "off",
+  "raan_sample": 0,
+  "lvlh_frame_mode": 1,
+  "box": [
+    30000.0,
+    50.0
+  ],
+  "shape_w_match": 0.8166667,
+  "episodes": 200,
+  "seed": 123,
+  "success": 200,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 1.0,
+  "causes": {
+    "success": 200
+  },
+  "md5": "9473e65a42ef95e4257aac27f05376fa",
+  "n_decisions": 4359,
+  "ep_len_median": 1454.5,
+  "i_target_mean_deg": 0.0,
+  "dOmega_dot_median_deg_day": 0.6400830452448268,
+  "di_rel_init_median_deg": 0.7008536664721093,
+  "wall_s": 0.3125131130218506,
+  "state": "MEAN ELEMENTS (no mean/osculating conversion anywhere)"
+}

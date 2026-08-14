@@ -1,0 +1,32 @@
+{
+  "label": "A3b_j2_box5k1_retention",
+  "ckpt": "model_puffer_orbital_000382.pt",
+  "j2_mode": 0,
+  "i_band": "30,60",
+  "raan_sample": 0,
+  "lvlh_frame_mode": 1,
+  "box": [
+    5000.0,
+    1.0
+  ],
+  "shape_w_match": 0.8166667,
+  "episodes": 200,
+  "seed": 123,
+  "success": 196,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.98,
+  "causes": {
+    "success": 196,
+    "safety_cap": 3,
+    "stranded": 1
+  },
+  "md5": "d5edc23f7a4c9a46a0928db6d30cb799",
+  "n_decisions": 11080,
+  "ep_len_median": 1514.5,
+  "i_target_mean_deg": 44.54857410908047,
+  "dOmega_dot_median_deg_day": 0.41900548572806184,
+  "di_rel_init_median_deg": 0.7748373806227502,
+  "wall_s": 0.6960163116455078,
+  "state": "MEAN ELEMENTS (no mean/osculating conversion anywhere)"
+}
