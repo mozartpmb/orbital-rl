@@ -177,6 +177,20 @@ class OrbitalNav(Orbital):
                  # — wide open, making a `T-BO-act` arm uninterpretable. Every
                  # arm must now state its set by name.
                  nav_block_set='fine_inplane',
+                 # ── ext-j2: secular J2 in the FILTER ────────────────────────
+                 # Default OFF and bit-inert when off: the filter class is only
+                 # swapped when this is 1, so every published nav number keeps
+                 # its action stream. Turning it on costs 217% of a baseline
+                 # nav step (predict 0.603 -> 3.072 ms/tick, 5.09x) and is the
+                 # only arm measured consistent under a J2 truth — see
+                 # nav_math3d.BatchedBearingMSC6J2 for the head-to-head.
+                 #
+                 # This tracks the ENV's j2_mode; it does not imply it. Running
+                 # nav_j2_mode=1 against a two-body env models a perturbation
+                 # that is not there, and nav_j2_mode=0 against a j2_mode=1 env
+                 # is the FIXED arm the head-to-head rejected (NEES 11.4,
+                 # 2.63x position at 24 h). The constructor refuses the second.
+                 nav_j2_mode=0,
                  **kwargs):
         if nav_mode not in NAV_MODES:
             raise ValueError(f'nav_mode must be one of {NAV_MODES}, got {nav_mode!r}')
@@ -211,7 +225,19 @@ class OrbitalNav(Orbital):
 
         self._alt_scale = float(kwargs.get('obs_alt_scale_m', 1.6e6))
         self._lvlh_scale = float(kwargs.get('lvlh_scale_m', 6.371e6))
+        self._nav_j2 = int(nav_j2_mode)
         self._dim3 = int(kwargs.get('dim3_mode', 0))
+        _env_j2 = int(kwargs.get('j2_mode', 0))
+        if _env_j2 and not self._nav_j2 and nav_mode in ('rb_ekf', 'bearings_only'):
+            raise ValueError(
+                'j2_mode=1 with nav_j2_mode=0 is the FIXED arm the ext-j2 '
+                'head-to-head rejected: a two-body covariance under a J2 truth '
+                'leaves NEES 11.37 and pays 2.63x in position at 24 h, because '
+                'the overconfident P shrinks the Kalman gain. Set '
+                'nav_j2_mode=1, or run the env two-body.')
+        if self._nav_j2 and not self._dim3:
+            raise ValueError('nav_j2_mode=1 requires dim3_mode=1 '
+                             '(the J2 filter is the 6-state MSC path).')
         self._di_max = float(kwargs.get('di_max_rad', -1.0))
         self._kw3 = {k: kwargs.get(k) for k in
                      ('obs_di_scale_rad', 'de_max', 'obs_de_scale',
@@ -314,7 +340,10 @@ class OrbitalNav(Orbital):
                     q_a=q, sigma_v0=self._nav_sigma_v0)
         elif self._nav_mode == 'bearings_only':
             q = self._nav_q_a if self._nav_q_a > 0 else nm.Q_ACCEL_PSD_BO
-            if self._dim3:
+            if self._dim3 and self._nav_j2:
+                self._filt = n3.BatchedBearingMSC6J2(
+                    n, sigma_beta=self._s_beta, q_a=q, stm_j2='fd')
+            elif self._dim3:
                 self._filt = n3.BatchedBearingMSC6(
                     n, sigma_beta=self._s_beta, q_a=q, stm='analytic')
             else:

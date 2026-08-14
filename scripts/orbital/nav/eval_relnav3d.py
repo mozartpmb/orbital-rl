@@ -143,7 +143,24 @@ E3_KW = dict(_E_COMMON, e_max_target=0.30, de_max=0.08, da_max_m=600e3,
              a_min_override=6.671e6, a_max_override=14.371e6,
              di_max_rad=0.013090, episode_cap_steps=6000)
 
-RUNGS = {'X3': X3_KW, 'E0': E0_KW, 'E1': E1_KW, 'E2': E2_KW, 'E3': E3_KW}
+# ── ext-j2 x nav ────────────────────────────────────────────────────────────
+# The X3 task and box, plus J2 and an inclined target band. A2_j2trained (the
+# J2-skilled root) was trained at exactly this box, so stage-1's J2-root floor
+# is measured at its own rung rather than a harder one.
+#
+# `nav_j2_mode=1` is not optional here: OrbitalNav REFUSES j2_mode=1 with a
+# two-body filter covariance, because that pairing is the arm the ext-j2
+# head-to-head rejected (NEES 11.37, 2.63x position at 24 h). The two-body
+# retention rung turns BOTH off together.
+_J2_BAND = dict(i_target_min_rad=math.radians(30.0),
+                i_target_max_rad=math.radians(60.0),
+                raan_target_sample=0, lvlh_frame_mode=1)
+J2X_KW = dict(X3_KW, j2_mode=1, nav_j2_mode=1, **_J2_BAND)
+# Retention: the same inclined band and frame, J2 OFF in env and filter alike.
+J2X2B_KW = dict(X3_KW, j2_mode=0, nav_j2_mode=0, **_J2_BAND)
+
+RUNGS = {'X3': X3_KW, 'E0': E0_KW, 'E1': E1_KW, 'E2': E2_KW, 'E3': E3_KW,
+         'J2X': J2X_KW, 'J2X-2body': J2X2B_KW}
 
 # ── success boxes ───────────────────────────────────────────────────────────
 # The 3D task is held fixed and ONLY the box moves, exactly as the TB3D ladder

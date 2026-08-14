@@ -1176,3 +1176,151 @@ class BatchedRangeBearingEKF3D:
 
     def trace(self):
         return np.trace(self.P, axis1=1, axis2=2)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# J2 — secular perturbation in the filter (ext-j2 rung)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Ported from scripts/orbital/extj2/j2_nav_filter_probe.py, whose head-to-head
+# (N=128, nav60, LEO, i_t ~ U(30,60) deg, truth J2 in every arm) DECIDED this
+# spec rather than assuming it. At the 24 h operating point, against a matched
+# two-body control at 458.0 m / NEES 1.00 / 89.1% in band:
+#
+#   FIXED   J2 state, two-body covariance   1202.7 m (2.63x)  NEES 11.37  21.9%
+#   C1-an   J2 state, analytic J2 cov       1234.5 m (2.70x)  NEES 11.46  18.8%
+#   C1-fd   J2 state, FD J2 cov              457.3 m (1.00x)  NEES  1.01  87.5%
+#
+# The lesson is that the covariance is not a bookkeeping detail. Putting J2 in
+# the STATE alone does not merely leave the filter overconfident (NEES 11.4) —
+# the overconfident P shrinks the Kalman gain, so it also pays 2.63x in
+# POSITION. The analytic O(J2) STM removes only ~59% of the two-body STM's
+# error (p05 0.41) and does not fix it. The finite-difference STM restores both
+# to three digits, and that is the shipped path.
+#
+# Cost, measured: predict() goes 0.603 -> 3.072 ms/tick (5.09x), which takes a
+# full bearings_only nav step to 217% of baseline. That is the price of the
+# only arm that is consistent, and it is paid deliberately.
+#
+# NOT TAKEN: the element-space covariance optimisation. It is identified but
+# unmeasured, and a mid-campaign swap of the covariance path is exactly the
+# compound change this project keeps being burned by.
+
+J2_COEF = 1.08262668e-3      # orbital.h, WGS-84
+J2_R_EQ = 6.378137e6         # orbital.h, EQUATORIAL radius (not R_EARTH)
+
+
+def j2_secular_rates(a, e, inc):
+    """(n, Omega_dot, omega_dot, M_dot) — mirrors orbital.h::propagate_orbit_j2."""
+    n = np.sqrt(MU / a ** 3)
+    p = a * (1.0 - e * e)
+    k = 1.5 * n * J2_COEF * (J2_R_EQ / p) ** 2
+    si2 = np.sin(inc) ** 2
+    return (n,
+            -k * np.cos(inc),
+            0.5 * k * (4.0 - 5.0 * si2),
+            n + 0.5 * k * np.sqrt(1.0 - e * e) * (2.0 - 3.0 * si2))
+
+
+def propagate_cartesian_j2(X, dt):
+    """Two-body f&g plus the secular J2 angle increments, in Cartesian.
+
+    An element round trip rather than a perturbation of the f&g solution: the
+    secular rates are DEFINED on mean elements, so the honest thing is to go
+    there, advance the three angles, and come back. (a, e, inc) are invariants
+    of secular J2, so only Omega, omega and M move — no iteration, no
+    integrator. The equatorial branch mirrors the C env's own special case
+    (varpi_dot = Omega_dot + omega_dot with raan pinned at 0).
+    """
+    el = cartesian_to_elements_3d(X)
+    a, e, inc = el['a'], el['e'], el['inc']
+    # Bad-row discipline, identical to `propagate_cartesian_nd`'s: a DIVERGED
+    # estimate is routinely hyperbolic (a <= 0), and the secular rates take
+    # sqrt(MU/a^3), so an unguarded call returns NaN, poisons the covariance
+    # chain and floods the log with RuntimeWarnings. Substitute a harmless
+    # LEO-ish orbit in those rows so the arithmetic stays finite, then hand
+    # them back masked-out for the divergence guard to reinitialise. The probe
+    # never needed this because it seeded from truth and never diverged; the
+    # training loop does, every episode, by construction.
+    with np.errstate(all='ignore'):
+        bad = ~np.isfinite(a) | (a <= 1.0) | ~np.isfinite(e) | (e >= 1.0)
+        a_s = np.where(bad, 7.0e6, a)
+        e_s = np.where(bad, 0.0, e)
+        inc_s = np.where(bad, 0.0, inc)
+        _n, Om, om, Md = j2_secular_rates(a_s, e_s, inc_s)
+        eq = (np.sin(inc_s) == 0.0)
+        omega = np.where(eq, el['omega'] + (om + Om) * dt,
+                         el['omega'] + om * dt)
+        raan = np.where(eq, el['raan'], el['raan'] + Om * dt)
+        M = el['M'] + Md * dt
+        th = nm.eccentric_to_true(nm.solve_kepler(M, e_s), e_s)
+        Y = orbit_to_cartesian_3d(a_s, e_s, th, omega, inc_s, raan)
+    ok = np.all(np.isfinite(Y), axis=1) & ~bad
+    Y = np.where(ok[:, None], Y, X)
+    return Y, ok
+
+
+def stm_fd_j2(X, dt, h_pos=nm.H_POS, h_vel=nm.H_VEL):
+    """Central-difference STM of `propagate_cartesian_j2`. 12 propagations.
+
+    Correct by construction. The cheap analytic O(J2) alternative was measured
+    and rejected: it removes only ~59% of the two-body STM's error and leaves
+    NEES at 11.5.
+    """
+    n = X.shape[0]
+    Y, ok = propagate_cartesian_j2(X, dt)
+    F = np.empty((n, 6, 6))
+    h = np.array([h_pos] * 3 + [h_vel] * 3)
+    for j in range(6):
+        Xp = X.copy(); Xp[:, j] += h[j]
+        Xm = X.copy(); Xm[:, j] -= h[j]
+        Yp, okp = propagate_cartesian_j2(Xp, dt)
+        Ym, okm = propagate_cartesian_j2(Xm, dt)
+        F[:, :, j] = (Yp - Ym) / (2.0 * h[j])
+        ok = ok & okp & okm
+    return F, ok, Y
+
+
+class BatchedBearingMSC6J2(BatchedBearingMSC6):
+    """MSC6 with secular J2 in BOTH the state and the covariance propagation.
+
+    `MSC6J2Cov(stm_j2='fd')` of the probe, in the production stack. Only
+    `predict` differs from the parent, and only in which (Phi, x_new) pair it
+    uses — everything else, including the chart, the re-pole and the update, is
+    the shipped path unchanged.
+    """
+
+    def __init__(self, *a, stm_j2='fd', **kw):
+        super().__init__(*a, **kw)
+        if stm_j2 not in ('fd', 'analytic'):
+            raise ValueError(f"stm_j2 must be 'fd' or 'analytic', got {stm_j2!r}")
+        if stm_j2 == 'analytic':
+            raise NotImplementedError(
+                "the analytic O(J2) STM was measured and REJECTED (NEES 11.46, "
+                "2.70x position at 24 h — it removes only ~59% of the two-body "
+                "STM's error). Only stm_j2='fd' is shipped.")
+        self.stm_j2 = stm_j2
+
+    def predict(self, idx, dt, sat_from, sat_to, **_):
+        if idx.size == 0:
+            return np.zeros(0, dtype=bool)
+        Rp = self.Rp[idx]
+        y = self.y[idx]
+        x_old = msc6_decode(y, sat_from, Rp)
+        Phi, ok, x_new = stm_fd_j2(x_old, dt)
+        y_new = msc6_encode(sat_to, x_new, Rp)
+        Jold = msc6_decode_jac(y, Rp)
+        Jnew = msc6_decode_jac(y_new, Rp)
+        with np.errstate(all='ignore'):
+            try:
+                Gnew = np.linalg.inv(Jnew)
+            except np.linalg.LinAlgError:            # pragma: no cover
+                Gnew = np.linalg.pinv(Jnew)
+            A = Phi @ Jold
+            M = A @ self.Py[idx] @ np.swapaxes(A, 1, 2) + self._Q(dt)
+            Py = Gnew @ M @ np.swapaxes(Gnew, 1, 2)
+        self.y[idx] = y_new
+        self.Py[idx] = 0.5 * (Py + np.swapaxes(Py, 1, 2))
+        self.sat[idx] = sat_to
+        return (ok & np.all(np.isfinite(y_new), axis=1)
+                & np.all(np.isfinite(Py), axis=(1, 2)))
