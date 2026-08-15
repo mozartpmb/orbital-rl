@@ -81,6 +81,34 @@ STEPS_A=${T11_STEPS_A:-50000000}
 STEPS_B=${T11_STEPS_B:-200000000}
 WATCHDOG_S=900
 
+# ── THE DAY-WARP TICK CAP — THIS NUMBER IS LOAD-BEARING, NOT A TUNING KNOB ──
+# The nav wrapper sub-steps the filter once per minute of tau when
+# nav_max_ticks=0, so row 30's tau=1440 costs 1440 EKF updates in ONE decision.
+# That lifts the mean over a uniform policy from 22.0 ticks/decision (rows 0-29)
+# to 67.7, and MEASURED throughput on the mixture falls 4.6x:
+#
+#     rows 0-29, K=0    22.5 env-steps/s        (the pre-T11 baseline)
+#     rows 0-30, K=0     4.4 env-steps/s        <-- rung B = 5.4 DAYS
+#     rows 0-30, K=120  19.8 env-steps/s        <-- rung B ~ 29 h
+#
+# Scaled onto a real trainer (j2nav T-J2BO-nav observed 2.2K SPS bearings-only),
+# K=0 puts rung B at ~129 h and rung A at ~32 h. K=120 is what makes the
+# campaign affordable at all.
+#
+# K is safe here ONLY because MAJOR-7 replaced the old "cap tau, tick at 60 s"
+# bug with a fixed COUNT and an adaptive INTERVAL: n=min(tau,K),
+# dt=tau*60/n, so filter and truth stay on one clock. Divergence vs K on a
+# pure-day-warp policy (the worst case that exists):
+#
+#     K=0 0.000 | K=30 0.109 | K=60 0.041 | K=120 0.003 | K=240 0.003
+#
+# 120 is the knee — it ties the uncapped filter's divergence and 240's, at 11.6x
+# the speed. It also leaves 28 of 31 action rows BIT-IDENTICAL (only tau=180,
+# 360, 1440 are capped at all), and the warm-start roots, which trained at K=0,
+# measure UNCHANGED under it: E0_j2 zero-shot 36/40 at K=0 and 36/40 at K=120,
+# same 274.5 m/s of dv, at 2.25x the wall clock.
+NAV_MAX_TICKS=${T11_NAV_MAX_TICKS:-120}
+
 T11_SEED=${T11_SEED:-42}
 SEED_SFX=""
 [ "$T11_SEED" != "42" ] && SEED_SFX="_s${T11_SEED}"
@@ -187,7 +215,7 @@ train_arm() {
         --env.nav-mode bearings_only \
         --env.nav-sensor-dt 60.0 --env.nav-noise-mult 1.0 \
         --env.nav-acq-min-sec 2700.0 --env.nav-acq-gate 0.20 \
-        --env.nav-acq-mode crlb_online --env.nav-max-ticks 0 \
+        --env.nav-acq-mode crlb_online --env.nav-max-ticks "$NAV_MAX_TICKS" \
         --env.t11-mixture "$mix" ${T11_RUNGA_ENV:-} \
         --wandb --wandb-project orbital-rl --wandb-group "t11-${arm}${SEED_SFX}" \
         --tag "t11_${arm}${SEED_SFX}" > "/tmp/t11_${arm}${SEED_SFX}_train.log" 2>&1 &

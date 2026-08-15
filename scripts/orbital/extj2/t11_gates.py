@@ -12,6 +12,7 @@ budget into a multiplier.
 
 import math
 import os
+import re
 import sys
 
 import numpy as np
@@ -264,9 +265,40 @@ def gate_tables():
           f'tau[30]={nm.ACTION_TAU[30] if len(nm.ACTION_TAU) > 30 else "n/a"}')
 
 
+def gate_tick_cap():
+    """A live day-warp in a NAV run REQUIRES a finite tick cap to be affordable.
+
+    nav_max_ticks=0 means "one filter tick per minute of tau", so row 30 costs
+    1440 EKF updates per decision. Measured on the T11 mixture under a uniform
+    policy: 22.5 env-steps/s for rows 0-29, 4.4 with row 30 live and K=0, 19.8
+    with row 30 live and K=120. Scaled onto the 2.2K SPS a real bearings-only
+    trainer gets, K=0 turns rung B into 5.4 DAYS of wall clock. Nothing crashes
+    and no metric looks wrong — the campaign simply never finishes, which is why
+    this needs to be a gate rather than a comment.
+
+    The floor is 60 because divergence on a pure-day-warp policy is 0.109 at
+    K=30 and 0.041 at K=60 against 0.003 at K=120; 120 is the shipped value.
+    """
+    print('\n== G6  the day-warp is affordable in nav mode ==')
+    from pufferlib.ocean.orbital_nav import nav_math as nm
+    cam = open(os.path.join(WT, 'scripts/orbital/extj2/t11_campaign.sh')).read()
+    ev = open(os.path.join(WT, 'scripts/orbital/extj2/t11_eval.py')).read()
+    m = re.search(r'NAV_MAX_TICKS=\$\{T11_NAV_MAX_TICKS:-(\d+)\}', cam)
+    k_cam = int(m.group(1)) if m else 0
+    m2 = re.search(r'nav_max_ticks=(\d+)', ev)
+    k_ev = int(m2.group(1)) if m2 else 0
+    warp_live = len(nm.ACTION_TAU) > 30 and nm.ACTION_TAU[30] > 240
+    ok = (not warp_live) or (60 <= k_cam <= 240 and 60 <= k_ev <= 240)
+    check('G6 campaign and eval cap filter ticks while row 30 is live', ok,
+          f'tau[30]={nm.ACTION_TAU[30] if len(nm.ACTION_TAU) > 30 else "n/a"}; '
+          f'campaign K={k_cam}, eval K={k_ev} (need 60..240 while the day-warp '
+          f'is live; K=0 costs 4.6x throughput, K<60 costs filter health)')
+
+
 def main():
     print('=== T11 gates ===')
     gate_tables()
+    gate_tick_cap()
     gate_inert()
     gate_weights()
     gate_clock()

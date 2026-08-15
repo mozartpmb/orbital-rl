@@ -63,7 +63,7 @@ def env_kwargs(cell, nav_mode, fuel_fixed=None):
         dim3_mode=1, j2_mode=1, nav_j2_mode=1, lvlh_frame_mode=1,
         raan_target_sample=0, legacy_action_space=31,
         nav_sensor_dt=60.0, nav_noise_mult=1.0, nav_acq_min_sec=2700.0,
-        nav_acq_gate=0.20, nav_acq_mode='crlb_online', nav_max_ticks=0,
+        nav_acq_gate=0.20, nav_acq_mode='crlb_online', nav_max_ticks=120,
     )
     if cell == 'all':
         kw.update(t11_mixture=1)

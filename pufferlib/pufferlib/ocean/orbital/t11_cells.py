@@ -37,6 +37,7 @@ OBS_ALT_SCALE = 8.0e6
 LVLH_SCALE = 6.371e6
 
 FUEL_MIN, FUEL_MAX = 0.113, 0.20
+NAV_MAX_TICKS = 120   # see base_env_kwargs; gate G6 pins it to 60..240
 
 _I_MIN, _I_MAX = math.radians(30.0), math.radians(60.0)
 
@@ -126,6 +127,13 @@ def base_env_kwargs(**over):
         a_min_override=6.671e6, a_max_override=7.171e6,
         e_max_target=0.05, e_max_sat=0.05,
         cell_mixture_mode=1, fuel_frac_min=FUEL_MIN, fuel_frac_max=FUEL_MAX,
+        # Row 30's tau=1440 costs 1440 EKF sub-ticks per decision at
+        # nav_max_ticks=0, which is a 4.6x throughput loss on this mixture and
+        # puts rung B at 5.4 days. MAJOR-7's fixed-count/adaptive-interval form
+        # makes a cap safe; 120 is the knee (divergence 0.003, tying uncapped,
+        # against 0.109 at K=30) and leaves 28 of 31 rows bit-identical. Inert
+        # for truth-mode callers, which never consult it.
+        nav_max_ticks=NAV_MAX_TICKS,
     )
     kw.update(over)
     return kw

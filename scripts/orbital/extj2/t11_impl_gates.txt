@@ -117,3 +117,70 @@ drwxr-xr-x  6 pete  staff     192 Aug 15 14:37 ..
   obs[29,30] audit: e-E3 already ZERO (unbiased when J2 makes them live);
   J2 lineages have them trained; obs[31,32] weights are inert because those
   channels are hard-zero in every config. No newly-live zeroing required.
+
+================================================================================
+ ADDENDUM — THE SMOKE FOUND A SECOND BLOCKER: THE DAY-WARP IS UNAFFORDABLE
+                                IN NAV MODE AT nav_max_ticks=0
+================================================================================
+
+The first 2M smoke ran 15 minutes and reported Epoch 0 / Steps 0. Nothing had
+crashed and no metric was wrong; it was simply not going to finish.
+
+MECHANISM. `orbital_nav._nav_step` sub-steps the filter once per minute of tau
+when nav_max_ticks=0. Row 30 is tau=1440, so ONE day-warp decision is 1440 EKF
+updates -- 4x the previous worst row (tau=360) and 24x the median. Under a
+uniform policy the mean cost per decision goes
+
+    rows 0-29 (pre-T11)    22.0 ticks/decision   max  360
+    rows 0-30 (T11)        67.7 ticks/decision   max 1440
+
+MEASURED THROUGHPUT, T11 mixture, bearings_only, 8 envs (box under load ~50, so
+read the RATIOS, not the absolutes):
+
+    rows 0-29, K=0      22.5 env-steps/s     the pre-T11 baseline
+    rows 0-30, K=0       4.4 env-steps/s     5.1x slower
+    rows 0-30, K=120    19.8 env-steps/s     0.88x of baseline
+
+Calibrated against a real trainer -- j2nav T-J2BO-nav logged 2.2K SPS on
+bearings-only, 49.9M steps in 6 h -- that is
+
+    rung A  50M    K=0 ~32 h      K=120 ~7 h
+    rung B 200M    K=0 ~129 h     K=120 ~29 h      (5.4 DAYS vs ~1.2)
+
+WHY A CAP IS SAFE HERE. MAJOR-7 replaced the broken "cap tau but tick at 60 s"
+form -- which pinned the last sub-tick to the wrong epoch and diverged the
+filter -- with a fixed COUNT and an adaptive INTERVAL: n=min(tau,K),
+dt=tau*60/n. Filter and truth stay on one clock at every K. So this is the
+supported path, not a workaround.
+
+DIVERGENCE vs K, measured on a PURE-DAY-WARP policy (the worst case that
+exists), W1_driftwait, 8 envs x 40 decisions:
+
+    K      dt between fixes    diverge rate    wall
+    0            1 min            0.000       209.4 s
+    30          48 min            0.109         4.8 s
+    60          24 min            0.041         9.4 s
+    120         12 min            0.003        18.1 s
+    240          6 min            0.003        36.9 s
+
+120 is the knee: it TIES the uncapped filter and K=240 at 0.003, 36x better
+than K=30, for 11.6x the speed of uncapped.
+
+COST TO THE WARM-START ROOTS: NONE MEASURED. The roots trained at K=0, and
+K=120 re-times rows 16/17 (tau=180/360) as well as row 30 -- 28 of 31 rows are
+untouched. j2bonav-wide zero-shot on E0_j2, 40 eps:
+
+    K=0     36/40 = 90.0%   dv 274.5 m/s   efficiency 1.074x   207 s
+    K=120   36/40 = 90.0%   dv 274.5 m/s   efficiency 1.083x    92 s
+
+Same success, same fuel, 2.25x the speed. (The action-stream md5 differs, as it
+must -- the filter is on a different tick schedule -- so this is a capability
+equivalence, not a bit-identity claim.)
+
+SHIPPED: nav_max_ticks=120 in t11_cells.base_env_kwargs, t11_eval.py, and
+t11_campaign.sh (override T11_NAV_MAX_TICKS). New gate G6 fails the campaign if
+the day-warp row is live while either the campaign or the evaluator leaves K
+outside 60..240 -- the failure mode is invisible (no crash, no bad metric, the
+run just never lands) so it needs a gate, not a comment.
+
+    === 8/8 gates pass (G0 G6 G1 G2 G3 G4 G5a G5b) ===
