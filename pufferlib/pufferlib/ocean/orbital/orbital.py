@@ -41,6 +41,14 @@ TRAJ_COLS = (
 TRAJ_FLOATS = len(TRAJ_COLS)  # 100
 
 
+def _t11_fuel_range():
+    from pufferlib.ocean.orbital.t11_cells import FUEL_MIN, FUEL_MAX
+    return FUEL_MIN, FUEL_MAX
+
+
+_T11_FUEL_MIN, _T11_FUEL_MAX = _t11_fuel_range()
+
+
 class Orbital(pufferlib.PufferEnv):
     def __init__(
         self,
@@ -219,6 +227,26 @@ class Orbital(pufferlib.PufferEnv):
         #   failed to drift" with "there was nothing to drift for".
         di_min_rad=-1.0,
         di_phase_mode=0,
+        # ── T11: per-episode fuel budget. <0 (default) = the compile-time
+        # FUEL_FRAC, bit-exact. Else f ~ U(min, max) per episode;
+        # dv_budget = -VE*ln(1-f), so 0.113 -> 353 m/s and 0.20 -> 656 m/s.
+        # The recon measured the floor: at 245 m/s (f=0.08) 46-59% of ordinary
+        # cells are Dv-INFEASIBLE, and valid_init_only cannot catch it because
+        # it rejects on perigee only — fuel never enters the rejection sampler.
+        # At 353 m/s the infeasible mass is 0.2-9.8%.
+        fuel_frac_min=-1.0,
+        fuel_frac_max=-1.0,
+        # ── T11: the per-episode CELL MIXTURE. 0 = off, bit-inert. The table
+        # itself is installed with set_cells() (see CELL_FIELDS) rather than
+        # through kwargs, because the shipped 7-cell mixture is 126 numbers.
+        cell_mixture_mode=0,
+        # T11 convenience gate: 1 installs the canonical generalist mixture
+        # (pufferlib.ocean.orbital.t11_cells) and its fuel range at
+        # construction. The trainer owns env construction and never calls
+        # set_cells(), so a mixture rung needs exactly one flag it can pass.
+        # It sets ONLY the mixture + fuel knobs; normalizers, shaping and the
+        # box stay explicit on the command line so nothing is hidden.
+        t11_mixture=0,
         # obs[33-36] frame. 0 = LEGACY (bit-exact; the only mode any shipped
         # checkpoint was trained under). The legacy block rotates the INERTIAL
         # x,y offset by the in-plane angle omega+theta, which equals LVLH only
@@ -325,10 +353,17 @@ class Orbital(pufferlib.PufferEnv):
             di_phase_mode=di_phase_mode,
             raan_target_sample=raan_target_sample,
             lvlh_frame_mode=lvlh_frame_mode,
+            fuel_frac_min=(_T11_FUEL_MIN if t11_mixture else fuel_frac_min),
+            fuel_frac_max=(_T11_FUEL_MAX if t11_mixture else fuel_frac_max),
+            cell_mixture_mode=(1 if t11_mixture else cell_mixture_mode),
             # Red-team #4: per-sub-step trajectory recording (352 B/record,
             # ~1 MB/env buffer) only when trajectories are actually saved.
             log_enabled=1 if traj_log_dir else 0,
         )
+
+        if t11_mixture:
+            from pufferlib.ocean.orbital.t11_cells import TABLE as _T11_TABLE
+            self.set_cells(_T11_TABLE)
 
         # Pre-allocated trajectory buffer (reused every call).
         # Row count MUST equal MAX_STEPS in orbital.h (ext-j2wait: 22000) —
@@ -337,6 +372,61 @@ class Orbital(pufferlib.PufferEnv):
 
         if traj_log_dir:
             os.makedirs(traj_log_dir, exist_ok=True)
+
+    # ── T11 cell mixture ────────────────────────────────────────────────────
+    # Column order MUST match orbital.h's CF_* defines.
+    CELL_FIELDS = ('weight', 'cap', 'box_r', 'box_v', 'a_min', 'a_max',
+                   'e_max_target', 'e_max_sat', 'de_max', 'da_max',
+                   'di_max', 'di_min', 'di_phase', 'j2',
+                   'i_t_min', 'i_t_max', 'fuel_min', 'fuel_max')
+
+    def set_cells(self, cells):
+        """Install the per-episode cell table.
+
+        `cells` is a sequence of dicts keyed by CELL_FIELDS, or an
+        (n_cells, 18) array. Requires cell_mixture_mode=1 to have any effect;
+        the env is told so rather than silently ignoring the table.
+        """
+        if isinstance(cells, (list, tuple)) and cells and isinstance(cells[0], dict):
+            arr = np.zeros((len(cells), len(self.CELL_FIELDS)), dtype=np.float64)
+            for i, c in enumerate(cells):
+                unknown = set(c) - set(self.CELL_FIELDS)
+                if unknown:
+                    raise ValueError(f'unknown cell fields: {sorted(unknown)}')
+                for j, k in enumerate(self.CELL_FIELDS):
+                    if k not in c:
+                        raise ValueError(f'cell {i} missing field {k!r}')
+                    arr[i, j] = float(c[k])
+        else:
+            arr = np.ascontiguousarray(cells, dtype=np.float64)
+        if arr.ndim != 2 or arr.shape[1] != len(self.CELL_FIELDS):
+            raise ValueError(f'cell table must be (n, {len(self.CELL_FIELDS)}), '
+                             f'got {arr.shape}')
+        n = binding.vec_set_cells(self.c_envs, np.ascontiguousarray(arr))
+        self._cell_table = arr
+        return n
+
+    def episode_cells(self, out=None):
+        """(N,3) float64: [cell index, episode cap, fuel fraction] per env.
+
+        Read-only diagnostics for the mixture. Without it the realized cell
+        distribution and the per-episode cap are unobservable from Python, and
+        a mixture that silently disagrees with its table is precisely the
+        failure the gates exist to catch.
+        """
+        if out is None:
+            out = np.zeros((self.num_agents, 3), dtype=np.float64)
+        binding.vec_get_episode_cells(self.c_envs, out)
+        return out
+
+    def last_cell_indices(self):
+        return self.episode_cells()[:, 0].astype(np.int64)
+
+    def last_cell_caps(self):
+        return self.episode_cells()[:, 1]
+
+    def last_fuel_fracs(self):
+        return self.episode_cells()[:, 2]
 
     def reset(self, seed=0):
         binding.vec_reset(self.c_envs, seed)

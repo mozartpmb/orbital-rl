@@ -7,6 +7,8 @@ static PyObject* vec_get_trajectory(PyObject* self, PyObject* args);
 static PyObject* vec_get_episode_init_info(PyObject* self, PyObject* args);
 static PyObject* vec_get_episode_result(PyObject* self, PyObject* args);
 static PyObject* vec_get_state(PyObject* self, PyObject* args);
+static PyObject* vec_set_cells(PyObject* self, PyObject* args);
+static PyObject* vec_get_episode_cells(PyObject* self, PyObject* args);
 
 /* Hook into env_binding.h method table — no trailing comma, the sentinel follows */
 #define MY_METHODS \
@@ -17,7 +19,11 @@ static PyObject* vec_get_state(PyObject* self, PyObject* args);
     {"vec_get_episode_result", (PyCFunction)vec_get_episode_result, METH_VARARGS, \
      "Get last-episode outcome: (vec_handle, env_idx) -> (sim_steps:int, terminal_cause:int)"}, \
     {"vec_get_state", (PyCFunction)vec_get_state, METH_VARARGS, \
-     "Read chaser+target state for ALL envs: (vec_handle, out_float64_(N,36)) -> N"}
+     "Read chaser+target state for ALL envs: (vec_handle, out_float64_(N,36)) -> N"}, \
+    {"vec_set_cells", (PyCFunction)vec_set_cells, METH_VARARGS, \
+     "T11 cell mixture: (vec_handle, float64_(n_cells,CELL_FIELDS)) -> n_cells"}, \
+    {"vec_get_episode_cells", (PyCFunction)vec_get_episode_cells, METH_VARARGS, \
+     "T11 diagnostics: (vec_handle, out_float64_(N,3)) -> N; [cell_idx, cap, fuel_frac]"}
 
 #define Env Orbital
 #include "../env_binding.h"
@@ -272,6 +278,87 @@ static PyObject* vec_get_state(PyObject* self, PyObject* args) {
     return PyLong_FromLong(vec->num_envs);
 }
 
+/* T11: install the per-episode cell table on every env in the vector.
+ * A table rather than kwargs because `unpack()` takes one scalar at a time and
+ * the shipped 7-cell mixture is 126 numbers. Copied into each env so c_reset
+ * needs no indirection and the envs stay independent. */
+static PyObject* vec_set_cells(PyObject* self, PyObject* args) {
+    if (PyTuple_Size(args) != 2) {
+        PyErr_SetString(PyExc_TypeError, "vec_set_cells requires 2 arguments");
+        return NULL;
+    }
+    VecEnv* vec = (VecEnv*)PyLong_AsVoidPtr(PyTuple_GetItem(args, 0));
+    if (!vec) { PyErr_SetString(PyExc_ValueError, "Invalid vec handle"); return NULL; }
+    PyArrayObject* arr = (PyArrayObject*)PyTuple_GetItem(args, 1);
+    if (!PyArray_Check(arr) || !PyArray_ISCONTIGUOUS(arr)
+        || PyArray_TYPE(arr) != NPY_DOUBLE || PyArray_NDIM(arr) != 2) {
+        PyErr_SetString(PyExc_ValueError,
+            "cell table must be a contiguous float64 (n_cells, CELL_FIELDS) array");
+        return NULL;
+    }
+    npy_intp n = PyArray_DIM(arr, 0), f = PyArray_DIM(arr, 1);
+    if (f != CELL_FIELDS) {
+        PyErr_Format(PyExc_ValueError, "cell table must have %d columns, got %ld",
+                     CELL_FIELDS, (long)f);
+        return NULL;
+    }
+    if (n < 1 || n > MAX_CELLS) {
+        PyErr_Format(PyExc_ValueError, "n_cells must be 1..%d, got %ld",
+                     MAX_CELLS, (long)n);
+        return NULL;
+    }
+    const double* src = (const double*)PyArray_DATA(arr);
+    for (npy_intp c = 0; c < n; c++) {
+        double cap = src[c * CELL_FIELDS + CF_CAP];
+        if (cap < 1.0 || cap > (double)MAX_STEPS) {
+            PyErr_Format(PyExc_ValueError,
+                "cell %ld cap %.0f outside 1..MAX_STEPS(%d)",
+                (long)c, cap, MAX_STEPS);
+            return NULL;
+        }
+        if (src[c * CELL_FIELDS + CF_WEIGHT] < 0.0) {
+            PyErr_Format(PyExc_ValueError, "cell %ld weight is negative", (long)c);
+            return NULL;
+        }
+    }
+    for (int i = 0; i < vec->num_envs; i++) {
+        Env* e = vec->envs[i];
+        memcpy(e->cells, src, (size_t)n * CELL_FIELDS * sizeof(double));
+        e->num_cells = (int)n;
+    }
+    return PyLong_FromLong((long)n);
+}
+
+/* T11 diagnostics, READ-ONLY: which cell each env drew this episode, the cap
+ * in force, and the fuel fraction. The mixture is otherwise unobservable from
+ * Python, and a mixture whose realized weights silently disagree with its table
+ * is exactly the failure this exists to catch. */
+static PyObject* vec_get_episode_cells(PyObject* self, PyObject* args) {
+    if (PyTuple_Size(args) != 2) {
+        PyErr_SetString(PyExc_TypeError, "vec_get_episode_cells requires 2 arguments");
+        return NULL;
+    }
+    VecEnv* vec = (VecEnv*)PyLong_AsVoidPtr(PyTuple_GetItem(args, 0));
+    if (!vec) { PyErr_SetString(PyExc_ValueError, "Invalid vec handle"); return NULL; }
+    PyArrayObject* arr = (PyArrayObject*)PyTuple_GetItem(args, 1);
+    if (!PyArray_Check(arr) || !PyArray_ISCONTIGUOUS(arr)
+        || PyArray_TYPE(arr) != NPY_DOUBLE) {
+        PyErr_SetString(PyExc_ValueError, "out_array must be contiguous float64");
+        return NULL;
+    }
+    if (PyArray_SIZE(arr) < (npy_intp)vec->num_envs * 3) {
+        PyErr_SetString(PyExc_ValueError, "out_array too small: need (num_envs, 3)");
+        return NULL;
+    }
+    double* out = (double*)PyArray_DATA(arr);
+    for (int i = 0; i < vec->num_envs; i++) {
+        out[i * 3 + 0] = (double)vec->envs[i]->last_cell;
+        out[i * 3 + 1] = (double)vec->envs[i]->episode_cap_steps;
+        out[i * 3 + 2] = vec->envs[i]->episode_fuel_frac;
+    }
+    return PyLong_FromLong(vec->num_envs);
+}
+
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
@@ -334,6 +421,13 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->di_phase_mode           = (int)unpack(kwargs, "di_phase_mode");
     env->raan_target_sample      = (int)unpack(kwargs, "raan_target_sample");
     env->lvlh_frame_mode         = (int)unpack(kwargs, "lvlh_frame_mode");
+    /* T11 kwargs (defaults off; both consume zero rand() draws when off) */
+    env->fuel_frac_min           = (double)unpack(kwargs, "fuel_frac_min");
+    env->fuel_frac_max           = (double)unpack(kwargs, "fuel_frac_max");
+    env->cell_mixture_mode       = (int)unpack(kwargs, "cell_mixture_mode");
+    env->num_cells               = 0;
+    env->last_cell               = -1;
+    env->episode_fuel_frac       = FUEL_FRAC;
     env->last_terminal_cause     = TERM_NONE;
     env->last_traj_records       = 0;
 
@@ -367,8 +461,12 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
                 "the 3D/J2 obs block occupies body slots 21-32).");
             return -1;
         }
+        /* Under the T11 mixture the inclination band arrives per episode from
+         * the cell table, so the construction-time value proves nothing and
+         * the inert-target warning would be a false alarm on every env. */
         int i_sampled = (env->i_target_min_rad >= 0.0
-                         && env->i_target_max_rad > env->i_target_min_rad);
+                         && env->i_target_max_rad > env->i_target_min_rad)
+                        || env->cell_mixture_mode;
         if (!i_sampled && env->i_target_rad == 0.0) {
             fprintf(stderr,
                 "[orbital/j2] WARNING: j2_mode=1 with an EQUATORIAL target and no "
