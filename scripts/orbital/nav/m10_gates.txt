@@ -1,0 +1,113 @@
+MAJOR-10 (ext-m10) validation record
+date: 2026-08-15T17:29:24Z   branch ext-m10 @ 420a7b1
+worktree: /Users/pete/space_training-j2   MAIN never touched or rebuilt (no C change in this branch)
+
+==============================================================================
+GATE 1  nav_ablate_rows OFF is bitwise-inert, in EVERY nav mode
+==============================================================================
+  truth           md5 01e7a7f4a9c3930a vs 01e7a7f4a9c3930a   IDENTICAL=True
+  bearings_only   md5 597c58a2996101ed vs 597c58a2996101ed   IDENTICAL=True
+  [PASS] default-off is bitwise-inert in both nav modes
+
+==============================================================================
+GATE 2  the ablation FIRES in truth mode (the old interlock does not)
+==============================================================================
+  Measured at TB5-3D, blocking fine_normal (rows 20/21), 12 episodes:
+
+    nav mode        mechanism            intercept rate   success
+    bearings_only   nav_ablate_rows        0.8008          2/12
+    bearings_only   nav_block_fine_below   0.8008          2/12    <- agree exactly
+    truth           nav_ablate_rows        0.8392          4/12
+    truth           nav_block_fine_below   n/a            12/12    <- SILENTLY INERT
+
+  `_d_block` is not even allocated in truth mode (step() returns before
+  _nav_alloc). The old interlock is gated on `self._nav_mode != 'truth'`, so a
+  campaign built on it would have reported NO truth deficit and closed MAJOR-10
+  with the inverted misreading it explicitly warns against.
+  [PASS] the new knob is a faithful generalisation in nav mode AND works in truth
+
+==============================================================================
+GATE 3  baseline action share of the blocked set (sanity on the intervention)
+==============================================================================
+  Unablated T-BO3D-TB5 at TB5-3D, 20 eps, greedy argmax:
+    truth          rows 20/21 =  8.7% of decisions (top row: warp30m 41.3%)
+    bearings_only  rows 20/21 = 10.1% of decisions (top row: warp30m 36.9%)
+  The 0.80 intercept rate in GATE 2 is NOT the baseline share: under the ENV
+  ablation the policy SPINS on the dead row (1064 decisions/ep vs 70 baseline).
+  That is precisely why the FLOOR uses the sampling mask instead.
+  [PASS] the intervention touches a real, used axis (~9-10% of decisions)
+
+==============================================================================
+GATE 4  the zero-shot floor matrix, and the cross-track decomposition
+==============================================================================
+  T-BO3D-TB5 zero-shot, 40 eps at TB5-3D (5 km / 1 m/s):
+
+    arm                              success    crosstrack |v.h|   share
+    bearings_only  baseline           40/40       0.432 m/s        0.119
+    bearings_only  SAMPLING mask      18/40       3.053            0.447
+    bearings_only  ENV ablation       13/40       2.772            0.425
+    truth          baseline           40/40       0.352            0.094
+    truth          SAMPLING mask      20/40       2.677            0.468
+    truth          ENV ablation       13/40       2.772            0.425
+
+  THE DEFICIT SURVIVES INTO TRUTH MODE (100% -> 50%), which is NAV-F's
+  T-BO-act signature for GUIDANCE-critical rather than info-critical.
+  Against a 1 m/s box, removing normal +/-1 leaves a ~2.7-3.1 m/s cross-track
+  residual WITH PERFECT INFORMATION.
+  [PASS] the pre-registered NAV-F pattern reproduces zero-shot on the normal axis
+
+==============================================================================
+GATE 5  box-dependence (the mechanism check), campaign dry-run n=8
+==============================================================================
+RESULT F_base_bo_TB5-3D: F_base_bo_TB5-3D             succ 7/8 =  87.5%   gave_up 0   decisions 643 (mean 80.4/ep)   md5 ae9a05806059   56s
+  F_base_bo_TB5-3D CROSSTRACK |v_rel.h| median 0.353 m/s (p90 0.988), in-plane 4.459, crosstrack share 0.074
+RESULT F_base_tr_TB5-3D: F_base_tr_TB5-3D             succ 8/8 = 100.0%   gave_up 0   decisions 426 (mean 53.2/ep)   md5 bd9842bc2dbf   0s
+  F_base_tr_TB5-3D CROSSTRACK |v_rel.h| median 0.290 m/s (p90 0.530), in-plane 2.695, crosstrack share 0.074
+RESULT F_mask_bo_TB5-3D: F_mask_bo_TB5-3D             succ 3/8 =  37.5%   gave_up 0   decisions 2128 (mean 266.0/ep)   md5 e37a7fdf4cf2   36s
+  F_mask_bo_TB5-3D CROSSTRACK |v_rel.h| median 2.810 m/s (p90 3.894), in-plane 2.973, crosstrack share 0.455
+RESULT F_mask_tr_TB5-3D: F_mask_tr_TB5-3D             succ 6/8 =  75.0%   gave_up 0   decisions 1250 (mean 156.2/ep)   md5 3ffaee34364f   0s
+  F_mask_tr_TB5-3D CROSSTRACK |v_rel.h| median 3.612 m/s (p90 5.228), in-plane 3.154, crosstrack share 0.540
+RESULT F_abl_bo_TB5-3D: F_abl_bo_TB5-3D              succ 1/8 =  12.5%   gave_up 0   decisions 8859 (mean 1107.4/ep)   md5 da4457efa47d   44s
+  F_abl_bo_TB5-3D CROSSTRACK |v_rel.h| median 2.971 m/s (p90 4.832), in-plane 4.504, crosstrack share 0.426
+RESULT F_abl_tr_TB5-3D: F_abl_tr_TB5-3D              succ 2/8 =  25.0%   gave_up 0   decisions 8187 (mean 1023.4/ep)   md5 ddfb2fcecf0e   1s
+  F_abl_tr_TB5-3D CROSSTRACK |v_rel.h| median 3.449 m/s (p90 5.872), in-plane 2.778, crosstrack share 0.546
+RESULT F_base_bo_TB4-3D: F_base_bo_TB4-3D             succ 8/8 = 100.0%   gave_up 0   decisions 352 (mean 44.0/ep)   md5 a02e43fb5e97   32s
+  F_base_bo_TB4-3D CROSSTRACK |v_rel.h| median 0.264 m/s (p90 0.625), in-plane 3.869, crosstrack share 0.074
+RESULT F_base_tr_TB4-3D: F_base_tr_TB4-3D             succ 8/8 = 100.0%   gave_up 0   decisions 324 (mean 40.5/ep)   md5 194a514de92d   0s
+  F_base_tr_TB4-3D CROSSTRACK |v_rel.h| median 0.352 m/s (p90 0.421), in-plane 4.862, crosstrack share 0.061
+RESULT F_mask_bo_TB4-3D: F_mask_bo_TB4-3D             succ 6/8 =  75.0%   gave_up 0   decisions 980 (mean 122.5/ep)   md5 c4ed9d5c29df   40s
+  F_mask_bo_TB4-3D CROSSTRACK |v_rel.h| median 3.002 m/s (p90 3.995), in-plane 4.648, crosstrack share 0.357
+RESULT F_mask_tr_TB4-3D: F_mask_tr_TB4-3D             succ 7/8 =  87.5%   gave_up 0   decisions 720 (mean 90.0/ep)   md5 803b13012780   0s
+  F_mask_tr_TB4-3D CROSSTRACK |v_rel.h| median 3.311 m/s (p90 4.422), in-plane 3.578, crosstrack share 0.431
+RESULT F_abl_bo_TB4-3D: F_abl_bo_TB4-3D              succ 4/8 =  50.0%   gave_up 0   decisions 6974 (mean 871.8/ep)   md5 bfb261beed0d   273s
+  F_abl_bo_TB4-3D CROSSTRACK |v_rel.h| median 3.504 m/s (p90 5.088), in-plane 4.952, crosstrack share 0.433
+RESULT F_abl_tr_TB4-3D: F_abl_tr_TB4-3D              succ 5/8 =  62.5%   gave_up 0   decisions 6404 (mean 800.5/ep)   md5 624f213a4f27   0s
+  F_abl_tr_TB4-3D CROSSTRACK |v_rel.h| median 4.223 m/s (p90 5.906), in-plane 2.755, crosstrack share 0.609
+
+  TB4-3D has a 2 m/s velocity tolerance and TB5-3D has 1 m/s. The ~2.8-3.6 m/s
+  cross-track residual clears neither, but the deficit is much smaller at TB4 —
+  which is what a genuine plane-axis loss should look like and what a generic
+  "got worse" should not.
+  [PASS] the deficit tracks the VELOCITY tolerance, as a plane-axis loss must
+
+==============================================================================
+GATE 0  the standard harness anchor, under the wrapper + eval changes
+==============================================================================
+  eval_relnav3d.py --stage anchor --episodes 200 --box TB5-3D --shape-w-match 0.35
+  plain Orbital (dim3)     194/200 = 97.0%   md5 721def1b9d72
+  OrbitalNav truth (dim3)  194/200 = 97.0%   md5 721def1b9d72
+  OrbitalNav recon (dim3)  194/200 = 97.0%   md5 721def1b9d72
+  [PASS] plain Orbital reproduces the published score at this rung
+  [PASS] OrbitalNav(nav_mode='truth') is a byte-identical passthrough
+  [PASS] the 19-slot encode/decode layer is transparent at zero estimation error
+  HARNESS ANCHOR: PASS
+
+  md5 721def1b9d72 is the value the n3dnav_tb campaign recorded for this
+  checkpoint at this box, so the wrapper's new kwarg and the eval's new
+  decomposition are transparent to the published lineage.
+
+  ONE REGRESSION THIS CAUGHT: stage_anchor passes a PLAIN `Orbital` to
+  `rollout`, and the original in-box block relied on short-circuit ordering
+  (`_prev_tgt is not None and env._dim3`) to never touch `_dim3` on it. The
+  first draft of the truth-mode fallback put `env._dim3` first and broke the
+  anchor with an AttributeError. Both new accesses now use getattr defaults.

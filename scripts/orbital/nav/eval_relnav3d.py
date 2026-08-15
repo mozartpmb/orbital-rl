@@ -442,15 +442,40 @@ def rollout(env, ckpt, episodes, seed, label='', verbose=True):
     if not box_r:
         raise RuntimeError('rollout: box radius not set on the env; build it '
                            'with make_env() or set _box_radius_m explicitly')
+    # MAJOR-10 floor: mask rows out of the POLICY's choice set, never resize
+    # the head (the j2wait lesson). This is the right counterfactual for a
+    # policy trained WITH the rows: "do your best without them", rather than
+    # the env-side ablation's "emit them and receive a coast". Both are
+    # measured; they answer different questions and the campaign reports both.
+    mask_rows = getattr(rollout, '_mask_rows', None)
     v_err_box, p_err_box, relv_box = [], [], []
+    # Cross-track vs in-plane split of the in-box relative velocity. MAJOR-10
+    # is a claim about the NORMAL axis specifically, so the aggregate |v_rel|
+    # cannot answer it: removing normal +/-1 m/s should show up as a
+    # cross-track residual the policy can no longer null.
+    relv_box_ct, relv_box_ip = [], []
     relv_last, ep_relv_last = [], float('nan')
     n_done, k, t0 = 0, 0, time.time()
     while n_done < episodes:
         with torch.no_grad():
             logits, _ = policy.forward_eval(
                 torch.from_numpy(np.asarray(obs)).float().unsqueeze(0), st)
+            if mask_rows is not None:
+                logits = logits.clone()
+                logits[..., mask_rows] = -1e30
             a = int(torch.argmax(logits, dim=-1).item())
         actions.append(a)
+        # In TRUTH mode `_nav_step` never runs, so `_prev_tgt`/`_prev_sat` are
+        # never populated and the in-box geometry would be silently absent —
+        # exactly in the arm where MAJOR-10's guidance-vs-information question
+        # is decided. Fall back to the C env's own state (fill_state_row:
+        # sat r,v at 8:14, target r,v at 23:29), which IS truth by definition.
+        if getattr(env, '_dim3', False) \
+                and getattr(env, '_prev_tgt', None) is None \
+                and hasattr(env, 'get_state'):
+            _st = env.get_state()[0]
+            env._prev_sat = np.asarray(_st[8:14], dtype=np.float64)[None, :]
+            env._prev_tgt = np.asarray(_st[23:29], dtype=np.float64)[None, :]
         if getattr(env, '_prev_tgt', None) is not None and env._dim3 \
                 and env._prev_tgt.shape[1] == 6:
             # `_prev_sat`/`_prev_tgt` hold TRUTH at the CURRENT decision epoch
@@ -464,6 +489,20 @@ def rollout(env, ckpt, episodes, seed, label='', verbose=True):
             ep_relv_last = dv_rel
             if rho_t < box_r:
                 relv_box.append(dv_rel)
+                # h_hat of the TARGET orbit is the cross-track axis; the
+                # component of the relative velocity along it is exactly what
+                # a normal-axis burn controls and nothing else can.
+                rt = env._prev_tgt[0, :3]
+                vt = env._prev_tgt[0, 3:6]
+                hh = np.cross(rt, vt)
+                hn = float(np.linalg.norm(hh))
+                if hn > 0.0:
+                    hh = hh / hn
+                    dvv = env._prev_tgt[0, 3:6] - env._prev_sat[0, 3:6]
+                    ct = float(abs(np.dot(dvv, hh)))
+                    relv_box_ct.append(ct)
+                    relv_box_ip.append(float(np.sqrt(max(
+                        dv_rel * dv_rel - ct * ct, 0.0))))
                 if getattr(env, '_filt', None) is not None:
                     est = env._mean()
                     v_err_box.append(float(np.linalg.norm(
@@ -471,6 +510,10 @@ def rollout(env, ckpt, episodes, seed, label='', verbose=True):
                     p_err_box.append(float(np.linalg.norm(
                         est[0, :3] - env._prev_tgt[0, :3])))
         fuel_last = float(np.asarray(obs)[0, 6])
+        if getattr(env, '_dim3', False) \
+                and getattr(env, '_nav_mode', None) == 'truth':
+            env._prev_sat = None     # force the refresh above on the next tick
+            env._prev_tgt = None
         obs, rew, term, trunc, _ = env.step(np.array([a], dtype=np.int32))
         k += 1
         if term[0]:
@@ -521,6 +564,17 @@ def rollout(env, ckpt, episodes, seed, label='', verbose=True):
         if box_v:
             out['relvel_inbox_under_tol_frac'] = float(
                 np.mean(np.asarray(relv_box) < box_v))
+    if relv_box_ct:
+        # THE MAJOR-10 MEASUREMENT. If the normal axis is guidance-critical the
+        # ablated arms should show a LARGER cross-track residual at capture,
+        # and the share should rise — an aggregate |v_rel| that merely got
+        # worse would not distinguish "lost the plane axis" from "got worse".
+        out['relvel_inbox_crosstrack_med_ms'] = float(np.median(relv_box_ct))
+        out['relvel_inbox_crosstrack_p90_ms'] = float(np.percentile(relv_box_ct, 90))
+        out['relvel_inbox_inplane_med_ms'] = float(np.median(relv_box_ip))
+        tot = np.asarray(relv_box_ct) + np.asarray(relv_box_ip)
+        out['relvel_inbox_crosstrack_share'] = float(np.median(
+            np.asarray(relv_box_ct) / np.maximum(tot, 1e-12)))
     if relv_last:
         out['relvel_lastdec_med_ms'] = float(np.median(relv_last))
     if v_err_box:
@@ -582,6 +636,21 @@ def show(r):
                      f"{r['navvel_err_inbox_p90_ms']:.3f}), pos error median "
                      f"{r['navpos_err_inbox_med_m']/1e3:.2f} km")
         print(line)
+    if 'relvel_inbox_crosstrack_med_ms' in r:
+        # MAJOR-10's discriminating quantity: the component of the in-box
+        # relative velocity along the target's h_hat is exactly what a normal
+        # burn controls and nothing else does, so it separates "lost the plane
+        # axis" from "got worse".
+        print(f"  {'':28s} CROSSTRACK |v_rel.h| median "
+              f"{r['relvel_inbox_crosstrack_med_ms']:.3f} m/s "
+              f"(p90 {r['relvel_inbox_crosstrack_p90_ms']:.3f}), in-plane "
+              f"{r['relvel_inbox_inplane_med_ms']:.3f}, crosstrack share "
+              f"{r['relvel_inbox_crosstrack_share']:.3f}"
+              + (f"   [blocked={r['ablate_rows']}]" if r.get('ablate_rows') else '')
+              + (f"   [masked={r['mask_rows']}]" if r.get('mask_rows') else ''))
+    if r.get('nav_ablate_rate'):
+        print(f"  {'':28s} env-ablation intercepted "
+              f"{r['nav_ablate_rate']:.4f} of decisions")
     if r.get('acq_latency_med_s') is not None:
         print(f"  {'':28s} acquisition: {r['acq_n']} acquired "
               f"({r['acq_per_ep']:.2f}/ep), latency median "
@@ -661,11 +730,23 @@ def stage_eval(args):
                    noise_mult=args.noise_mult, nav_seed=args.nav_seed, **over)
     if args.acq == 'real' and args.nav_mode == 'bearings_only':
         _install_real_acq(env)
+    # The sampling mask is a property of the ROLLOUT, not of the env: it
+    # removes rows from the policy's choice set without touching the head or
+    # the dynamics. Attached to the function so `rollout` stays signature-
+    # compatible with every existing caller.
+    if args.mask_rows and args.mask_rows not in nm.ACTION_SETS:
+        raise SystemExit(f'--mask-rows must be one of {sorted(nm.ACTION_SETS)}')
+    rollout._mask_rows = (nm.ACTION_SETS[args.mask_rows]
+                          if args.mask_rows else None)
     r = rollout(env, args.ckpt, args.episodes, args.seed,
                 args.label or args.nav_mode)
     show(r)
     r['rung'] = args.rung
     r['box'] = args.box or 'rung default'
+    r['ablate_rows'] = args.ablate_rows or ''
+    r['mask_rows'] = args.mask_rows or ''
+    r['nav_ablate_rate'] = float(getattr(env, '_d_ablate', 0)) / max(
+        float(getattr(env, '_d_ablate_n', 0)), 1.0)
     r['nav_mode'] = args.nav_mode
     r['acq'] = args.acq
     r['ckpt'] = args.ckpt
@@ -685,6 +766,8 @@ def _cli_over(args):
     over = box_kw(args.box, args.box_radius_m, args.box_vel_ms)
     if args.shape_w_match is not None:
         over['shape_w_match'] = float(args.shape_w_match)
+    if getattr(args, 'ablate_rows', ''):
+        over['nav_ablate_rows'] = args.ablate_rows
     return over
 
 
@@ -769,6 +852,16 @@ def main():
     # warm-started from a TB3D checkpoint must match ITS regime, or the
     # observation pipeline stops being the only variable.
     p.add_argument('--shape-w-match', type=float, default=None)
+    # ── n3d_REDTEAM MAJOR-10 ────────────────────────────────────────────────
+    p.add_argument('--ablate-rows', default='',
+                   help='ENV-side capability ablation (nav_ablate_rows): the '
+                        'named ACTION_SETS rows coast, in EVERY nav mode '
+                        'including truth. This is the TRAINING intervention.')
+    p.add_argument('--mask-rows', default='',
+                   help='EVAL-side mask: the named ACTION_SETS rows are removed '
+                        'from the policy\'s choice set at sampling (logits to '
+                        '-inf; the head is never resized). This is the right '
+                        'counterfactual for a policy trained WITH the rows.')
     p.add_argument('--expect', default='',
                    help='anchor stage: published score as N/M (default 200/200)')
     p.add_argument('--label', default='')
