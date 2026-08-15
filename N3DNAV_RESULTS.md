@@ -155,6 +155,43 @@ bearings-only gap at E2/E3 is pure navigation under eccentric geometry.
 Retention never drops below 97.5%, and E3 *improved* E2's own score.
 Checkpoints `models/t3/n3dnav_e_E{0..3}.pt`.
 
+## MAJOR-10 — the normal-axis ablation (2026-08-15, `m10_campaign.sh`)
+
+The last open red-team item: is the fine normal axis (±1 m/s, rows 20/21) an
+*information* instrument (N3D-B's observability framing) or a *guidance*
+requirement? Design: masked zero-shot floors + trained-ablated arms with a
+truth control, at TB5-3D and TB4-3D. Instrument note: the pre-existing
+`nav_block_*` interlock silently no-ops in truth mode — using it would have
+fabricated a "no truth deficit" reading in the deciding control arm; the
+campaign added an unconditional `nav_ablate_rows` instead (bit-inert off).
+
+| condition | TB5-3D (1 m/s) | TB4-3D (2 m/s) |
+|---|---|---|
+| baseline (bo / truth) | 98.0% / 99.5% | 99.5% / 100% |
+| **masked zero-shot** (bo / truth) | **51.0% / 56.0%** | 81.0% / 82.5% |
+| trained-ablated, bearings-only | 0–0.5% | 0–1.0% |
+| trained-ablated, TRUTH control | 0–0.0% | 1.0–1.5% |
+
+Verdict, two parts:
+1. **Guidance-critical, not informational.** The zero-shot truth deficit
+   (43.5 pp) equals the native one (47 pp), the deficit scales with
+   velocity-box tightness (TB4 loses only ~18 pp), and the mechanism is
+   physical: without normal ±1 the cross-track velocity residual is
+   2.7–3.1 m/s against a 1 m/s tolerance *with perfect information*.
+   N3D-B's "2.5–8× more information than prograde" framing does not survive
+   as an information claim at this box.
+2. **Training cannot route around it — it collapses instead**, identically
+   under bearings-only and truth (rolling perf 0.000/0.003 from warm starts
+   that scored 51–56% masked). Consistent with the W4/R-literature
+   value-collapse mechanism: the ablated task carries large physically-
+   infeasible mass at the 1 m/s box, and infeasible episodes shift the
+   optimum rather than adding noise. The collapse is itself the third
+   replication of that mechanism in this project.
+
+With NOTE-22's calibration pass, the n3d_REDTEAM ledger is now fully closed
+(4 BLOCKERs, 13 MAJORs, 4 NOTEs — every item either fixed, measured, or
+closed with a campaign). JSON `web_data/results/m10/`; wandb `t6-m10-*`.
+
 ## Caveats
 - Both boxes share eval seed 123 (paired scenarios across arms — valid for
   arm-vs-arm deltas).
