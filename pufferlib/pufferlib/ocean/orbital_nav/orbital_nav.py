@@ -177,6 +177,22 @@ class OrbitalNav(Orbital):
                  # — wide open, making a `T-BO-act` arm uninterpretable. Every
                  # arm must now state its set by name.
                  nav_block_set='fine_inplane',
+                 # ── n3d_REDTEAM MAJOR-10: the CAPABILITY ablation. ──────────
+                 # `nav_block_fine_below_m` is a NAVIGATION interlock: it gates
+                 # on separation AND is skipped entirely in truth mode
+                 # (`step()`: `and self._nav_mode != 'truth'`), because "don't
+                 # make fine burns when you cannot see" is meaningless when you
+                 # can always see. That makes it the wrong tool for MAJOR-10,
+                 # which requires the SAME rows removed in bearings-only AND in
+                 # truth — the truth control is the entire point of the fix
+                 # ("a T-BO-normal arm therefore needs a truth control at the
+                 # same box, or the plane leg's guidance cost will be misread
+                 # as an information result").
+                 #
+                 # `nav_ablate_rows` is therefore separate and unconditional:
+                 # the named ACTION_SETS rows coast in EVERY nav mode, at every
+                 # separation. '' = off, and off is bitwise-inert.
+                 nav_ablate_rows='',
                  # ── ext-j2: secular J2 in the FILTER ────────────────────────
                  # Default OFF and bit-inert when off: the filter class is only
                  # swapped when this is 1, so every published nav number keeps
@@ -220,6 +236,18 @@ class OrbitalNav(Orbital):
                              f'{sorted(nm.ACTION_SETS)}, got {nav_block_set!r}')
         self._block_set_name = nav_block_set
         self._block_set = nm.ACTION_SETS[nav_block_set]
+        # MAJOR-10 capability ablation, unconditional and nav-mode-independent.
+        self._ablate_name = str(nav_ablate_rows or '')
+        if self._ablate_name:
+            if self._ablate_name not in nm.ACTION_SETS:
+                raise ValueError(
+                    f'nav_ablate_rows must be one of {sorted(nm.ACTION_SETS)} '
+                    f'or "" for off, got {nav_ablate_rows!r}')
+            self._ablate_rows = nm.ACTION_SETS[self._ablate_name]
+        else:
+            self._ablate_rows = None
+        self._d_ablate = 0
+        self._d_ablate_n = 0
         self._nees_every = max(1, int(nav_nees_every))
         self._nav_max_ticks = int(nav_max_ticks)
 
@@ -510,6 +538,24 @@ class OrbitalNav(Orbital):
             a[blocked] = 0
             self._d_block += int(blocked.sum())
         self._d_block_n += a.size
+        return a
+
+    def _apply_row_ablation(self, actions):
+        """MAJOR-10: named rows are UNAVAILABLE — they coast instead.
+
+        Unconditional by design. No separation gate (this is a capability
+        question, not a navigation interlock) and no nav_mode branch (the truth
+        control must see the identical dynamics, or it is not a control).
+
+        Rows 20/21 (normal +/-1 m/s) are tau=1 burns and coast is tau=1, so the
+        substitution changes no timing and no sub-step bookkeeping.
+        """
+        a = np.asarray(actions, dtype=np.int32).reshape(-1).copy()
+        hit = np.isin(a, self._ablate_rows)
+        if hit.any():
+            a[hit] = 0
+            self._d_ablate += int(hit.sum())
+        self._d_ablate_n += a.size
         return a
 
     # ── filter mean, cheaply ─────────────────────────────────────────────────
@@ -950,6 +996,14 @@ class OrbitalNav(Orbital):
                                     if self._d_sig else 0.0)
         if self._block_below > 0.0:
             info['nav_block_rate'] = float(self._d_block / max(self._d_block_n, 1))
+        if self._ablate_rows is not None:
+            # MAJOR-10: the fraction of decisions the ablation actually
+            # intercepted. A trained ablated arm should drive this toward 0 as
+            # it learns the rows are inert; a zero-shot floor should show it
+            # NONZERO, which is the proof the rows were being used at all.
+            info['nav_ablate_rate'] = float(self._d_ablate / max(self._d_ablate_n, 1))
+            self._d_ablate = 0
+            self._d_ablate_n = 0
         self._d_reset()
         return info
 
@@ -971,6 +1025,11 @@ class OrbitalNav(Orbital):
         return obs, info
 
     def step(self, actions):
+        # MAJOR-10: the capability ablation runs FIRST and is not gated on
+        # nav_mode or on separation. Everything downstream — the C env, the
+        # filter's tau, the diagnostics — sees the EXECUTED action set.
+        if self._ablate_rows is not None:
+            actions = self._apply_row_ablation(actions)
         if self._block_below > 0.0 and self._nav_mode != 'truth':
             actions = self._apply_action_ablation(actions)
         obs, rew, term, trunc, info = super().step(actions)
