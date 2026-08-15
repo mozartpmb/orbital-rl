@@ -1,0 +1,55 @@
+{
+  "label": "s2_W1_home",
+  "ckpt": "model_puffer_orbital_000763.pt",
+  "episodes": 200,
+  "seed": 123,
+  "cap": 22000,
+  "box": [
+    30000.0,
+    50.0
+  ],
+  "plane_band_deg": [
+    -1.0,
+    1.0
+  ],
+  "di_phase_mode": 1,
+  "daywarp": true,
+  "success": 92,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.46,
+  "causes": {
+    "success": 92,
+    "safety_cap": 24,
+    "stranded": 84
+  },
+  "md5": "fa00f8215f7a483ab548a1f22a05375b",
+  "plane_closed_precession_deg": -0.013794840084356627,
+  "plane_closed_impulse_deg": 0.6423639067084332,
+  "precession_share": -0.021946418964658976,
+  "dv_used_median_ms": 461.954364826302,
+  "direct_burn_reference_ms": 101.24572834385194,
+  "dv_ratio_vs_direct": 0.21916824702353666,
+  "dip_depth_median_km": 85.08080074599852,
+  "dip_duration_median_h": 4.375,
+  "episode_hours_median": 32.291666666666664,
+  "decisions_median": 27.0,
+  "daywarps_median": 0.0,
+  "di0_median_deg": 0.7746194187651801,
+  "node_frac_median": 0.9599225109043228,
+  "all_episodes": {
+    "plane_closed_precession_deg": -0.03427943945482633,
+    "plane_closed_impulse_deg": 0.6257686548491763,
+    "precession_share": -0.05795446233448566,
+    "dv_used_median_ms": 468.19805153394736,
+    "direct_burn_reference_ms": 102.46883984152208,
+    "dv_ratio_vs_direct": 0.2188578946576253,
+    "dip_depth_median_km": 81.05621315273224,
+    "dip_duration_median_h": 1.8,
+    "episode_hours_median": 32.46666666666667,
+    "decisions_median": 26.0,
+    "daywarps_median": 0.0
+  },
+  "state": "MEAN ELEMENTS; plane errors are NODE-DOMINANT",
+  "wall_s": 4.92672324180603
+}

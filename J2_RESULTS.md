@@ -147,3 +147,53 @@ inclination band U(30°,60°); loose box only (tight-box J2 × nav untested);
 acquisition-surrogate validity boundary at ~3 h blind windows (measured
 optimistic 3.3% at 6 h). Checkpoint `models/t3/j2nav_T-J2BO-nav_final.pt`;
 JSON `web_data/results/j2nav/`; wandb `t6-j2nav-*`.
+
+---
+
+# Drift-and-wait: the learned J2-assisted plane change (2026-08-15, `j2wait_campaign.sh`)
+
+**The agent learns to use the perturbation as an actuator: at node-dominant
+plane gaps where direct burning EXCEEDS the fuel budget, it buys half its
+plane alignment from differential nodal precession — dipping ~124 km and
+cruising 8-day episodes on day-scale warps — and succeeds 96.0% from a 0/200
+floor.** Truth state, mean elements, node-dominant gaps (di_phase_mode=1,
+node fraction ~0.96), Δi_rel U(2°,5°), cap 22000 sub-steps, Discrete-31
+(row 30 = τ=1440 day-warp, logits seeded from row 17 — zero-init measured
+vacuous at P=3.9e−9), 104M steps warm from the J2 lineage.
+
+| cell | success | precession-bought | impulse-bought | Δv vs direct ref | day-warps |
+|---|---|---|---|---|---|
+| floor (warm start, with day-warp) | **0/200** | −1.53° (unsteered, opens) | +0.15° | — | 0 used |
+| floor (no day-warp) | 0/200 | — | — | — | — |
+| **native (3.8° gap)** | **192/200 = 96.0%** | **+1.79° (51.3%)** | +1.70° | **412 vs 500 m/s** (direct is OVER the 478 budget) | 7/ep |
+| hard (4.6° gap) | 183/200 = 91.5% | +2.58° (58.5%) | +1.83° | 424 vs 603 m/s (1.42×) | 9/ep |
+| ablation: day-warp masked at eval | 142/200 = 71.0% | +1.37° (41.8%) | +1.91° | 448 vs 466 m/s | 0 |
+| home rung (0.775° narrow gaps) | **92/200 = 46.0%** | ≈0 | +0.64° | 462 vs **101** m/s | 0 |
+
+Readings:
+1. **The mechanism is steered, not incidental.** The untrained floor already
+   dips (for phasing) and the node drifts *open* (−1.53°); training turns the
+   same dip into +1.79° of bought alignment. Median dip 124 km for ~9 h,
+   episodes ~194 h (8.1 days), 31 decisions.
+2. **The day-warp is load-bearing twice**: masked at eval, success drops 25 pp
+   and the precession share falls to 42% (episodes stretch to 62–81 hourly
+   decisions — the credit-horizon regime where the red-team's stall math says
+   the terminal is worth less than stalling). And the floor with the warp
+   available but unsteered is still 0/200 — the warp alone does nothing; the
+   *learned policy over the warp* is the capability.
+3. **At 3.8° the maneuver is not merely cheaper — direct burning is
+   infeasible** (500 m/s reference vs 478 m/s budget). The learned 412 m/s is
+   the difference between possible and impossible, not an efficiency claim.
+4. **The honest cost is large: the home rung collapses to 46.0%** (84
+   strandings — it now over-spends 462 m/s on 0.775° gaps that need ~101).
+   Worse than J2×nav's −17 pp; drift-and-wait aggressively re-shapes the
+   policy's fuel habits. A deployment would need either a rehearsal-mix rung
+   or gap-conditioned policy selection. Stated, not hidden.
+
+Provenance: env changes = row-30 day-warp (append, bitwise anchors held;
+seeded-logit gate A5g), `MAX_STEPS` 22000 (RSS +33 KB/env, stays virtual),
+`di_min_rad`/`di_phase_mode` samplers (RNG-inert off). The no-day-warp
+ablation initially crashed on a 30-vs-31 head mismatch — fixed by masking
+row 30 at sampling, never by shrinking the head. Checkpoint
+`models/t3/j2wait_W1_driftwait.pt`; JSON `web_data/results/j2wait/`;
+wandb `t6-j2wait-*`.

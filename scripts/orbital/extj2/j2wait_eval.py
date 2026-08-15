@@ -115,8 +115,9 @@ def run(args):
     kw['di_max_rad'] = math.radians(args.di_max_deg)
     kw['di_min_rad'] = math.radians(args.di_min_deg) if args.di_min_deg >= 0 else -1.0
     kw['di_phase_mode'] = args.di_phase_mode
-    if args.no_daywarp:
-        kw['legacy_action_space'] = 30
+    # --no-daywarp masks row 30 at SAMPLING (below), never by shrinking the
+    # env/model head: a 31-head checkpoint cannot load into a 30-head model,
+    # and the floor rows only worked because the warm start predates row 30.
 
     env = Orbital(num_envs=1, **kw)
     policy = LSTMWrapper(env, Default(env))
@@ -149,6 +150,8 @@ def run(args):
         with torch.no_grad():
             logits, _ = policy.forward_eval(
                 torch.from_numpy(np.asarray(obs)).float().unsqueeze(0), state)
+            if args.no_daywarp and logits.shape[-1] > 30:
+                logits[..., 30] = float('-inf')
             a = int(torch.argmax(logits, dim=-1).item())
         acts_all.append(a)
         st_b = env.get_state()[0]
