@@ -1,0 +1,31 @@
+{
+ "label": "T-BO3D-TB5/J2-tight",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "safety_cap": 100
+ },
+ "md5": "61092bc26a3ed49f1fe78cb743ab3fe6",
+ "n_actions": 35613,
+ "mean_len": 356.13,
+ "dv_med_ms": 444.9213563268387,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 5000.0,
+ "box_vel_ms": 1.0,
+ "wall_s": 2.4041028022766113,
+ "ckpt": "T-BO3D-TB5",
+ "cell": "J2-tight",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "J2X",
+ "home": false,
+ "ood": [
+  "two-body policy under J2"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

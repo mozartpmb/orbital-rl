@@ -1,0 +1,30 @@
+{
+ "label": "T-BO3/X3-loose",
+ "success": 100,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 100
+ },
+ "md5": "82c10f91b89e26c587ff5c92c34d1934",
+ "n_actions": 1725,
+ "mean_len": 17.25,
+ "dv_med_ms": 256.7766844659138,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.14737296104431152,
+ "ckpt": "T-BO3",
+ "cell": "X3-loose",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": true,
+ "ood": [],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false,
+ "truth_control": true
+}

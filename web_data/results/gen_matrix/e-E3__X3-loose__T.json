@@ -1,0 +1,32 @@
+{
+ "label": "e-E3/X3-loose",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "safety_cap": 100
+ },
+ "md5": "2b3f04b7b5a24e681e6ac585186ceb0e",
+ "n_actions": 15532,
+ "mean_len": 155.32,
+ "dv_med_ms": 347.2106761594795,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.9190700054168701,
+ "ckpt": "e-E3",
+ "cell": "X3-loose",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "wide-trained encoder in NARROW normalizers"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false,
+ "truth_control": true
+}

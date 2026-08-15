@@ -1,0 +1,30 @@
+{
+ "label": "T-BO3D-TB5/TB5-3D",
+ "success": 100,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 100
+ },
+ "md5": "d380e163c7d640ad50d4bccde0546e5b",
+ "n_actions": 5426,
+ "mean_len": 54.26,
+ "dv_med_ms": 365.74369023347174,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 5000.0,
+ "box_vel_ms": 1.0,
+ "wall_s": 0.33304786682128906,
+ "ckpt": "T-BO3D-TB5",
+ "cell": "TB5-3D",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": true,
+ "ood": [],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false,
+ "truth_control": true
+}

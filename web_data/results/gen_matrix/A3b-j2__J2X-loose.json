@@ -1,0 +1,29 @@
+{
+ "label": "A3b-j2/J2X-loose",
+ "success": 100,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 100
+ },
+ "md5": "cb65b698f83376ff4811d61c73a59b61",
+ "n_actions": 2439,
+ "mean_len": 24.39,
+ "dv_med_ms": 287.21068137414545,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.20909905433654785,
+ "ckpt": "A3b-j2",
+ "cell": "J2X-loose",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "J2X",
+ "home": false,
+ "ood": [],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

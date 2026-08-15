@@ -1,0 +1,33 @@
+{
+ "label": "A3b-j2/W1-plane",
+ "success": 1,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.01,
+ "causes": {
+  "success": 1,
+  "safety_cap": 99
+ },
+ "md5": "17173c4421ffb328389263ca6799d275",
+ "n_actions": 56129,
+ "mean_len": 561.29,
+ "dv_med_ms": 2.0000146724309995,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 4.927434921264648,
+ "ckpt": "A3b-j2",
+ "cell": "W1-plane",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "plane gap 2-5 deg vs <=1 deg trained",
+  "no day-warp (30-head)"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

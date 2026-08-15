@@ -1,0 +1,33 @@
+{
+ "label": "T-BO3D-TB5/W1-plane",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "safety_cap": 100
+ },
+ "md5": "7c62c2ad750ca8fc1dd45d304c6bf151",
+ "n_actions": 84033,
+ "mean_len": 840.33,
+ "dv_med_ms": 72.85531928701702,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 6.45603609085083,
+ "ckpt": "T-BO3D-TB5",
+ "cell": "W1-plane",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "two-body policy under J2",
+  "plane gap 2-5 deg vs <=1 deg trained",
+  "no day-warp (30-head)"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

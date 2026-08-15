@@ -1,0 +1,32 @@
+{
+ "label": "e-E3/E1",
+ "success": 98,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.98,
+ "causes": {
+  "success": 98,
+  "collision": 1,
+  "safety_cap": 1
+ },
+ "md5": "0c4026041c3997cdacf64d00ed18f6c8",
+ "n_actions": 2321,
+ "mean_len": 23.21,
+ "dv_med_ms": 281.0660156261408,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.16560602188110352,
+ "ckpt": "e-E3",
+ "cell": "E1",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "E1",
+ "home": false,
+ "ood": [],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false,
+ "truth_control": true
+}

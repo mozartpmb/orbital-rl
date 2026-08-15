@@ -1,0 +1,34 @@
+{
+ "label": "T-BO3D-TB5/E1",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "collision": 33,
+  "safety_cap": 46,
+  "stranded": 21
+ },
+ "md5": "28f0d12f3123d79966060aee257d299c",
+ "n_actions": 9917,
+ "mean_len": 99.17,
+ "dv_med_ms": 401.77669758087126,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.62565016746521,
+ "ckpt": "T-BO3D-TB5",
+ "cell": "E1",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "E1",
+ "home": false,
+ "ood": [
+  "narrow-trained encoder in WIDE normalizers"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false,
+ "truth_control": true
+}

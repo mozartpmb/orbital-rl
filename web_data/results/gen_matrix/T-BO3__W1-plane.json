@@ -1,0 +1,33 @@
+{
+ "label": "T-BO3/W1-plane",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "safety_cap": 100
+ },
+ "md5": "4d2520b4fbef3cd84d22cf31a3c568aa",
+ "n_actions": 49418,
+ "mean_len": 494.18,
+ "dv_med_ms": 200.00000929605372,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 5.0200231075286865,
+ "ckpt": "T-BO3",
+ "cell": "W1-plane",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "two-body policy under J2",
+  "plane gap 2-5 deg vs <=1 deg trained",
+  "no day-warp (30-head)"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

@@ -1,0 +1,32 @@
+{
+ "label": "J2BO-nav/W1-plane",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "safety_cap": 100
+ },
+ "md5": "accaf541a819b3a6f462d24b1cef1abc",
+ "n_actions": 45739,
+ "mean_len": 457.39,
+ "dv_med_ms": 174.99999022557347,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 4.47622013092041,
+ "ckpt": "J2BO-nav",
+ "cell": "W1-plane",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "plane gap 2-5 deg vs <=1 deg trained",
+  "no day-warp (30-head)"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

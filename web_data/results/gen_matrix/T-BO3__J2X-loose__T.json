@@ -1,0 +1,34 @@
+{
+ "label": "T-BO3/J2X-loose",
+ "success": 49,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.49,
+ "causes": {
+  "success": 49,
+  "safety_cap": 50,
+  "stranded": 1
+ },
+ "md5": "ad788a09ccbc7fd10ffce9e49e89df43",
+ "n_actions": 4465,
+ "mean_len": 44.65,
+ "dv_med_ms": 321.2436838253562,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.4718048572540283,
+ "ckpt": "T-BO3",
+ "cell": "J2X-loose",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "J2X",
+ "home": false,
+ "ood": [
+  "two-body policy under J2"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false,
+ "truth_control": true
+}

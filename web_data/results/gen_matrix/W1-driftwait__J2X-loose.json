@@ -1,0 +1,31 @@
+{
+ "label": "W1-driftwait/J2X-loose",
+ "success": 35,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.35,
+ "causes": {
+  "success": 35,
+  "safety_cap": 30,
+  "stranded": 35
+ },
+ "md5": "ba7188c5fc32b768cad21f6dcb084bec",
+ "n_actions": 3401,
+ "mean_len": 34.01,
+ "dv_med_ms": 465.5533903792239,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.3545811176300049,
+ "ckpt": "W1-driftwait",
+ "cell": "J2X-loose",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 31,
+ "base_rung": "J2X",
+ "home": false,
+ "ood": [],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": true
+}

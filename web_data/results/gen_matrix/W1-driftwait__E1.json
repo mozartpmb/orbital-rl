@@ -1,0 +1,33 @@
+{
+ "label": "W1-driftwait/E1",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "collision": 3,
+  "safety_cap": 97
+ },
+ "md5": "b91d24cc49eca3bac0b7d002a1203207",
+ "n_actions": 1691,
+ "mean_len": 16.91,
+ "dv_med_ms": 133.2106774868043,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.24360108375549316,
+ "ckpt": "W1-driftwait",
+ "cell": "E1",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 31,
+ "base_rung": "E1",
+ "home": false,
+ "ood": [
+  "narrow-trained encoder in WIDE normalizers",
+  "J2 policy without J2"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": true
+}

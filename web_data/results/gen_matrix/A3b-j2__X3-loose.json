@@ -1,0 +1,32 @@
+{
+ "label": "A3b-j2/X3-loose",
+ "success": 91,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.91,
+ "causes": {
+  "success": 91,
+  "safety_cap": 9
+ },
+ "md5": "e81c41eb204c43089a7e45efbe663fe9",
+ "n_actions": 3798,
+ "mean_len": 37.98,
+ "dv_med_ms": 279.4213556954498,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.2528090476989746,
+ "ckpt": "A3b-j2",
+ "cell": "X3-loose",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "J2 policy without J2"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

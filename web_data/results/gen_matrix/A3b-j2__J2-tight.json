@@ -1,0 +1,30 @@
+{
+ "label": "A3b-j2/J2-tight",
+ "success": 98,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.98,
+ "causes": {
+  "success": 98,
+  "safety_cap": 2
+ },
+ "md5": "1bdb078c4f3c0f401953797b9d6d684b",
+ "n_actions": 5222,
+ "mean_len": 52.22,
+ "dv_med_ms": 316.27669385635863,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 5000.0,
+ "box_vel_ms": 1.0,
+ "wall_s": 0.4159088134765625,
+ "ckpt": "A3b-j2",
+ "cell": "J2-tight",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "J2X",
+ "home": true,
+ "ood": [],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

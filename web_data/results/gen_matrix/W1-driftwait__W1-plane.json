@@ -1,0 +1,33 @@
+{
+ "label": "W1-driftwait/W1-plane",
+ "success": 97,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.97,
+ "causes": {
+  "success": 97,
+  "safety_cap": 2,
+  "stranded": 1
+ },
+ "md5": "8a8141b91afbc9f8049d253710a4f560",
+ "n_actions": 4605,
+ "mean_len": 46.05,
+ "dv_med_ms": 409.98737247279394,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 1.2742667198181152,
+ "ckpt": "W1-driftwait",
+ "cell": "W1-plane",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 31,
+ "base_rung": "X3",
+ "home": true,
+ "ood": [
+  "plane gap 2-5 deg vs <=1 deg trained"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": true
+}

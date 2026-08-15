@@ -1,0 +1,32 @@
+{
+ "label": "A3b-j2/TB5-3D",
+ "success": 59,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.59,
+ "causes": {
+  "success": 59,
+  "safety_cap": 41
+ },
+ "md5": "cd546e65a0ea426a746407afde91443a",
+ "n_actions": 9929,
+ "mean_len": 99.29,
+ "dv_med_ms": 355.0660182060296,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 5000.0,
+ "box_vel_ms": 1.0,
+ "wall_s": 0.6050357818603516,
+ "ckpt": "A3b-j2",
+ "cell": "TB5-3D",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "J2 policy without J2"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

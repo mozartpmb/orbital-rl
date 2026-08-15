@@ -1,0 +1,35 @@
+{
+ "label": "e-E3/W1-plane",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "safety_cap": 97,
+  "stranded": 3
+ },
+ "md5": "c5b97163b9006cbe84028610d5660d01",
+ "n_actions": 489400,
+ "mean_len": 4894.0,
+ "dv_med_ms": 235.17767905478956,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 25.70133399963379,
+ "ckpt": "e-E3",
+ "cell": "W1-plane",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "wide-trained encoder in NARROW normalizers",
+  "two-body policy under J2",
+  "plane gap 2-5 deg vs <=1 deg trained",
+  "no day-warp (30-head)"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

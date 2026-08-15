@@ -1,0 +1,35 @@
+{
+ "label": "J2BO-nav/E1",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "collision": 5,
+  "safety_cap": 86,
+  "stranded": 9
+ },
+ "md5": "d0f6c2ea61616b2aad823b1d9f88a126",
+ "n_actions": 5417,
+ "mean_len": 54.17,
+ "dv_med_ms": 385.35533801171886,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.38588786125183105,
+ "ckpt": "J2BO-nav",
+ "cell": "E1",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "E1",
+ "home": false,
+ "ood": [
+  "narrow-trained encoder in WIDE normalizers",
+  "J2 policy without J2"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false,
+ "truth_control": true
+}

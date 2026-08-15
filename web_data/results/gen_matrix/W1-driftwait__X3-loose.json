@@ -1,0 +1,32 @@
+{
+ "label": "W1-driftwait/X3-loose",
+ "success": 12,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.12,
+ "causes": {
+  "success": 12,
+  "safety_cap": 88
+ },
+ "md5": "e6f696040259c4c7ff1b253ab4a8d0d0",
+ "n_actions": 2583,
+ "mean_len": 25.83,
+ "dv_med_ms": 271.5990280163089,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.26531982421875,
+ "ckpt": "W1-driftwait",
+ "cell": "X3-loose",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 31,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "J2 policy without J2"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": true
+}

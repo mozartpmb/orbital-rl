@@ -1,0 +1,32 @@
+{
+ "label": "W1-driftwait/J2-tight",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "safety_cap": 54,
+  "stranded": 46
+ },
+ "md5": "021324b66889f5768b4984da43db06ba",
+ "n_actions": 4198,
+ "mean_len": 41.98,
+ "dv_med_ms": 472.4873733772459,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 5000.0,
+ "box_vel_ms": 1.0,
+ "wall_s": 0.5256602764129639,
+ "ckpt": "W1-driftwait",
+ "cell": "J2-tight",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 31,
+ "base_rung": "J2X",
+ "home": false,
+ "ood": [
+  "tight box vs loose-box training"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": true
+}

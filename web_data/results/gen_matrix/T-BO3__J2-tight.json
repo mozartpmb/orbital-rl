@@ -1,0 +1,33 @@
+{
+ "label": "T-BO3/J2-tight",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "safety_cap": 98,
+  "stranded": 2
+ },
+ "md5": "1366a9774d773475393fc903e080dd45",
+ "n_actions": 5835,
+ "mean_len": 58.35,
+ "dv_med_ms": 341.7767000776622,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 5000.0,
+ "box_vel_ms": 1.0,
+ "wall_s": 0.6277890205383301,
+ "ckpt": "T-BO3",
+ "cell": "J2-tight",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "J2X",
+ "home": false,
+ "ood": [
+  "two-body policy under J2",
+  "tight box vs loose-box training"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false
+}

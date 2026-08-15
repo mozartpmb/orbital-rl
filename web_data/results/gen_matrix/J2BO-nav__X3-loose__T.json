@@ -1,0 +1,34 @@
+{
+ "label": "J2BO-nav/X3-loose",
+ "success": 86,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.86,
+ "causes": {
+  "success": 86,
+  "safety_cap": 12,
+  "stranded": 2
+ },
+ "md5": "f6ab9922174e32325dc8fb99238149e6",
+ "n_actions": 3172,
+ "mean_len": 31.72,
+ "dv_med_ms": 399.0990253958323,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.2243039608001709,
+ "ckpt": "J2BO-nav",
+ "cell": "X3-loose",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "J2 policy without J2"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false,
+ "truth_control": true
+}

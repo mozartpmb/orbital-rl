@@ -1,0 +1,35 @@
+{
+ "label": "e-E3/J2X-loose",
+ "success": 1,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.01,
+ "causes": {
+  "success": 1,
+  "collision": 1,
+  "safety_cap": 98
+ },
+ "md5": "2a66c6d83f128680fa7115ec7dd234a9",
+ "n_actions": 13394,
+ "mean_len": 133.94,
+ "dv_med_ms": 270.53300934319,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.8544018268585205,
+ "ckpt": "e-E3",
+ "cell": "J2X-loose",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 30,
+ "base_rung": "J2X",
+ "home": false,
+ "ood": [
+  "wide-trained encoder in NARROW normalizers",
+  "two-body policy under J2"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": false,
+ "truth_control": true
+}

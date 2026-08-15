@@ -1,0 +1,32 @@
+{
+ "label": "W1-driftwait/TB5-3D",
+ "success": 0,
+ "n_valid": 100,
+ "gave_up": 0,
+ "rate": 0.0,
+ "causes": {
+  "safety_cap": 100
+ },
+ "md5": "2fb3aa85c8a5cb39e1de03cb997ec42c",
+ "n_actions": 2892,
+ "mean_len": 28.92,
+ "dv_med_ms": 289.98737793013856,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 5000.0,
+ "box_vel_ms": 1.0,
+ "wall_s": 0.29120898246765137,
+ "ckpt": "W1-driftwait",
+ "cell": "TB5-3D",
+ "mode": "truth",
+ "acq": "surrogate",
+ "head": 31,
+ "base_rung": "X3",
+ "home": false,
+ "ood": [
+  "J2 policy without J2",
+  "tight box vs loose-box training"
+ ],
+ "episodes": 100,
+ "seed": 123,
+ "daywarp": true
+}
