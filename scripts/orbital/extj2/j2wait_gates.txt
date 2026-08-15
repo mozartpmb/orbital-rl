@@ -1,0 +1,179 @@
+ext-j2wait validation record
+date: 2026-08-15T11:48:15Z   branch ext-j2wait @ 7148b21
+worktree: /Users/pete/space_training-j2   MAIN never touched or rebuilt
+
+==============================================================================
+ANCHORS + ext-j2wait GATES   verify_extj2.py --stage a1,a2,a3,a4,a5
+==============================================================================
+[orbital/j2] WARNING: j2_mode=1 with an EQUATORIAL target and no inclination sampler (i_target_rad=0, i_target_{min,max}_rad off). The J2 plane channel is provably INERT there (j2_A_design §2.2: d(dv_pl) = 0.00 m/s over a full cap at every di). Fine for the J-A3/J-A5 anchors; wrong for training — set i_target_min_rad / i_target_max_rad (rung band 0.5236..1.0472 = 30..60 deg).
+[orbital/j2] WARNING: j2_mode=1 with an EQUATORIAL target and no inclination sampler (i_target_rad=0, i_target_{min,max}_rad off). The J2 plane channel is provably INERT there (j2_A_design §2.2: d(dv_pl) = 0.00 m/s over a full cap at every di). Fine for the J-A3/J-A5 anchors; wrong for training — set i_target_min_rad / i_target_max_rad (rung band 0.5236..1.0472 = 30..60 deg).
+== A1  build identity, kwarg plumbing, preconditions, obs[29-32] ===
+  [PASS] imported pufferlib is the WORKTREE build
+         /Users/pete/space_training-j2/pufferlib/pufferlib/__init__.py
+         /Users/pete/space_training-j2/pufferlib/pufferlib/ocean/orbital/binding.cpython-312-darwin.so
+  [PASS] j2_mode defaults to 0; obs[29-32] all zero
+         obs[29:33] = [0. 0. 0. 0.]
+  [PASS] j2_mode=1: obs[29]=cos i_sat, obs[30]=cos i_tgt, obs[31,32]=0
+         obs[29]=0.616318643 (cos i_sat = 0.616318627), obs[30]=0.621609986 (cos i_tgt = 0.621609968), obs[31,32]=0.0, 0.0
+  [PASS] precondition j2_mode=1 requires dim3_mode=1 (hard error)
+         ValueError: j2_mode=1 requires dim3_mode=1 (j2_A_design §1.4/§4.1): at dim3_mode=0 every orbit is exactly equatorial and J2 would apply an unanchored varpi-dot precession to the 2D lineage.
+  [PASS] precondition j2_mode=1 requires num_debris=0 (hard error)
+         ValueError: j2_mode=1 requires num_debris_max=0 (inherited from dim3_mode: the 3D/J2 obs block occupies body slots 21-32).
+  [PASS] i_target_rad=0 under j2_mode=1 warns but does NOT raise
+         constructed; C emits a stderr warning (plane channel inert)
+  [PASS] j2_mode=0: obs[29-32] stay identically 0 over 120 steps x 32 envs
+         max|obs[29:33]| = 0.000e+00   obs-stream md5 = 59ac7617143393aa718978ccfcfa8456
+
+== A2  closed-loop dynamics under j2_mode=1 (real c_step) =========
+  [PASS] a, e, i unchanged over 3000 coast sub-steps in the real env
+         da = 0.000e+00 m, de = 0.000e+00, di = 6.361e-15 deg
+  [PASS] Omega/omega/M drift at the closed-form secular rates
+         Om -4.689015 vs -4.689015 deg/day, om +3.506952 vs +3.506952, worst rel err 2.71e-12
+  [PASS] warp action 17 (tau=360) == 360 coast sub-steps, bitwise
+         max |diff| over the 36-element state vector = 0.000e+00
+  [PASS] equatorial target stays exactly equatorial (h_t = z-hat) under J2
+         max |h_t.x|, |h_t.y| over 3000 sub-steps = 0.000e+00
+
+== A3  regression anchors on the WORKTREE build, default flags =====
+    legacy         26/200   decisions 193570   md5 f8a2388f0992   8s
+                   causes: success=26, collision=1, safety_cap=142, stranded=31
+  [PASS] legacy anchor unchanged under j2_mode=0 default
+         expected 26/200 [success=26, collision=1, safety_cap=142, stranded=31], got 26/200 [success=26, collision=1, safety_cap=142, stranded=31]
+    T3 canonical   100/100   decisions 2324   md5 68b267bed369   0s
+                   causes: success=100
+  [PASS] T3 canonical anchor unchanged under j2_mode=0 default
+         expected 100/100 [success=100], got 100/100 [success=100]
+    X3 3D          100/100   decisions 1627   md5 003105f29898   0s
+                   causes: success=100
+  [PASS] X3 3D anchor unchanged under j2_mode=0 default
+         expected 100/100 [success=100], got 100/100 [success=100]
+
+== A4  rung changes vs the anchors ================================
+  Two changes land in this branch that touch code the anchors run:
+   (1) the de_max inertial-varpi correction is now node-relative to
+       the TARGET ((raan_s - raan_t), not raan_s). raan_t is exactly
+       0.0 in every shipped lineage and x - 0.0 == x, so bit-exact.
+   (2) lvlh_frame_mode=1 builds obs[33-36] in the true target orbital
+       frame. At i = Omega = 0 that must reduce to the legacy block.
+  Both are re-run through the CHECKPOINT anchors, not just at reset.
+    legacy lvlh1   26/200   md5 f8a2388f0992   8s   causes: success=26, collision=1, safety_cap=142, stranded=31
+  [PASS] legacy lvlh1: lvlh_frame_mode=1 is md5-IDENTICAL to the legacy frame
+         expected 26/200 md5 f8a2388f0992, got 26/200 md5 f8a2388f0992
+    T3 lvlh1       100/100   md5 68b267bed369   0s   causes: success=100
+  [PASS] T3 lvlh1: lvlh_frame_mode=1 is md5-IDENTICAL to the legacy frame
+         expected 100/100 md5 68b267bed369, got 100/100 md5 68b267bed369
+    X3 lvlh1       100/100   md5 003105f29898   0s   causes: success=100
+  [PASS] X3 lvlh1: lvlh_frame_mode=1 is md5-IDENTICAL to the legacy frame
+         expected 100/100 md5 003105f29898, got 100/100 md5 003105f29898
+  [PASS] sampler kwargs present-but-off are a no-op (md5 identical)
+         md5 21a0f08e10bc vs 21a0f08e10bc
+
+== A5  ext-j2wait: day-warp row, 22000 cap, do-nothing gate ========
+  [PASS] A5a exposed space: default 16, opt-in 31, 32 rejected
+         default 16, opt-in 31, 32 -> ValueError
+  [PASS] A5b action 30 (tau=1440) == 1440 coast sub-steps, BITWISE
+         max |diff| over the 36-element state vector = 0.000e+00
+  [PASS] A5c four 6 h warps == one day of coasting, BITWISE (cross-check)
+         max |diff| = 0.000e+00
+  [PASS] A5d do-nothing gain is non-competitive with the success terminal
+         max running Phi gain over a FULL 22000-step cap, day-warps only, 64 envs at the campaign plane distribution = +0.6652; discounted success terminal = 9.263; ratio 7.2% (gate 25%). Terminals seen: 64. NOTE this is 95x the 6000-step-cap value (0.006) BY DESIGN: over 15.3 d precession really does close plane error for free, which is the phenomenon under test, not a leak. shape_gamma=1 telescopes so it cannot be farmed by looping.
+  [PASS] A5e plane error lands in U(2,5) deg and is NODE-DOMINANT
+         realized di_rel 2.001-5.000 deg (knob 2.000-5.000); node fraction p05 0.864 p50 0.968 (uniform-phase would be 2/pi = 0.637 on average, and ~0 sometimes)
+  [PASS] A5f di_min_rad / di_phase_mode present-but-off are a no-op
+         400 resets, max |diff| = 0.000e+00
+  [PASS] A5g the day-warp row is EXPLORABLE under the warm start
+         P(row 30) mean 5.223e-02, median 4.961e-05, max 5.000e-01 -> 5,223,350 expected samples per 100M decisions (a ZERO-init row measures 3.9e-9 -> 0; gate 1e5)
+    a full 22000-substep cap via day-warp  (row 30):   15.3 decisions, gamma^n = 0.9263, terminal worth  9.263
+    a full 22000-substep cap via 6 h warp  (row 17):   61.1 decisions, gamma^n = 0.7361, terminal worth  7.361
+    a full 22000-substep cap via 1 h warp  (row 11):  366.7 decisions, gamma^n = 0.1591, terminal worth  1.591
+    Phi range is 1.8167 (W_lambda 1.0 + W_match 0.8167), so a stalled episode
+    can bank at most that much; success must beat it.
+
+== SUMMARY ========================================================
+  [PASS] imported pufferlib is the WORKTREE build
+  [PASS] j2_mode defaults to 0; obs[29-32] all zero
+  [PASS] j2_mode=1: obs[29]=cos i_sat, obs[30]=cos i_tgt, obs[31,32]=0
+  [PASS] precondition j2_mode=1 requires dim3_mode=1 (hard error)
+  [PASS] precondition j2_mode=1 requires num_debris=0 (hard error)
+  [PASS] i_target_rad=0 under j2_mode=1 warns but does NOT raise
+  [PASS] j2_mode=0: obs[29-32] stay identically 0 over 120 steps x 32 envs
+  [PASS] a, e, i unchanged over 3000 coast sub-steps in the real env
+  [PASS] Omega/omega/M drift at the closed-form secular rates
+  [PASS] warp action 17 (tau=360) == 360 coast sub-steps, bitwise
+  [PASS] equatorial target stays exactly equatorial (h_t = z-hat) under J2
+  [PASS] legacy anchor unchanged under j2_mode=0 default
+  [PASS] T3 canonical anchor unchanged under j2_mode=0 default
+  [PASS] X3 3D anchor unchanged under j2_mode=0 default
+  [PASS] legacy lvlh1: lvlh_frame_mode=1 is md5-IDENTICAL to the legacy frame
+  [PASS] T3 lvlh1: lvlh_frame_mode=1 is md5-IDENTICAL to the legacy frame
+  [PASS] X3 lvlh1: lvlh_frame_mode=1 is md5-IDENTICAL to the legacy frame
+  [PASS] sampler kwargs present-but-off are a no-op (md5 identical)
+  [PASS] A5a exposed space: default 16, opt-in 31, 32 rejected
+  [PASS] A5b action 30 (tau=1440) == 1440 coast sub-steps, BITWISE
+  [PASS] A5c four 6 h warps == one day of coasting, BITWISE (cross-check)
+  [PASS] A5d do-nothing gain is non-competitive with the success terminal
+  [PASS] A5e plane error lands in U(2,5) deg and is NODE-DOMINANT
+  [PASS] A5f di_min_rad / di_phase_mode present-but-off are a no-op
+  [PASS] A5g the day-warp row is EXPLORABLE under the warm start
+
+  25/25 checks pass
+
+==============================================================================
+SIZES / RSS  (MAX_STEPS 12000 -> 22000, log_enabled=0)
+==============================================================================
+  sizeof(TrajectoryRecord) = 408 B
+  sizeof(Orbital)          = 8.98 MB  (MAX_STEPS 22000)
+  traj_log alone           = 8.98 MB/env
+  delta vs MAX_STEPS=12000 = 4.08 MB/env virtual
+  NUM_ACTIONS=31  ACTION_TAU[30]=1440  ACTION_DV[30]={0.0,0.0,0.0}
+  measured RSS, N=256 envs, cap 22000, log_enabled=0:
+    baseline 215.2 MB -> after construct 223.7 MB -> after 200 steps 223.7 MB
+    => RSS delta 8.5 MB total (~33 KB/env); the 2.3 GB of traj buffer stays VIRTUAL
+
+==============================================================================
+ACTION USAGE (the evidence for append-vs-rebind), 100 held-out episodes
+==============================================================================
+  A2 loose box (the warm-start lineage):
+    row 17 (tau=360) 11.1% of decisions (3rd most used); rows 16+17 = 87.4% of SUBSTEPS
+  A3b tight box:
+    row 17 (tau=360)  2.3% of decisions; rows 16+17 = 36.7% of substeps
+  => rebinding row 17 would silently quadruple 11% of the warm start's decisions
+
+==============================================================================
+HEAD EXPANSION 30 -> 31
+==============================================================================
+  masked-row-30 equivalence: parent md5 4cb05cd630e43cfa0a7898abc1cb5011
+                             expanded md5 4cb05cd630e43cfa0a7898abc1cb5011   IDENTICAL
+  explorability, zero-init : P(row 30) median 3.9e-09 -> 0 samples per 100M decisions
+  explorability, row17-seed: P(row 30) mean 5.17e-02 -> 5,172,304 per 100M decisions
+
+==============================================================================
+THE FLOOR   j2wait_eval.py, 60 eps, U(2,5) node-dominant, cap 22000
+==============================================================================
+  FLOOR warm A2              success 0/60 =   0.0%   md5 a3e3f490d145   3s
+                             causes: safety_cap=59, stranded=1
+                             initial NODE-DOMINANT plane gap 3.645 deg (node fraction 0.962)
+                             DECOMPOSITION over successes: precession bought +0.000 deg, impulses bought +0.000 deg (0.0% from precession)
+                             Dv used 0.0 m/s vs direct-burn reference 0.0 m/s (infx cheaper)
+                             dip 0.0 km deep for 0.0 h; episode 0.0 h, 0 decisions (0 day-warps)
+                             ALL EPISODES (incl. failures): precession -1.495 deg, impulses +0.125 deg (0.0% precession); Dv 50.0 m/s; dip 62.3 km for 118.1 h; 366.7 h, 518 decisions (1 day-warps)
+                             CLAIM: meets the box IN MEAN ELEMENTS; plane numbers are NODE-DOMINANT gaps, not general plane errors.
+
+==============================================================================
+2M SMOKE at cap 22000, Discrete-31   (rolling perf, stochastic policy)
+==============================================================================
+perf                          0.000	Steps           917.5K
+perf                          0.005	Steps             1.0M
+perf                          0.005	Steps             1.2M
+perf                          0.001	Steps             1.3M
+perf                          0.001	Steps             1.4M
+perf                          0.003	Steps             1.6M
+perf                          0.003	Steps             1.7M
+perf                          0.085	Steps             1.8M
+perf                          0.085	Steps             2.0M
+perf                          0.046	Steps             2.1M
+perf                          0.046	Steps             6.4M
+perf                          0.045	
+  -> perf moves off the 0.0% floor: 0.000 -> 0.005 -> 0.085 by 1.8M steps.
+  -> trainer HUNG IN TEARDOWN after the final ckpt (known behaviour; the
+     campaign's watchdog exists for exactly this and fired correctly in dry-run).

@@ -394,7 +394,178 @@ def stage_a4(args):
     return out
 
 
-STAGES = {'a1': stage_a1, 'a2': stage_a2, 'a3': stage_a3, 'a4': stage_a4}
+def stage_a5(args):
+    """ext-j2wait: the day-warp row, the new cap, and the stall gate."""
+    print('== A5  ext-j2wait: day-warp row, 22000 cap, do-nothing gate ========')
+    import math as _m
+    WAIT_KW = dict(X3_KW, j2_mode=1, lvlh_frame_mode=1,
+                   i_target_min_rad=_m.radians(30), i_target_max_rad=_m.radians(60),
+                   legacy_action_space=31, episode_cap_steps=22000,
+                   di_max_rad=_m.radians(5.0), di_min_rad=_m.radians(2.0),
+                   di_phase_mode=1)
+
+    # (1) exposure: default stays Discrete(16); 31 must be opt-in; 32 rejected
+    e = Orbital(num_envs=1, **dict(X3_KW, legacy_action_space=None))
+    n_def = e.single_action_space.n; e.close()
+    e = Orbital(num_envs=1, **WAIT_KW)
+    n_opt = e.single_action_space.n; e.close()
+    bad = None
+    try:
+        Orbital(num_envs=1, **dict(WAIT_KW, legacy_action_space=32)).close()
+    except Exception as ex:                                        # noqa: BLE001
+        bad = f'{type(ex).__name__}'
+    record('A5a exposed space: default 16, opt-in 31, 32 rejected',
+           n_def == 16 and n_opt == 31 and bad is not None,
+           f'default {n_def}, opt-in {n_opt}, 32 -> {bad}')
+
+    # (2) the day-warp row IS 1440 coast sub-steps, bitwise, through c_step
+    def roll(actions, cap=22000):
+        env = Orbital(num_envs=1, **dict(WAIT_KW, episode_cap_steps=cap))
+        env.reset(seed=77)
+        for a in actions:
+            env.step(np.array([a], dtype=np.int32))
+        st = env.get_state()[0].copy()
+        env.close()
+        return st
+    A = roll([30])
+    B = roll([0] * 1440)
+    d = np.abs(A - B)
+    record('A5b action 30 (tau=1440) == 1440 coast sub-steps, BITWISE',
+           np.all(d == 0.0),
+           f'max |diff| over the 36-element state vector = {d.max():.3e}')
+    # and that it is inert when not exposed: a Discrete-30 env cannot emit it
+    A2 = roll([17] * 4)
+    B2 = roll([0] * 1440)
+    record('A5c four 6 h warps == one day of coasting, BITWISE (cross-check)',
+           np.all(np.abs(A2 - B2) == 0.0),
+           f'max |diff| = {np.abs(A2 - B2).max():.3e}')
+
+    # (3) THE STALL GATE. cap_terminal_reward=0 + shape_gamma=1 means a capped
+    #     episode's whole return is the shaping it accumulated. Under
+    #     shaping_mode 2 the per-step reward IS that shaping delta, so a
+    #     do-nothing episode's running reward sum IS Phi(t) - Phi(0). Measure
+    #     the max FARMABLE gain over a FULL 22000-step cap driven entirely by
+    #     day-warps — the J-A5 gate re-run at the new horizon.
+    NE = 64
+    env = Orbital(num_envs=NE, **WAIT_KW)
+    env.reset(seed=99)
+    a = np.full(NE, 30, dtype=np.int32)
+    run = np.zeros(NE); peak = np.zeros(NE); tot = np.zeros(NE)
+    n_term = 0
+    for _ in range(22000 // 1440 + 2):
+        _, rew, term, _, _ = env.step(a)
+        run += np.asarray(rew, dtype=np.float64)
+        peak = np.maximum(peak, run)
+        if term.any():
+            n_term += int(term.sum())
+            tot = np.where(term, run, tot)
+            run = np.where(term, 0.0, run)
+            peak = np.where(term, 0.0, peak)
+    env.close()
+    worst_gain = float(peak.max())
+    term_disc = 10.0 * 0.995 ** (22000 / 1440)     # +10 discounted over a full cap
+    record('A5d do-nothing gain is non-competitive with the success terminal',
+           worst_gain < 0.25 * term_disc,
+           f'max running Phi gain over a FULL 22000-step cap, day-warps only, '
+           f'{NE} envs at the campaign plane distribution = {worst_gain:+.4f}; '
+           f'discounted success terminal = {term_disc:.3f}; ratio '
+           f'{worst_gain / term_disc:.1%} (gate 25%). Terminals seen: {n_term}. '
+           f'NOTE this is 95x the 6000-step-cap value (0.006) BY DESIGN: over '
+           f'15.3 d precession really does close plane error for free, which is '
+           f'the phenomenon under test, not a leak. shape_gamma=1 telescopes so '
+           f'it cannot be farmed by looping.')
+
+    # (3b) the plane sampler: band honoured, and the error is node-DOMINANT
+    env = Orbital(num_envs=256, **WAIT_KW)
+    dmin = 9e9; dmax = -9e9; nf = []
+    for k in range(24):
+        env.reset(seed=1000 + k)
+        st = env.get_state()
+        hs, ht = st[:, 5:8], st[:, 20:23]
+        dot = np.clip(np.einsum('ni,ni->n', hs, ht), -1, 1)
+        di_rel = np.arccos(dot)
+        i_s = np.arctan2(np.hypot(hs[:, 0], hs[:, 1]), hs[:, 2])
+        i_t = np.arctan2(np.hypot(ht[:, 0], ht[:, 1]), ht[:, 2])
+        O_s = np.arctan2(hs[:, 0], -hs[:, 1])
+        O_t = np.arctan2(ht[:, 0], -ht[:, 1])
+        dO = np.arctan2(np.sin(O_s - O_t), np.cos(O_s - O_t))
+        node = np.abs(dO * np.sin(i_t))          # drift-CORRECTABLE component
+        frac = node / np.maximum(di_rel, 1e-12)
+        dmin = min(dmin, np.degrees(di_rel).min())
+        dmax = max(dmax, np.degrees(di_rel).max())
+        nf.append(frac)
+    env.close()
+    nf = np.concatenate(nf)
+    record('A5e plane error lands in U(2,5) deg and is NODE-DOMINANT',
+           dmin >= 1.95 and dmax <= 5.05 and np.percentile(nf, 5) >= 0.80,
+           f'realized di_rel {dmin:.3f}-{dmax:.3f} deg (knob 2.000-5.000); '
+           f'node fraction p05 {np.percentile(nf, 5):.3f} p50 {np.median(nf):.3f} '
+           f'(uniform-phase would be 2/pi = 0.637 on average, and ~0 sometimes)')
+
+    # (3c) the new sampler knobs are inert when off — RNG STREAM identity
+    def stream(kw):
+        e2 = Orbital(num_envs=1, **kw); out = []
+        for k in range(400):
+            e2.reset(seed=5000 + k)
+            out.append(e2.get_state()[0].copy())
+        e2.close(); return np.stack(out)
+    OFF = dict(X3_KW, j2_mode=1, lvlh_frame_mode=1,
+               i_target_min_rad=_m.radians(30), i_target_max_rad=_m.radians(60),
+               legacy_action_space=31, episode_cap_steps=22000)
+    A = stream(OFF)
+    B = stream(dict(OFF, di_min_rad=-1.0, di_phase_mode=0))
+    record('A5f di_min_rad / di_phase_mode present-but-off are a no-op',
+           np.array_equal(A, B), f'400 resets, max |diff| = {np.abs(A - B).max():.3e}')
+
+    # (3d) EXPLORABILITY of the appended row. A zero-init row is unreachable
+    #      under a saturated warm start (median argmax softmax 0.986): measured
+    #      P(row 30) = 3.9e-9, i.e. 0 expected samples in 100M decisions — the
+    #      campaign would burn its whole budget with the mechanism under test
+    #      never available. Seeding row 30 from row 17 fixes it. This gate is
+    #      what stops that failing silently.
+    warm = f'{WT}/models/t3/j2wait_warm_A2.pt'
+    if os.path.exists(warm):
+        env = Orbital(num_envs=64, **WAIT_KW)
+        pol = LSTMWrapper(env, Default(env))
+        pol.load_state_dict(torch.load(warm, map_location='cpu', weights_only=True))
+        pol.eval()
+        o, _ = env.reset(seed=5)
+        st = {'lstm_h': torch.zeros(64, pol.hidden_size),
+              'lstm_c': torch.zeros(64, pol.hidden_size)}
+        p30 = []
+        for _ in range(40):
+            with torch.no_grad():
+                lg, _ = pol.forward_eval(torch.from_numpy(np.asarray(o)).float(), st)
+                pr = torch.softmax(lg, dim=-1)
+            p30.append(pr[..., 30].numpy().ravel())
+            o, _, _, _, _ = env.step(
+                torch.argmax(lg, dim=-1).numpy().astype(np.int32).ravel())
+        env.close()
+        p30 = np.concatenate(p30)
+        exp100m = float(p30.mean()) * 1e8
+        record('A5g the day-warp row is EXPLORABLE under the warm start',
+               exp100m > 1e5,
+               f'P(row 30) mean {p30.mean():.3e}, median {np.median(p30):.3e}, '
+               f'max {p30.max():.3e} -> {exp100m:,.0f} expected samples per 100M '
+               f'decisions (a ZERO-init row measures 3.9e-9 -> 0; gate 1e5)')
+    else:
+        record('A5g the day-warp row is EXPLORABLE under the warm start', False,
+               f'warm start missing: {warm} (build it with expand_ckpt_30_to_31.py)')
+
+    # (4) the credit-horizon arithmetic this design depends on
+    g = 0.995
+    for tau, name in ((1440, 'day-warp  (row 30)'), (360, '6 h warp  (row 17)'),
+                      (60, '1 h warp  (row 11)')):
+        nd = 22000 / tau
+        print(f'    a full 22000-substep cap via {name}: {nd:6.1f} decisions, '
+              f'gamma^n = {g ** nd:6.4f}, terminal worth {10 * g ** nd:6.3f}')
+    print('    Phi range is 1.8167 (W_lambda 1.0 + W_match 0.8167), so a stalled '
+          'episode\n    can bank at most that much; success must beat it.')
+    return {}
+
+
+STAGES = {'a1': stage_a1, 'a2': stage_a2, 'a3': stage_a3, 'a4': stage_a4,
+          'a5': stage_a5}
 
 
 def main():

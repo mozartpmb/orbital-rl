@@ -22,10 +22,14 @@
 #define ALT_MAX     1600e3          /* Scenario altitude ceiling              */
 #define DT          60.0            /* Simulation timestep (seconds)          */
 #define MAX_BODIES  16              /* Earth + debris (max)                   */
-#define MAX_STEPS   12000           /* Trajectory-buffer size + max runtime episode cap.
+#define MAX_STEPS   22000           /* Trajectory-buffer size + max runtime episode cap.
                                      * The actual per-episode cap is env->episode_cap_steps
                                      * (default 2000 = legacy 33.3 h; T3 recovery 3000;
-                                     * wide-envelope 6000 = 100 h; MEO 12000 = 200 h —
+                                     * wide-envelope 6000 = 100 h; MEO 12000 = 200 h;
+                                     * ext-j2wait 22000 = 366 h = 15.3 d, the
+                                     * drift-and-wait horizon (j2_plane_change:
+                                     * the >=3x fuel band costs a FIXED 12.8 d
+                                     * regardless of the plane angle bought) —
                                      * periods scale as a^1.5, recon feasibility §3.5).
                                      * Counts 60 s SIM SUB-STEPS, not agent decisions —
                                      * warps buy decisions, never wall clock. Buffer memory
@@ -84,7 +88,7 @@
  * Each row: { dv_prograde, dv_radial, dv_normal }. dv_normal kept at 0 for
  * forward compatibility with a future 3D upgrade.
  */
-#define NUM_ACTIONS 30
+#define NUM_ACTIONS 31
 #define WARP_ACTION 9    /* legacy: smallest warp action; still referenced */
 #define WARP_TAU    5    /* legacy: 5 × 60s = 5 min per warp; supplanted by ACTION_TAU */
 static const double ACTION_DV[NUM_ACTIONS][3] = {
@@ -146,6 +150,26 @@ static const double ACTION_DV[NUM_ACTIONS][3] = {
     {  25.0,   0.0, -25.0 },  /* 27: combined +25 / −25   */
     { -25.0,   0.0,  25.0 },  /* 28: combined −25 / +25   */
     { -25.0,   0.0, -25.0 },  /* 29: combined −25 / −25   */
+    /* ext-j2wait (2026-08-15), Discrete-31. APPENDED — rows 0-29 keep their
+     * indices and their meanings bit-for-bit, so a Discrete-30 checkpoint's
+     * decoder rows transfer unchanged and only a single zero-init row is
+     * added (scripts/orbital/expand_ckpt_actions_7_to_9.py's pattern, minus
+     * the remapping that one needed).
+     *
+     * WHY A NEW ROW AND NOT A REBIND OF AN EXISTING WARP. The prior was to
+     * rebind row 17 (tau 360 -> 1440) under a flag, on the theory that the
+     * 6 h warp is rarely used. Measured over 100 held-out episodes of the
+     * J2 lineage this campaign warm-starts from, it is not:
+     *     A2 loose box   row 17 = 11.1% of decisions; rows 16+17 carry
+     *                    87.4% of all SUBSTEPS
+     *     A3b tight box  row 17 =  2.3% of decisions; rows 16+17 carry
+     *                    36.7% of all substeps
+     * Row 17 is the warm start's primary time-advance tool. Rebinding it
+     * would quadruple the effect of 11% of the policy's decisions while
+     * leaving its logit untouched — a silent semantic swap under a trained
+     * head, which is this project's defect class #1. Appending costs one
+     * zero-init decoder row and changes nothing else. */
+    {   0.0,   0.0,   0.0 },  /* 30: warp 1 day (tau=1440) */
 };
 
 /* ── ext-3d: two things deliberately NOT implemented ─────────────────────────
@@ -189,6 +213,7 @@ static const int ACTION_TAU[NUM_ACTIONS] = {
     1, 1,                         /* 18-19: T3 fine radial burns */
     1, 1, 1, 1, 1, 1,             /* 20-25: ext-3d normal burns */
     1, 1, 1, 1,                   /* 26-29: ext-3d combined burns */
+    1440,                         /* 30: ext-j2wait day-warp (24 h/decision) */
 };
 
 /* ── PufferLib Log struct ────────────────────────────────────────────────
@@ -496,6 +521,36 @@ typedef struct {
      * Ĉ = ĥ_t, T̂ = Ĉ × R̂), which reduces to the legacy construction at
      * i = Omega = 0 up to float round-off but NOT bitwise, hence the gate. */
     int              lvlh_frame_mode;
+
+    /* ── ext-j2wait: the relative-plane error's SIZE and ORIENTATION ─────────
+     * The shipped sampler draws δ = di_max_rad·√U (area-uniform on [0, di_max])
+     * with the rotation axis n̂ UNIFORM in the target plane. Both defaults are
+     * wrong for a drift-and-wait experiment:
+     *
+     *  - size:  the interesting band is BEYOND the direct-burn budget
+     *           (134 m/s per degree at LEO ⇒ 478 m/s buys 3.57°), and an
+     *           area-uniform draw to 5° still puts 16% of its mass below 2°.
+     *  - orientation: drift moves Ω and NOTHING ELSE, so only the node
+     *           component of the error is drift-correctable — E|cos φ| = 2/π
+     *           = 63.7% under the uniform-phase draw, and a pure inclination
+     *           error is untouchable no matter how long you wait
+     *           (j2_plane_change §E). Sampling uniformly would mix
+     *           "the policy failed to drift" with "there was nothing to drift
+     *           for", which is the confound that makes the experiment
+     *           unreadable.
+     *
+     * The basis the shipped sampler already builds makes the orientation knob
+     * one line: û₁ = ẑ × ĥ_t IS the line of nodes, so rotating ĥ_t about û₁
+     * (φ = 0) tilts the plane about the node line — a pure INCLINATION error —
+     * while rotating about û₂ = ĥ_t × û₁ (φ = ±90°) moves the node — a pure
+     * NODE error. Node-dominant is therefore φ near ±90°. */
+    double           di_min_rad;         /* < 0 off (legacy √U draw). Else δ ~ U(di_min_rad,
+                                          * di_max_rad) UNIFORM IN ANGLE, so the band is the
+                                          * band and not an area-weighted version of it.  */
+    int              di_phase_mode;      /* 0 = φ uniform (legacy, bit-exact).
+                                          * 1 = NODE-DOMINANT: φ = ±(π/2 + U(−30°, +30°)),
+                                          * i.e. the node component is ≥ cos30° = 86.6% of
+                                          * the error, so drift is actually available.     */
 
     int              raan_target_sample; /* 0 = Ω_t = raan_target_rad exactly (legacy);
                                           * 1 = Ω_t = raan_target_rad + U(0, 2π). Gauge
@@ -1990,8 +2045,25 @@ static inline void c_reset(Orbital* env) {
         env->sat.orbit.raan= O_t;
 
         if (env->dim3_mode && env->di_max_rad >= 0.0 && !env->same_orbit_init) {
-            double delta = env->di_max_rad * sqrt(rand() / (double)RAND_MAX);
-            double ph    = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
+            /* ext-j2wait: both branches gated so the OFF path consumes exactly
+             * the same two rand() draws in the same order as the legacy
+             * sampler — the knobs change the VALUES drawn, never the stream. */
+            double delta, ph;
+            if (env->di_min_rad >= 0.0 && env->di_max_rad > env->di_min_rad) {
+                delta = env->di_min_rad + (rand() / (double)RAND_MAX)
+                                          * (env->di_max_rad - env->di_min_rad);
+            } else {
+                delta = env->di_max_rad * sqrt(rand() / (double)RAND_MAX);
+            }
+            if (env->di_phase_mode == 1) {
+                /* node-dominant: ±90° ± 30°, sign carried by the same draw */
+                double u = rand() / (double)RAND_MAX;
+                double sgn = (u < 0.5) ? 1.0 : -1.0;
+                double t   = (u < 0.5) ? (u * 2.0) : ((u - 0.5) * 2.0);
+                ph = sgn * (0.5 * M_PI + (t - 0.5) * (M_PI / 3.0));
+            } else {
+                ph = (rand() / (double)RAND_MAX) * 2.0 * M_PI;
+            }
 
             double wx, wy, wz;
             orb_hhat(&env->target, &wx, &wy, &wz);

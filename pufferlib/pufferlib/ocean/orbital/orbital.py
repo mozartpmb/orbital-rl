@@ -132,7 +132,8 @@ class Orbital(pufferlib.PufferEnv):
         # instead of true anomaly. BREAKING for pre-T3 checkpoints.
         phase_obs_mode=0,
         # Runtime safety cap in 60 s sim sub-steps (wall clock = cap minutes).
-        # Legacy 2000 = 33.3 h. T3 recovery 3000. Wide-envelope 6000. MEO 12000 (max).
+        # Legacy 2000 = 33.3 h. T3 recovery 3000. Wide-envelope 6000. MEO 12000.
+        # ext-j2wait 22000 = 366 h = 15.3 d (max, = MAX_STEPS).
         episode_cap_steps=2000,
         # Reward at the safety-cap terminal. Legacy −10. T3 recovery uses 0.0:
         # under flat per-decision γ a −10 timeout prices warp-heavy play as a
@@ -206,6 +207,18 @@ class Orbital(pufferlib.PufferEnv):
         # SO(2)-about-z leak detector (the reduced form of the ext-3d SO(3)
         # frame gate). Differential Omega-dot does NOT depend on Omega.
         raan_target_sample=0,
+        # ── ext-j2wait: the relative-plane error's size and orientation.
+        # di_min_rad >= 0 -> delta ~ U(di_min, di_max) uniform IN ANGLE
+        #   (the legacy sqrt(U) draw is area-uniform and puts 16% of a
+        #   0-5 deg band below 2 deg).
+        # di_phase_mode 1 -> NODE-DOMINANT: the rotation axis sits within
+        #   30 deg of the node axis, so >= 86.6% of the plane error is in the
+        #   component differential nodal precession can actually remove.
+        #   Under the legacy uniform-phase draw that fraction averages
+        #   2/pi = 63.7% and is sometimes ~0, which would confound "the policy
+        #   failed to drift" with "there was nothing to drift for".
+        di_min_rad=-1.0,
+        di_phase_mode=0,
         # obs[33-36] frame. 0 = LEGACY (bit-exact; the only mode any shipped
         # checkpoint was trained under). The legacy block rotates the INERTIAL
         # x,y offset by the in-plane angle omega+theta, which equals LVLH only
@@ -237,10 +250,16 @@ class Orbital(pufferlib.PufferEnv):
         # 26-29 = combined tangential+normal {±25, 0, ±25}. The EXPOSED default
         # stays Discrete(16) so both 2D anchors and every existing command are
         # untouched; 3D lineages opt in with legacy_action_space=30.
+        # ext-j2wait raises the C env to Discrete(31): row 30 = warp 1 day
+        # (tau=1440). The EXPOSED default stays Discrete(16), so every existing
+        # command and checkpoint is untouched and the day-warp is INERT unless a
+        # lineage opts in with legacy_action_space=31 — the same gating that
+        # introduced rows 16-19 and 20-29. No new kwarg: an unreachable row is
+        # already off.
         _las = -1 if legacy_action_space is None else int(legacy_action_space)
         _act_n = 16 if _las <= 0 else _las
-        if not (1 <= _act_n <= 30):
-            raise ValueError(f"legacy_action_space must be in [1, 30] or sentinel <=0, got {_las}")
+        if not (1 <= _act_n <= 31):
+            raise ValueError(f"legacy_action_space must be in [1, 31] or sentinel <=0, got {_las}")
         self.single_action_space = gymnasium.spaces.Discrete(_act_n)
         self.render_mode  = render_mode
         self.num_agents   = num_envs
@@ -302,6 +321,8 @@ class Orbital(pufferlib.PufferEnv):
             j2_mode=j2_mode,
             i_target_min_rad=i_target_min_rad,
             i_target_max_rad=i_target_max_rad,
+            di_min_rad=di_min_rad,
+            di_phase_mode=di_phase_mode,
             raan_target_sample=raan_target_sample,
             lvlh_frame_mode=lvlh_frame_mode,
             # Red-team #4: per-sub-step trajectory recording (352 B/record,
@@ -310,9 +331,9 @@ class Orbital(pufferlib.PufferEnv):
         )
 
         # Pre-allocated trajectory buffer (reused every call).
-        # Row count MUST equal MAX_STEPS in orbital.h (MEO lineage: 12000) —
+        # Row count MUST equal MAX_STEPS in orbital.h (ext-j2wait: 22000) —
         # vec_get_trajectory can fill up to that many records.
-        self._traj_buf = np.zeros((12000, TRAJ_FLOATS), dtype=np.float32)
+        self._traj_buf = np.zeros((22000, TRAJ_FLOATS), dtype=np.float32)
 
         if traj_log_dir:
             os.makedirs(traj_log_dir, exist_ok=True)

@@ -36,7 +36,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
              dim3_mode=0, di_max_rad=-1.0, i_target_rad=0.0, raan_target_rad=0.0,
              obs_di_scale_rad=-1.0, obs_de_scale=-1.0, shape_match_squash=0,
              j2_mode=0, i_target_min_rad=-1.0, i_target_max_rad=-1.0,
-             raan_target_sample=0, lvlh_frame_mode=0):
+             raan_target_sample=0, lvlh_frame_mode=0,
+             di_min_rad=-1.0, di_phase_mode=0):
     if out_dir is None:
         tag = "debris" if debris else "no_debris"
         ckpt_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -93,6 +94,8 @@ def evaluate(checkpoint_path, num_episodes=50, debris=False, out_dir=None, seed=
         i_target_min_rad=i_target_min_rad,
         i_target_max_rad=i_target_max_rad,
         raan_target_sample=raan_target_sample,
+        di_min_rad=di_min_rad,
+        di_phase_mode=di_phase_mode,
         lvlh_frame_mode=lvlh_frame_mode,
         traj_log_dir=out_dir,
         traj_log_every=1,  # save every episode
@@ -336,6 +339,12 @@ def main():
                              'rotated by omega+theta; correct ONLY at i_t = Omega_t = 0). '
                              '1 = true target orbital frame. Default 0 keeps every trained '
                              "checkpoint's primary rendezvous channel bit-identical.")
+    parser.add_argument('--di-min-rad', type=float, default=-1.0,
+                        help='ext-j2wait: delta ~ U(di_min, di_max) uniform in angle. '
+                             '<0 = legacy area-uniform sqrt(U) draw.')
+    parser.add_argument('--di-phase-mode', type=int, default=0,
+                        help='ext-j2wait: 1 = node-dominant plane error (axis within '
+                             '30 deg of the node axis, >=86.6%% drift-correctable).')
     args = parser.parse_args()
 
     evaluate(args.checkpoint, args.episodes, args.debris, args.out_dir, args.seed,
@@ -354,7 +363,8 @@ def main():
              args.dim3_mode, args.di_max_rad, args.i_target_rad, args.raan_target_rad,
              args.obs_di_scale_rad, args.obs_de_scale, args.shape_match_squash,
              args.j2_mode, args.i_target_min_rad, args.i_target_max_rad,
-             args.raan_target_sample, args.lvlh_frame_mode)
+             args.raan_target_sample, args.lvlh_frame_mode,
+             args.di_min_rad, args.di_phase_mode)
 
 
 if __name__ == '__main__':

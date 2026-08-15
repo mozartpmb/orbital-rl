@@ -330,6 +330,8 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
     env->j2_mode                 = (int)unpack(kwargs, "j2_mode");
     env->i_target_min_rad        = (double)unpack(kwargs, "i_target_min_rad");
     env->i_target_max_rad        = (double)unpack(kwargs, "i_target_max_rad");
+    env->di_min_rad              = (double)unpack(kwargs, "di_min_rad");
+    env->di_phase_mode           = (int)unpack(kwargs, "di_phase_mode");
     env->raan_target_sample      = (int)unpack(kwargs, "raan_target_sample");
     env->lvlh_frame_mode         = (int)unpack(kwargs, "lvlh_frame_mode");
     env->last_terminal_cause     = TERM_NONE;
