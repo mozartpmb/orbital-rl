@@ -1,0 +1,28 @@
+{
+ "label": "FLOOR-nav/J2X_truth",
+ "success": 94,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 0.47,
+ "causes": {
+  "success": 94,
+  "safety_cap": 103,
+  "stranded": 3
+ },
+ "md5": "06477c220ed5928421974bec864b1dc9",
+ "n_actions": 9228,
+ "mean_len": 46.14,
+ "dv_med_ms": 326.5990266661976,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.7667891979217529,
+ "rung": "J2X",
+ "box": "rung default",
+ "nav_mode": "truth",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/models/t3/n3dnav_T-BO3.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}

@@ -1,0 +1,26 @@
+{
+ "label": "FLOOR-j2/J2X_truth",
+ "success": 200,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 200
+ },
+ "md5": "0195552c38cdba1227bb11bd3a945af7",
+ "n_actions": 3627,
+ "mean_len": 18.135,
+ "dv_med_ms": 276.421349313308,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.3641211986541748,
+ "rung": "J2X",
+ "box": "rung default",
+ "nav_mode": "truth",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/models/t3/extj2_A2_j2trained.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}

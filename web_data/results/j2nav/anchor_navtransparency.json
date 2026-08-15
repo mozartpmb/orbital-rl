@@ -1,0 +1,58 @@
+{
+ "anchor_pass": true,
+ "plain": {
+  "label": "plain Orbital (dim3)",
+  "success": 200,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 1.0,
+  "causes": {
+   "success": 200
+  },
+  "md5": "ba1769ea8181adf7b029002ca0ac6417",
+  "n_actions": 3477,
+  "mean_len": 17.385,
+  "dv_med_ms": 246.4213555946656,
+  "minrho_med_m": 0.0,
+  "box_radius_m": 30000.0,
+  "box_vel_ms": 50.0,
+  "wall_s": 0.2321770191192627
+ },
+ "truth": {
+  "label": "OrbitalNav truth (dim3)",
+  "success": 200,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 1.0,
+  "causes": {
+   "success": 200
+  },
+  "md5": "ba1769ea8181adf7b029002ca0ac6417",
+  "n_actions": 3477,
+  "mean_len": 17.385,
+  "dv_med_ms": 246.4213555946656,
+  "minrho_med_m": 0.0,
+  "box_radius_m": 30000.0,
+  "box_vel_ms": 50.0,
+  "wall_s": 0.2317638397216797
+ },
+ "recon": {
+  "label": "OrbitalNav recon (dim3)",
+  "success": 200,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 1.0,
+  "causes": {
+   "success": 200
+  },
+  "md5": "ba1769ea8181adf7b029002ca0ac6417",
+  "n_actions": 3477,
+  "mean_len": 17.385,
+  "dv_med_ms": 246.4213555946656,
+  "minrho_med_m": 11747442.405106256,
+  "box_radius_m": 30000.0,
+  "box_vel_ms": 50.0,
+  "wall_s": 1.528554916381836,
+  "relvel_lastdec_med_ms": 13257.722990450127
+ }
+}

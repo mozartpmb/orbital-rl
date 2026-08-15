@@ -1,0 +1,26 @@
+{
+ "label": "T-J2BO-nav/J2X_truth",
+ "success": 200,
+ "n_valid": 200,
+ "gave_up": 0,
+ "rate": 1.0,
+ "causes": {
+  "success": 200
+ },
+ "md5": "b265c9987b435bb4791a0f2800471e67",
+ "n_actions": 4128,
+ "mean_len": 20.64,
+ "dv_med_ms": 303.92135841299773,
+ "minrho_med_m": 0.0,
+ "box_radius_m": 30000.0,
+ "box_vel_ms": 50.0,
+ "wall_s": 0.35558509826660156,
+ "rung": "J2X",
+ "box": "rung default",
+ "nav_mode": "truth",
+ "acq": "surrogate",
+ "ckpt": "/Users/pete/space_training/pufferlib/experiments_j2nav/T-J2BO-nav/puffer_orbital_nav_dhu8i7c8/model_puffer_orbital_nav_000382.pt",
+ "episodes": 200,
+ "eval_seed": 123,
+ "noise_mult": 1.0
+}

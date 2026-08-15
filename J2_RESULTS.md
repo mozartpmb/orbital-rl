@@ -94,3 +94,56 @@ seed artifact.
 Checkpoints `models/t3/extj2_{A2_j2trained,A3a_j2_box10k10,A3b_j2_box5k1}.pt`;
 per-cell JSON `web_data/results/extj2_rung/`; wandb `t6-j2-*`; full analysis
 `J2_RUNG_NOTES.md` + `scripts/orbital/extj2/j2_zeroshot_survey.txt`.
+
+---
+
+# J2 × angles-only navigation (2026-08-15, `j2nav_campaign.sh`)
+
+**The capability product: one policy flying bearings-only with real batch IOD
+in the J2-perturbed, inclined-target world — 96.0% from a 32.0% floor, with
+truth-mode at 200/200.** Loose box (30 km / 50 m/s), targets U(30°,60°),
+`lvlh_frame_mode=1`, `MSC6J2Cov(stm_j2='fd')` (the measured filter winner),
+50M warm-started from the nav root (`n3dnav_T-BO3.pt`).
+
+## Floors — the transfer asymmetry, measured before training
+
+| root | blind (BO + real IOD) | truth | anatomy |
+|---|---|---|---|
+| nav-skilled (no J2 exposure) | 32.0% | 47.0% | J2+inclination costs 53 pp of capability; the estimate-flying skill survives the world-shift (15 pp gap) |
+| J2-skilled (no estimate exposure) | 29.5% | 100% | full capability at home, full 70.5 pp observability price |
+
+Same ~30% floor, opposite anatomy — and consistent with the program's core
+finding: estimate-robustness is the hard-to-retrofit skill. The stage-3
+auto-gate (retrain the J2 root only if its blind floor ≥ 30%) correctly
+closed at 29.5%.
+
+## Treatment
+
+| row | result |
+|---|---|
+| **native — bearings-only, J2, inclined** | **192/200 = 96.0%** (floor 32.0%) |
+| truth, same ckpt | 200/200 — the 4 pp gap is pure navigation |
+| retention: J2 off, bearings-only | 191/200 = 95.5% |
+| retention: X3 home rung (equatorial) | **166/200 = 83.0%** — real forgetting, −17 pp vs parent |
+
+The X3-home dip is the campaign's honest cost: adapting to the inclined
+J2 world traded 17 pp at the legacy equatorial rung. Not hidden, not fixed
+by re-labeling; a rehearsal-mix rung would likely recover it (untested).
+
+## Provenance & the 13th bug
+
+Trainer hung in teardown post-checkpoint; the campaign's own watchdog killed
+it and continued autonomously (rc=143, final perf 0.999 — the NAV-F lesson,
+now automated). Campaign prep found and fixed the **13th
+metric-vs-implementation-class defect**: `OrbitalNav` sub-propagated truth
+states two-body under a J2 env — the filter tracked a fiction with perfect
+consistency; standalone (filter-vs-filter) validation is structurally blind
+to a harness wrong the same way for both arms. The fix restored in-loop NEES
+from 25,520 to 1.20–1.37. Integrated J2-nav cost: 4.45× the two-body nav
+tick (~7.5 h per 50M arm).
+
+Claim boundaries: mean elements everywhere under J2; single seed (42);
+inclination band U(30°,60°); loose box only (tight-box J2 × nav untested);
+acquisition-surrogate validity boundary at ~3 h blind windows (measured
+optimistic 3.3% at 6 h). Checkpoint `models/t3/j2nav_T-J2BO-nav_final.pt`;
+JSON `web_data/results/j2nav/`; wandb `t6-j2nav-*`.
