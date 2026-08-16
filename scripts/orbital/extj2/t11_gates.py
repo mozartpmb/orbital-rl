@@ -289,10 +289,30 @@ def gate_tick_cap():
     k_ev = int(m2.group(1)) if m2 else 0
     warp_live = len(nm.ACTION_TAU) > 30 and nm.ACTION_TAU[30] > 240
     ok = (not warp_live) or (60 <= k_cam <= 240 and 60 <= k_ev <= 240)
-    check('G6 campaign and eval cap filter ticks while row 30 is live', ok,
+    check('G6a campaign and eval cap filter ticks while row 30 is live', ok,
           f'tau[30]={nm.ACTION_TAU[30] if len(nm.ACTION_TAU) > 30 else "n/a"}; '
           f'campaign K={k_cam}, eval K={k_ev} (need 60..240 while the day-warp '
           f'is live; K=0 costs 4.6x throughput, K<60 costs filter health)')
+
+    # The nav knob must NOT leak into the shared kwargs. `Orbital` REJECTS
+    # unknown kwargs, so a nav-only key in `base_env_kwargs` is a TypeError on
+    # every truth-mode caller -- which is exactly how this broke once. The
+    # reasoning at the time was "truth mode never consults it": true, and
+    # irrelevant, because it never gets far enough to not consult it.
+    base = T.base_env_kwargs()
+    err = ''
+    try:
+        _e = Orbital(num_envs=2, **base)
+        _e.close()
+        ctor_ok = True
+    except TypeError as e:
+        ctor_ok, err = False, str(e)
+    nav_k = T.nav_env_kwargs().get('nav_max_ticks')
+    check('G6b base kwargs stay truth-constructible; nav knob is nav-only',
+          ctor_ok and nav_k == T.NAV_MAX_TICKS and 'nav_max_ticks' not in base,
+          f'Orbital(**base_env_kwargs()) {"ok" if ctor_ok else "FAILED: " + err}; '
+          f'nav_max_ticks in base={"nav_max_ticks" in base} (must be False); '
+          f'nav_env_kwargs K={nav_k}')
 
 
 def main():

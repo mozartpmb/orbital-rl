@@ -127,14 +127,30 @@ def base_env_kwargs(**over):
         a_min_override=6.671e6, a_max_override=7.171e6,
         e_max_target=0.05, e_max_sat=0.05,
         cell_mixture_mode=1, fuel_frac_min=FUEL_MIN, fuel_frac_max=FUEL_MAX,
-        # Row 30's tau=1440 costs 1440 EKF sub-ticks per decision at
-        # nav_max_ticks=0, which is a 4.6x throughput loss on this mixture and
-        # puts rung B at 5.4 days. MAJOR-7's fixed-count/adaptive-interval form
-        # makes a cap safe; 120 is the knee (divergence 0.003, tying uncapped,
-        # against 0.109 at K=30) and leaves 28 of 31 rows bit-identical. Inert
-        # for truth-mode callers, which never consult it.
-        nav_max_ticks=NAV_MAX_TICKS,
     )
+    kw.update(over)
+    return kw
+
+
+def nav_env_kwargs(**over):
+    """base_env_kwargs plus the navigation-only knobs.
+
+    `nav_max_ticks` lives HERE and not in `base_env_kwargs` because the plain
+    `Orbital` constructor REJECTS it -- it is a wrapper kwarg, so an unknown-
+    kwarg TypeError, not a silent no-op. An earlier revision of this file put it
+    in the shared dict on the reasoning that truth-mode callers "never consult
+    it"; they do not, but they do refuse to be constructed with it, and every
+    truth-mode gate died on `Orbital.__init__() got an unexpected keyword
+    argument`. Kept separate so that cannot recur.
+
+    Row 30's tau=1440 costs 1440 EKF sub-ticks per decision at nav_max_ticks=0,
+    a 4.6x throughput loss on this mixture that puts rung B at 5.4 days.
+    MAJOR-7's fixed-count/adaptive-interval form makes a cap safe; 120 is the
+    knee (divergence 0.003, tying uncapped, against 0.109 at K=30) and leaves 28
+    of 31 rows bit-identical.
+    """
+    kw = base_env_kwargs()
+    kw['nav_max_ticks'] = NAV_MAX_TICKS
     kw.update(over)
     return kw
 
