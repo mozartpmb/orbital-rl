@@ -11,6 +11,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -34,7 +35,77 @@
                                      * Counts 60 s SIM SUB-STEPS, not agent decisions —
                                      * warps buy decisions, never wall clock. Buffer memory
                                      * is virtual unless log_enabled (gated on traj_log_dir). */
-#define FUEL_FRAC   0.15            /* Fuel = 15% of initial total mass       */
+#define FUEL_FRAC   0.15            /* Fuel = 15% of initial total mass (DEFAULT;
+                                     * overridden per episode when fuel sampling
+                                     * is on — see episode_fuel_frac)          */
+
+/* ── T11: the per-episode CELL MIXTURE ────────────────────────────────────────
+ * A generalist rung trains one policy over heterogeneous cells (e-band,
+ * altitude band, box, J2/inclination config, episode cap, fuel budget). A
+ * vec-env takes ONE kwarg set, so the mixture cannot be expressed by kwargs:
+ * the draw has to happen inside c_reset, per episode.
+ *
+ * WHY THE CAP MUST BE PART OF THE CELL, not a global maximum. obs[15] is
+ * (episode_cap_steps - step)/episode_cap_steps — the episode clock, which T3
+ * measured as load-bearing (even the 99.2% scripted expert fails clock-blind).
+ * Running every cell at one global cap of 22000 would put a 3000-substep cell
+ * at t_frac in [0.86, 1.0]: the clock compressed 7.3x and near-constant. So
+ * `episode_cap_steps` is assigned FROM THE CELL at reset, which makes obs[15]
+ * correct per episode for free — no separate clock plumbing.
+ *
+ * STALL MATH, per cell. cap_terminal_reward = 0 and shape_gamma = 1 mean a
+ * capped episode banks only its shaping, bounded by Phi's range
+ * W_lambda + W_match = 1.8167. A success pays 10*gamma^n. Stalling therefore
+ * wins iff 10*gamma^n < 1.8167, i.e. n > 340 decisions at gamma = 0.995.
+ * Measured decisions/episode: X3 ~18, TB5 ~55, E-cells ~40-90, drift-and-wait
+ * 46 WITH the day-warp and 544 without. Every cell in the shipped table clears
+ * 340 by 4-20x PROVIDED row 30 exists and is used; the one configuration that
+ * violates it is drift-and-wait on a 30-row head, which this rung does not run.
+ *
+ * The table is set through `vec_set_cells` (a float64 (n, CELL_FIELDS) array)
+ * rather than through kwargs, because `unpack()` takes one scalar at a time and
+ * a 7-cell table is ~126 numbers. cell_mixture_mode = 0 is the default and
+ * consumes ZERO rand() draws, so every existing lineage is bit-exact. */
+/* THE PER-ENV SEEDING TRAP. `env_binding.h:502` reseeds every env with
+ * `srand(i + seed*num_envs)` — SEQUENTIAL integers — and glibc's rand() is an
+ * additive-feedback generator whose FIRST outputs are strongly correlated for
+ * nearby seeds. Every pre-existing sampler is safe only because it sits deep in
+ * the stream. The cell and fuel draws are the 1st and 2nd rand() of the
+ * episode, i.e. the worst possible position: measured, all 8 envs drew the same
+ * cell and their fuel fractions marched linearly (0.133, 0.144, 0.156, ...).
+ * So the draws are taken from a splitmix64 seeded once from rand() — one rand()
+ * consumed, decorrelated by construction, and still fully reproducible. */
+static inline uint64_t t11_mix64(uint64_t* x) {
+    uint64_t z = (*x += 0x9E3779B97F4A7C15ULL);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31);
+}
+static inline double t11_u01(uint64_t* x) {
+    return (double)(t11_mix64(x) >> 11) * (1.0 / 9007199254740992.0);
+}
+
+#define MAX_CELLS    16
+#define CELL_FIELDS  18
+/* field order — keep in sync with orbital.py::CELL_FIELDS */
+#define CF_WEIGHT      0
+#define CF_CAP         1
+#define CF_BOX_R       2
+#define CF_BOX_V       3
+#define CF_A_MIN       4
+#define CF_A_MAX       5
+#define CF_E_MAX_T     6
+#define CF_E_MAX_S     7
+#define CF_DE_MAX      8
+#define CF_DA_MAX      9
+#define CF_DI_MAX     10
+#define CF_DI_MIN     11
+#define CF_DI_PHASE   12
+#define CF_J2         13
+#define CF_IT_MIN     14
+#define CF_IT_MAX     15
+#define CF_FUEL_MIN   16
+#define CF_FUEL_MAX   17
 #define ISP         300.0           /* Specific impulse (seconds)             */
 #define G0          9.80665         /* Standard gravity (m/s²)                */
 #define VE          (ISP * G0)      /* Exhaust velocity ≈ 2942 m/s           */
@@ -590,6 +661,29 @@ typedef struct {
     int              last_traj_records;     /* valid traj_log rows at last terminal (= steps+1
                                              * incl. the terminal record, capped at MAX_STEPS) */
     int              last_terminal_cause;   /* TERM_* code of the last episode's ending */
+
+    /* ── T11: per-episode fuel budget ────────────────────────────────────────
+     * fuel_frac_min/max < 0 (default) => the compile-time FUEL_FRAC, bit-exact.
+     * Else f ~ U(min, max) per episode. dv_budget = -VE*ln(1-f), so
+     * f = 0.113 -> 353 m/s and f = 0.20 -> 656 m/s.
+     *
+     * THE NORMALIZATION IS THE POINT. The success reward is
+     * 10*(0.5 + 0.5*fuel_remaining) and `fuel_remaining` divides by the
+     * INITIAL fuel. Left at the compile-time constant while the budget is
+     * sampled, a 0.08 draw could never exceed 0.087/0.176 = 0.49 (success
+     * capped at 7.5) while a 0.20 draw reached 1.0 after spending 29% of its
+     * tank (a free 10) — and the policy SEES its fuel in obs[6], so it would
+     * learn to prefer rich episodes instead of learning efficiency. All three
+     * sites therefore divide by THIS EPISODE's budget. */
+    double           fuel_frac_min;
+    double           fuel_frac_max;
+    double           episode_fuel_frac;     /* the draw in force this episode  */
+
+    /* ── T11: the cell mixture (see the header block above) ──────────────── */
+    int              cell_mixture_mode;     /* 0 = off, bit-inert, zero rand() */
+    int              num_cells;
+    int              last_cell;             /* index drawn this episode, for logs */
+    double           cells[MAX_CELLS][CELL_FIELDS];
 } Orbital;
 
 
@@ -1743,7 +1837,13 @@ static inline int check_termination(Orbital* env) {
      * is deferred; Phase 4 R5 isolates the shaping-alone effect. NHR clamp at
      * terminal preserves potential-based shaping optimality. */
     if (at_target) {
-        double initial_fuel = sat->dry_mass * FUEL_FRAC / (1.0 - FUEL_FRAC);
+        /* T11: THIS EPISODE's budget, not the compile-time constant — under
+         * per-episode sampling the constant turns the drawn budget into a
+         * reward multiplier (a lean draw could not reach 10, a rich one got it
+         * for free), and obs[6] makes that visible to the policy. */
+        double _ff = (env->episode_fuel_frac > 0.0)
+                     ? env->episode_fuel_frac : FUEL_FRAC;
+        double initial_fuel = sat->dry_mass * _ff / (1.0 - _ff);
         double fuel_remaining = sat->fuel_mass / initial_fuel;
         if (fuel_remaining < 0.0) fuel_remaining = 0.0;
         if (fuel_remaining > 1.0) fuel_remaining = 1.0;
@@ -1848,7 +1948,9 @@ static inline void add_log(Orbital* env, int success) {
      * The old formula (FUEL_FRAC - fuel_frac*FUEL_FRAC, with fuel_frac =
      * fuel/total mass) had FUEL_FRAC applied twice: its range was only
      * [0.1275, 0.15] and zero burns logged 0.1275. */
-    double initial_fuel = env->sat.dry_mass * FUEL_FRAC / (1.0 - FUEL_FRAC);
+    double _ff_log = (env->episode_fuel_frac > 0.0)
+                     ? env->episode_fuel_frac : FUEL_FRAC;
+    double initial_fuel = env->sat.dry_mass * _ff_log / (1.0 - _ff_log);
     double budget_used  = 1.0 - env->sat.fuel_mass / initial_fuel;
     if (budget_used < 0.0) budget_used = 0.0;
     env->log.perf           += success ? 1.0f : 0.0f;
@@ -1875,6 +1977,64 @@ static inline void c_reset(Orbital* env) {
     env->step         = 0;
     env->total_dv_used = 0.0;
     env->episode_id++;
+
+    /* ── T11: draw this episode's CELL, before anything reads the config ──────
+     * Runs first so that every field below — including the cap clamp and
+     * obs[15]'s divisor — sees the cell's own values. OFF consumes zero rand()
+     * draws, so the existing lineages keep their RNG stream bit-for-bit. */
+    /* ONE rand() seeds the episode's mixer; both draws come from splitmix64.
+     * See the t11_mix64 comment for why the raw stream cannot be used here. */
+    uint64_t _t11_rs = 0;
+    int _t11_seeded = 0;
+    if ((env->cell_mixture_mode && env->num_cells > 0)
+        || (env->fuel_frac_min >= 0.0 && env->fuel_frac_max > env->fuel_frac_min)) {
+        _t11_rs = ((uint64_t)rand() * 0x9E3779B97F4A7C15ULL)
+                  ^ ((uint64_t)(env->episode_id + 1) * 0xD1B54A32D192ED03ULL);
+        _t11_seeded = 1;
+    }
+    (void)_t11_seeded;
+
+    if (env->cell_mixture_mode && env->num_cells > 0) {
+        double tot = 0.0;
+        for (int c = 0; c < env->num_cells; c++) tot += env->cells[c][CF_WEIGHT];
+        int pick = 0;
+        if (tot > 0.0) {
+            double u = t11_u01(&_t11_rs) * tot, acc = 0.0;
+            for (int c = 0; c < env->num_cells; c++) {
+                acc += env->cells[c][CF_WEIGHT];
+                if (u <= acc) { pick = c; break; }
+                pick = c;
+            }
+        }
+        const double* cl = env->cells[pick];
+        env->last_cell            = pick;
+        env->episode_cap_steps    = (int)cl[CF_CAP];
+        env->rendezvous_radius_m  = cl[CF_BOX_R];
+        env->rel_vel_tol_ms       = cl[CF_BOX_V];
+        env->a_min_override       = cl[CF_A_MIN];
+        env->a_max_override       = cl[CF_A_MAX];
+        env->e_max_target         = cl[CF_E_MAX_T];
+        env->e_max_sat            = cl[CF_E_MAX_S];
+        env->de_max               = cl[CF_DE_MAX];
+        env->da_max_m             = cl[CF_DA_MAX];
+        env->di_max_rad           = cl[CF_DI_MAX];
+        env->di_min_rad           = cl[CF_DI_MIN];
+        env->di_phase_mode        = (int)cl[CF_DI_PHASE];
+        env->j2_mode              = (int)cl[CF_J2];
+        env->i_target_min_rad     = cl[CF_IT_MIN];
+        env->i_target_max_rad     = cl[CF_IT_MAX];
+        env->fuel_frac_min        = cl[CF_FUEL_MIN];
+        env->fuel_frac_max        = cl[CF_FUEL_MAX];
+    }
+
+    /* ── T11: this episode's fuel budget. Gated so OFF costs no rand() draw. */
+    if (env->fuel_frac_min >= 0.0 && env->fuel_frac_max > env->fuel_frac_min) {
+        env->episode_fuel_frac = env->fuel_frac_min
+            + t11_u01(&_t11_rs)
+              * (env->fuel_frac_max - env->fuel_frac_min);
+    } else {
+        env->episode_fuel_frac = FUEL_FRAC;
+    }
 
     /* T3 kwarg sanitation: zero-initialized envs (orbital.c standalone tests,
      * any caller that predates the T3 kwargs) fall back to legacy values.
@@ -2194,7 +2354,11 @@ static inline void c_reset(Orbital* env) {
     }
 
     env->sat.dry_mass    = 850.0;   /* kg */
-    env->sat.fuel_mass   = env->sat.dry_mass * FUEL_FRAC / (1.0 - FUEL_FRAC);
+    {
+        double _ff0 = (env->episode_fuel_frac > 0.0)
+                      ? env->episode_fuel_frac : FUEL_FRAC;
+        env->sat.fuel_mass = env->sat.dry_mass * _ff0 / (1.0 - _ff0);
+    }
 
     /* fuel_mass = dry_mass * (fuel_fraction / (1 - fuel_fraction))
      * so that fuel_mass / (dry_mass + fuel_mass) = FUEL_FRAC */

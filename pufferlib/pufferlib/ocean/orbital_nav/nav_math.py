@@ -50,7 +50,8 @@ ACTION_TAU = np.array(
      180, 360,                     # 16-17 warp 3 h / 6 h
      1, 1,                         # 18-19 radial +/-1
      1, 1, 1, 1, 1, 1,             # 20-25 ext-3d normal burns
-     1, 1, 1, 1],                  # 26-29 ext-3d combined burns
+     1, 1, 1, 1,                   # 26-29 ext-3d combined burns
+     1440],                        # 30    ext-j2wait day-warp (24 h)
     dtype=np.int64)
 
 # |Δv| commanded by each action (m/s), from ACTION_DV in orbital.h:78-137.
@@ -72,9 +73,15 @@ ACTION_DV_MAG = np.array(
      0., 0., 1., 1., 2., 2., 0., 0., 1., 1.,            # 10-19
      1., 1., 10., 10., 25., 25.,                        # 20-25 normal
      _DV_COMBINED, _DV_COMBINED,                        # 26-27 combined
-     _DV_COMBINED, _DV_COMBINED], dtype=np.float64)     # 28-29 combined
+     _DV_COMBINED, _DV_COMBINED,                        # 28-29 combined
+     0.], dtype=np.float64)                             # 30 day-warp: no burn
 
-NUM_ACTIONS = 30
+# MAJOR-8 AGAIN, one rung later: these tables were 30 long against the
+# Discrete-31 action space that ext-j2wait introduced, so the first day-warp
+# any nav run emitted raised IndexError inside `_nav_step`. Caught by the T11
+# 2M smoke, which is what the smoke is for. The gate `t11_gates.py::gate_tables`
+# now asserts len(ACTION_TAU) == the C env's NUM_ACTIONS so it cannot recur.
+NUM_ACTIONS = 31
 
 # ── Discrete-30 action subsets (n3d_REDTEAM MAJOR-10) ────────────────────────
 # `_FINE = [12,13,14,15,18,19]` is the correct set of *in-plane* fine burns and

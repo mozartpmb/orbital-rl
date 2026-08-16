@@ -1,0 +1,263 @@
+T11 implementation validation record
+date: 2026-08-15T18:58:32Z   branch ext-t11
+worktree /Users/pete/space_training-j2; MAIN untouched (m10 training there)
+
+==============================================================================
+ANCHOR BATTERY  verify_extj2.py a1-a5 (after all T11 C changes)
+==============================================================================
+  [PASS] j2_mode=0: obs[29-32] stay identically 0 over 120 steps x 32 envs
+  [PASS] a, e, i unchanged over 3000 coast sub-steps in the real env
+  [PASS] Omega/omega/M drift at the closed-form secular rates
+  [PASS] warp action 17 (tau=360) == 360 coast sub-steps, bitwise
+  [PASS] equatorial target stays exactly equatorial (h_t = z-hat) under J2
+  [PASS] legacy anchor unchanged under j2_mode=0 default
+  [PASS] T3 canonical anchor unchanged under j2_mode=0 default
+  [PASS] X3 3D anchor unchanged under j2_mode=0 default
+  [PASS] legacy lvlh1: lvlh_frame_mode=1 is md5-IDENTICAL to the legacy frame
+  [PASS] T3 lvlh1: lvlh_frame_mode=1 is md5-IDENTICAL to the legacy frame
+  [PASS] X3 lvlh1: lvlh_frame_mode=1 is md5-IDENTICAL to the legacy frame
+  [PASS] sampler kwargs present-but-off are a no-op (md5 identical)
+  [PASS] A5a exposed space: default 16, opt-in 31, 32 rejected
+  [PASS] A5b action 30 (tau=1440) == 1440 coast sub-steps, BITWISE
+  [PASS] A5c four 6 h warps == one day of coasting, BITWISE (cross-check)
+  [PASS] A5d do-nothing gain is non-competitive with the success terminal
+  [PASS] A5e plane error lands in U(2,5) deg and is NODE-DOMINANT
+  [PASS] A5f di_min_rad / di_phase_mode present-but-off are a no-op
+  [PASS] A5g the day-warp row is EXPLORABLE under the warm start
+  25/25 checks pass
+
+==============================================================================
+T11 GATES  t11_gates.py
+==============================================================================
+=== T11 gates ===
+
+== G0  nav action tables cover the C action space ==
+  [PASS] G0 ACTION_TAU / ACTION_DV_MAG / NUM_ACTIONS match orbital.h
+         orbital.h NUM_ACTIONS=31; nav_math ACTION_TAU=31, ACTION_DV_MAG=31, NUM_ACTIONS=31; tau[30]=1440
+
+== G1  T11 kwargs default-off are bitwise inert ==
+  [PASS] G1 fuel/cell kwargs present-but-off do not move obs OR reward
+         md5 b6c3b75623ca4da1 vs b6c3b75623ca4da1
+
+== G2  realized cell weights vs the table ==
+  cell            table w  realized    diff
+  E0_j2             0.150     0.150   0.001
+  E1_j2             0.150     0.145   0.005
+  E2_j2             0.150     0.157   0.007
+  E3_j2             0.150     0.164   0.014
+  W1_driftwait      0.200     0.190   0.010
+  TIGHT_5k1         0.100     0.090   0.010
+  LONGRANGE         0.100     0.104   0.004
+  [PASS] G2 realized mixture matches the table
+         worst |realized-table| = 0.0135 over 2000 draws (3-sigma binomial tolerance 0.0335)
+
+== G3  obs[15] clock uses each episode's own cap ==
+  [PASS] G3 obs[15] == (own_cap - step)/own_cap for every env in the batch
+         256 live envs spanning caps 3000-22000 (spread 19000); max |obs15 - (cap-step)/cap| = 1.272e-08
+
+== G4  Dv-infeasible mass vs the sampled budget ==
+  required Dv = 0.5*v_c*sqrt(da_rel^2+|de|^2) + v_c*|dh|  (obs[28]'s estimate)
+  cell               p50     p90 |    @245    @353    @656
+  E0_j2            258.0   353.7 |   56.0%   10.2%    0.0%
+  E1_j2            239.6   300.7 |   47.4%    0.2%    0.0%
+  E2_j2            248.4   309.9 |   51.8%    1.6%    0.0%
+  E3_j2            248.4   327.6 |   52.1%    5.7%    0.0%
+  W1_driftwait     637.9   807.6 |  100.0%   99.9%   44.3% <- drift-and-wait: obs[28] prices the DIRECT plane change
+  TIGHT_5k1        258.0   353.7 |   56.0%   10.2%    0.0%
+  LONGRANGE        246.8   316.5 |   50.4%    2.7%    0.0%
+  [PASS] G4 infeasible mass at the fuel FLOOR stays <= 12% (drift-and-wait exempt)
+         worst non-W1 cell at 353 m/s = 10.2%; the recon measured 0.2-9.8%. W1 is exempt BY CONSTRUCTION — obs[28] prices the direct plane change that drift-and-wait exists to avoid, so a feasibility filter there would delete the skill.
+
+== G5  the success fuel bonus normalizes by THIS episode's budget ==
+  Left at the compile-time FUEL_FRAC, a lean draw could never reach the
+  full +10 and a rich one got it for free — and obs[6] makes the budget
+  visible, so the policy would learn to prefer rich episodes.
+    f=0.113 -> budget  352.8 m/s, obs[6] at reset 0.1130 (expected 0.1130)
+    f=0.200 -> budget  656.5 m/s, obs[6] at reset 0.2000 (expected 0.2000)
+  [PASS] G5a the drawn budget reaches the tank and obs[6]
+         obs[6] tracks the draw at both extremes (0.1130/0.2000 vs 0.113/0.200)
+
+  farmability: coast a full cap at each extreme; the shaping banked
+  must be budget-INDEPENDENT (the budget is not a reward channel).
+    f=0.113  max do-nothing shaping gain +0.01830
+    f=0.200  max do-nothing shaping gain +0.01830
+  [PASS] G5b do-nothing shaping is budget-independent (no fuel farming)
+         |gain(lean) - gain(rich)| = 0.00000 (gate 0.05); values +0.01830 / +0.01830
+
+=== 7/7 gates pass ===
+
+==============================================================================
+TRANSPLANT BIT-IDENTITY
+==============================================================================
+=== normalizer transplant ===
+  src models/t3/extj2_A3b_j2_box5k1.pt
+  encoder tensor policy.encoder.0.weight (128, 38)
+  alt  1.6e+06 -> 8e+06   lvlh 6.371e+06 -> 6.371e+06
+    obs[ 0]  obs_new/obs_old 0.200000  => weight column x 5.0000
+    obs[ 7]  obs_new/obs_old 0.200000  => weight column x 5.0000
+    obs[17]  obs_new/obs_old 0.554659  => weight column x 1.8029
+    obs[20]  obs_new/obs_old 0.554659  => weight column x 1.8029
+  wrote /tmp/t11_v.pt
+
+  arm                                 success  md5
+  source @ source family             91/100   e81c41eb204c4308
+  source @ target family              0/100   ebf92a5972aedba5
+  TRANSPLANT @ target family         91/100   e81c41eb204c4308
+
+  [PASS] transplant action stream is BIT-IDENTICAL to the source at home
+         (untransplanted loses 91 of 100 episodes, which is the barrier being removed)
+
+==============================================================================
+WARM-START ROOTS produced (models/t11/)
+==============================================================================
+drwxr-xr-x  6 pete  staff     192 Aug 15 14:37 ..
+-rw-r--r--  1 pete  staff  569573 Aug 15 14:37 t11_root_a3b_wide.pt
+-rw-r--r--  1 pete  staff  569573 Aug 15 14:37 t11_root_eE3_wide.pt
+-rw-r--r--  1 pete  staff  569637 Aug 15 14:37 t11_root_j2bonav_wide.pt
+  obs[29,30] audit: e-E3 already ZERO (unbiased when J2 makes them live);
+  J2 lineages have them trained; obs[31,32] weights are inert because those
+  channels are hard-zero in every config. No newly-live zeroing required.
+
+================================================================================
+ ADDENDUM — THE SMOKE FOUND A SECOND BLOCKER: THE DAY-WARP IS UNAFFORDABLE
+                                IN NAV MODE AT nav_max_ticks=0
+================================================================================
+
+The first 2M smoke ran 15 minutes and reported Epoch 0 / Steps 0. Nothing had
+crashed and no metric was wrong; it was simply not going to finish.
+
+MECHANISM. `orbital_nav._nav_step` sub-steps the filter once per minute of tau
+when nav_max_ticks=0. Row 30 is tau=1440, so ONE day-warp decision is 1440 EKF
+updates -- 4x the previous worst row (tau=360) and 24x the median. Under a
+uniform policy the mean cost per decision goes
+
+    rows 0-29 (pre-T11)    22.0 ticks/decision   max  360
+    rows 0-30 (T11)        67.7 ticks/decision   max 1440
+
+MEASURED THROUGHPUT, T11 mixture, bearings_only, 8 envs (box under load ~50, so
+read the RATIOS, not the absolutes):
+
+    rows 0-29, K=0      22.5 env-steps/s     the pre-T11 baseline
+    rows 0-30, K=0       4.4 env-steps/s     5.1x slower
+    rows 0-30, K=120    19.8 env-steps/s     0.88x of baseline
+
+Calibrated against a real trainer -- j2nav T-J2BO-nav logged 2.2K SPS on
+bearings-only, 49.9M steps in 6 h -- that is
+
+    rung A  50M    K=0 ~32 h      K=120 ~7 h
+    rung B 200M    K=0 ~129 h     K=120 ~29 h      (5.4 DAYS vs ~1.2)
+
+WHY A CAP IS SAFE HERE. MAJOR-7 replaced the broken "cap tau but tick at 60 s"
+form -- which pinned the last sub-tick to the wrong epoch and diverged the
+filter -- with a fixed COUNT and an adaptive INTERVAL: n=min(tau,K),
+dt=tau*60/n. Filter and truth stay on one clock at every K. So this is the
+supported path, not a workaround.
+
+DIVERGENCE vs K, measured on a PURE-DAY-WARP policy (the worst case that
+exists), W1_driftwait, 8 envs x 40 decisions:
+
+    K      dt between fixes    diverge rate    wall
+    0            1 min            0.000       209.4 s
+    30          48 min            0.109         4.8 s
+    60          24 min            0.041         9.4 s
+    120         12 min            0.003        18.1 s
+    240          6 min            0.003        36.9 s
+
+120 is the knee: it TIES the uncapped filter and K=240 at 0.003, 36x better
+than K=30, for 11.6x the speed of uncapped.
+
+COST TO THE WARM-START ROOTS: NONE MEASURED. The roots trained at K=0, and
+K=120 re-times rows 16/17 (tau=180/360) as well as row 30 -- 28 of 31 rows are
+untouched. j2bonav-wide zero-shot on E0_j2, 40 eps:
+
+    K=0     36/40 = 90.0%   dv 274.5 m/s   efficiency 1.074x   207 s
+    K=120   36/40 = 90.0%   dv 274.5 m/s   efficiency 1.083x    92 s
+
+Same success, same fuel, 2.25x the speed. (The action-stream md5 differs, as it
+must -- the filter is on a different tick schedule -- so this is a capability
+equivalence, not a bit-identity claim.)
+
+SHIPPED: nav_max_ticks=120 in t11_cells.base_env_kwargs, t11_eval.py, and
+t11_campaign.sh (override T11_NAV_MAX_TICKS). New gate G6 fails the campaign if
+the day-warp row is live while either the campaign or the evaluator leaves K
+outside 60..240 -- the failure mode is invisible (no crash, no bad metric, the
+run just never lands) so it needs a gate, not a comment.
+
+    === 8/8 gates pass (G0 G6 G1 G2 G3 G4 G5a G5b) ===
+
+================================================================================
+ ADDENDUM 2 — RE-RUNNING THE BATTERY CAUGHT THE TICK-CAP FIX BREAKING TRUTH MODE
+================================================================================
+
+The tick-cap fix put `nav_max_ticks` into `t11_cells.base_env_kwargs()` -- the
+dict EVERY caller uses -- with the comment "inert for truth-mode callers, which
+never consult it".
+
+True, and irrelevant. `Orbital.__init__` REJECTS unknown kwargs, so a nav-only
+key in the shared dict is not a silent no-op, it is:
+
+    TypeError: Orbital.__init__() got an unexpected keyword argument
+               'nav_max_ticks'
+
+G2 through G5b never executed. The battery aborted at G1 and reported exit 1,
+and stage 0 of the campaign would have died the same way. Fixing it surfaced a
+second, quieter break one layer out: the scripts-side re-export shim lists its
+names explicitly and did not forward `nav_env_kwargs`, so the gate then failed
+with AttributeError instead.
+
+FIX: `nav_env_kwargs()` carries the nav-only knob; `base_env_kwargs()` stays
+pure-C; both are re-exported.
+
+NEW GATE G6b constructs a real `Orbital` from `base_env_kwargs()` and asserts
+`nav_max_ticks` is absent from it. G6 is now G6a (cap in range) + G6b (cap in
+the right dict).
+
+The lesson worth keeping: "inert" has two meanings, and only one of them is
+safe. A flag the C env ignores is inert; a kwarg the constructor has never heard
+of is fatal. G1 tests the first kind. G6b tests the second.
+
+FINAL GATE STATE (idle box, 2026-08-15 23:0x):
+    anchors  25/25 pass   (verify_extj2.py --stage all, exit 0)
+    gates     9/9  pass   (G0 G6a G6b G1 G2 G3 G4 G5a G5b, exit 0)
+
+================================================================================
+ ADDENDUM 3 — THE ONE GATE THAT DID NOT LAND: TRAINER-LOOP SMOKE
+================================================================================
+
+NOT ESTABLISHED. Four attempts, none of which produced a trained checkpoint:
+
+  1. 8w x 256 envs, 2M, no thread pinning  -- 20 min, no epoch. Workers at 170%
+     CPU each (BLAS oversubscription: 8 x 1.7 = 13.6 of 14 cores).
+  2. same, WITH OMP/OPENBLAS/VECLIB/MKL=1  -- workers dropped to ~90% (one core
+     each, no thrash). 20 min, no epoch, no data-dir.
+  3. 4 workers x vec.num-envs 1           -- crashed at once:
+     `APIUsageError: num_envs must be divisible by num_workers`. vec.num_envs is
+     the TOTAL instance count, not per-worker.
+  4. Serial, 32 agents, 4096-step budget   -- >10 min, no completion.
+  5. rung A's ACTUAL command, 15 min probe -- log never emitted a Steps/SPS
+     frame; probe killed and its experiment dir deleted.
+
+WHAT IS AND IS NOT IMPLICATED. The C env is not: Orbital(num_envs=64) does
+300,210 env-steps/s and allocates 8 MB for 256 agents, so neither MAX_STEPS
+22000 nor the trajectory buffer is a factor (both were checked and cleared).
+The nav wrapper is not, on its own: measured under the T11 mixture at K=120,
+
+    8 envs/proc     32.1 env-steps/s     64 envs/proc    83.7
+    256 envs/proc  287.5 env-steps/s  ->  x8 workers = 2300, epoch in 0.9 min
+
+which matches the 2.2K SPS the real j2nav bearings-only trainer logged. By that
+arithmetic the shipped shape should turn an epoch a minute; it did not. The gap
+is between the wrapper and the pufferl loop and was NOT characterised -- a
+worker sample showed 100% of time in `_PyEval_EvalFrameDefault` (interpreted
+Python, no numpy/BLAS frame), which locates it in a Python-level loop and no
+further.
+
+CONSEQUENCE FOR THE CAMPAIGN: rung A and rung B wall-clock are UNKNOWN. The
+K=120 ratios in Addendum 1 remain valid as ratios -- the day-warp costs 4.6x at
+K=0 and 120 is the knee -- but the absolute ETAs derived from the 2.2K-SPS
+calibration are NOT supported by any trainer measurement taken here. Do not
+schedule against them. Establish SPS from a short live rung-A run before
+committing the box to 250M steps.
+
+Everything else is green: anchors 25/25, gates 9/9, transplant bit-identity,
+and the evaluator exercising all 7 cells against real checkpoints.

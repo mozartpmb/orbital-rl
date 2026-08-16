@@ -1,0 +1,81 @@
+T11 recon measurements — 2026-08-15T18:17:44Z, branch ext-t11 @ 0b72bb9
+worktree /Users/pete/space_training-j2; MAIN untouched (m10 training there)
+
+=== A. family probe: what e is reachable in each normalizer ===
+=== T11 family probe: what e is reachable inside each normalizer? ===
+    obs[0] = (a - R_EARTH)/scale, RAW against a declared Box(-2,2).
+    perigee keepout 6.571e6 m => e_max(a) = 1 - 6.571/a
+
+  Analytic ceiling: the largest e a band can hold at all
+    X3 band top      7.171e6  e_max_at_apogee 0.0837   |obs0| narrow  0.50  wide  0.10
+    E1 band top      7.871e6  e_max_at_apogee 0.1652   |obs0| narrow  0.94  wide  0.19
+    narrow |obs0|<=1 7.971e6  e_max_at_apogee 0.1756   |obs0| narrow  1.00  wide  0.20
+    narrow |obs0|<=2 9.571e6  e_max_at_apogee 0.3134   |obs0| narrow  2.00  wide  0.40
+    E2 band top      9.871e6  e_max_at_apogee 0.3343   |obs0| narrow  2.19  wide  0.44
+    E3 band top     14.371e6  e_max_at_apogee 0.5428   |obs0| narrow  5.00  wide  1.00
+
+  Measured, 4096 resets per row. "setting" is the KNOB, "realized" is the RESULT.
+  band (a_min-a_max)/1e6     e_max set  e_t p50     p90     p99     max  |obs0|p99 N      W  gave_up
+  X3     6.671-7.171              0.10   0.0255  0.0578  0.0758  0.0824         0.50   0.10   0.0000
+  X3     6.671-7.171              0.30   0.0246  0.0581  0.0750  0.0827         0.50   0.10   0.0000
+  E1     6.671-7.871              0.10   0.0373  0.0826  0.0981  0.1000         0.93   0.19   0.0000
+  E1     6.671-7.871              0.30   0.0454  0.1038  0.1369  0.1614         0.93   0.19   0.0000
+  N1max  6.671-7.971              0.10   0.0380  0.0834  0.0983  0.1000         0.99   0.20   0.0000
+  N1max  6.671-7.971              0.30   0.0477  0.1121  0.1477  0.1726         1.00   0.20   0.0000
+  N1hi   7.200-7.971              0.10   0.0424  0.0843  0.0981  0.0999         0.97   0.20   0.0000
+  N1hi   7.200-7.971              0.30   0.0540  0.1106  0.1458  0.1671         0.99   0.20   0.0000
+  N2max  6.671-9.571              0.10   0.0418  0.0860  0.0988  0.0999         1.98   0.40   0.0000
+  N2max  6.671-9.571              0.30   0.0875  0.2069  0.2686  0.2951         1.99   0.40   0.0000
+  E2     6.671-9.871              0.10   0.0418  0.0859  0.0988  0.0999         2.17   0.44   0.0000
+  E2     6.671-9.871              0.30   0.0928  0.2220  0.2865  0.2995         2.17   0.44   0.0000
+  E3    6.671-14.371              0.10   0.0398  0.0852  0.0986  0.1000         4.92   1.00   0.0000
+  E3    6.671-14.371              0.30   0.1140  0.2557  0.2955  0.2999         4.95   1.00   0.0000
+
+  THE ANSWER. Highest realized e_t p90 reachable with narrow |obs0| p99 <= 1:
+    N1max  6.671-7.971  e_max=0.3  ->  realized e_t p90 = 0.1121, p99 0.1477, max 0.1726  (|obs0| p99 1.00)
+    E-ladder reference (measured previously, WIDE normalizers):
+      E1 realized e_t p90 0.081 | E2 0.166 | E3 0.257
+
+=== B. exact narrow->wide encoder transplant ===
+=== T11 transplant probe: narrow -> wide, exactly ===
+    src extj2_A3b_j2_box5k1.pt
+    obs channel scale factors applied to encoder.weight columns:
+      obs[ 0]  obs_new/obs_old = 0.200000  => weight column x 5.0000
+      obs[ 7]  obs_new/obs_old = 0.200000  => weight column x 5.0000
+      obs[17]  obs_new/obs_old = 0.554659  => weight column x 1.8029
+      obs[20]  obs_new/obs_old = 0.554659  => weight column x 1.8029
+      obs[24]  obs_new/obs_old = 0.424733  => weight column x 2.3544
+      obs[33]  obs_new/obs_old = 0.424733  => weight column x 2.3544
+      obs[34]  obs_new/obs_old = 0.424733  => weight column x 2.3544
+
+  X3-loose task, truth mode, 100 eps, seed 123:
+
+  arm                                   success            md5
+  original @ narrow (home)             91/100    e81c41eb204c
+  original @ wide (the barrier)         1/100    6e0797a05aeb
+  TRANSPLANTED @ wide                  91/100    e81c41eb204c
+
+  transplant reproduces home: YES   (91/100 vs 91/100)
+  the barrier is real without it: original loses 90 episodes moving to wide
+
+  --- nav lineage (bearings-only, real IOD) ---
+  J2BO-nav at J2X-loose, BEARINGS-ONLY (real IOD), 60 eps:
+    orig @ narrow (home)      60/60   md5 724f345ba8ee
+    orig @ wide (barrier)      0/60   md5 3339ab555da5
+    TRANSPLANT @ wide         60/60   md5 724f345ba8ee
+
+=== C. Dv feasibility vs sampled fuel budget ===
+  required Dv = 0.5*v_c*sqrt(da_rel^2+|de|^2) + v_c*|dh|   (the obs[28] estimate)
+  cell                   dv_req p50      p90      p99 | infeasible at budget:
+                                                      |    245    350    478    656
+  X3/E0  e.05 LEO             262.7    352.1    413.1 |  59.2%   9.8%   0.0%   0.0%
+  E1     e.10                 239.6    302.1    339.0 |  46.0%   0.2%   0.0%   0.0%
+  E2     e.20                 246.6    311.8    374.7 |  50.8%   2.2%   0.0%   0.0%
+  E3     e.30                 248.0    334.6    412.8 |  51.5%   6.6%   0.0%   0.0%
+  J2X    e.05 incl            261.7    352.3    418.3 |  58.6%   9.8%   0.0%   0.0%
+  W1     node-dom 2-5         632.2    809.5    898.9 | 100.0%  99.7%  88.2%  44.4%
+
+  budgets: f=0.08 -> 245 m/s | 0.113 -> 353 | 0.15 -> 478 | 0.20 -> 656
+  NOTE valid_init_only rejects on PERIGEE only; fuel never enters the
+  rejection sampler, so a low draw produces FEASIBLE-LOOKING but
+  UNSOLVABLE episodes rather than gave_up. That is the failure mode.
