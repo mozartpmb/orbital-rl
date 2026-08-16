@@ -7,6 +7,18 @@
 #   nohup caffeinate -is bash scripts/orbital/extj2/t11_campaign.sh \
 #       > /tmp/t11_stdout.log 2>&1 &
 #
+# TO KILL A RUN BY HAND, KILL THE WORKERS FIRST. `pkill -f` on the trainer's
+# command line does NOT match its rollout workers -- they are spawned as
+# `python -c "from multiprocessing.spawn import ..."` and carry none of the
+# launch flags -- so killing the parent alone ORPHANS eight processes that keep
+# spinning at ~170% CPU each. Two of those sets survived a T11 smoke and drove
+# the box to load 78, which is what made the first smoke look "slow" when it was
+# starved. Use:
+#     pkill -TERM -P <trainer_pid>   # children first
+#     kill  -TERM    <trainer_pid>   # then the parent
+# The watchdog below already does exactly this, in that order; the trap is only
+# for manual kills.
+#
 # ── WHAT CHANGED IN THE WORLD MODEL, AND WHY THE FAMILY IS WIDE ─────────────
 # GEN_MATRIX called the narrow/wide normalizer split "the largest single effect
 # in the matrix" (99 pp, against 51 pp for adding J2 itself) and recommended
