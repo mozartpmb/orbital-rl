@@ -184,3 +184,80 @@ outside 60..240 -- the failure mode is invisible (no crash, no bad metric, the
 run just never lands) so it needs a gate, not a comment.
 
     === 8/8 gates pass (G0 G6 G1 G2 G3 G4 G5a G5b) ===
+
+================================================================================
+ ADDENDUM 2 — RE-RUNNING THE BATTERY CAUGHT THE TICK-CAP FIX BREAKING TRUTH MODE
+================================================================================
+
+The tick-cap fix put `nav_max_ticks` into `t11_cells.base_env_kwargs()` -- the
+dict EVERY caller uses -- with the comment "inert for truth-mode callers, which
+never consult it".
+
+True, and irrelevant. `Orbital.__init__` REJECTS unknown kwargs, so a nav-only
+key in the shared dict is not a silent no-op, it is:
+
+    TypeError: Orbital.__init__() got an unexpected keyword argument
+               'nav_max_ticks'
+
+G2 through G5b never executed. The battery aborted at G1 and reported exit 1,
+and stage 0 of the campaign would have died the same way. Fixing it surfaced a
+second, quieter break one layer out: the scripts-side re-export shim lists its
+names explicitly and did not forward `nav_env_kwargs`, so the gate then failed
+with AttributeError instead.
+
+FIX: `nav_env_kwargs()` carries the nav-only knob; `base_env_kwargs()` stays
+pure-C; both are re-exported.
+
+NEW GATE G6b constructs a real `Orbital` from `base_env_kwargs()` and asserts
+`nav_max_ticks` is absent from it. G6 is now G6a (cap in range) + G6b (cap in
+the right dict).
+
+The lesson worth keeping: "inert" has two meanings, and only one of them is
+safe. A flag the C env ignores is inert; a kwarg the constructor has never heard
+of is fatal. G1 tests the first kind. G6b tests the second.
+
+FINAL GATE STATE (idle box, 2026-08-15 23:0x):
+    anchors  25/25 pass   (verify_extj2.py --stage all, exit 0)
+    gates     9/9  pass   (G0 G6a G6b G1 G2 G3 G4 G5a G5b, exit 0)
+
+================================================================================
+ ADDENDUM 3 — THE ONE GATE THAT DID NOT LAND: TRAINER-LOOP SMOKE
+================================================================================
+
+NOT ESTABLISHED. Four attempts, none of which produced a trained checkpoint:
+
+  1. 8w x 256 envs, 2M, no thread pinning  -- 20 min, no epoch. Workers at 170%
+     CPU each (BLAS oversubscription: 8 x 1.7 = 13.6 of 14 cores).
+  2. same, WITH OMP/OPENBLAS/VECLIB/MKL=1  -- workers dropped to ~90% (one core
+     each, no thrash). 20 min, no epoch, no data-dir.
+  3. 4 workers x vec.num-envs 1           -- crashed at once:
+     `APIUsageError: num_envs must be divisible by num_workers`. vec.num_envs is
+     the TOTAL instance count, not per-worker.
+  4. Serial, 32 agents, 4096-step budget   -- >10 min, no completion.
+  5. rung A's ACTUAL command, 15 min probe -- log never emitted a Steps/SPS
+     frame; probe killed and its experiment dir deleted.
+
+WHAT IS AND IS NOT IMPLICATED. The C env is not: Orbital(num_envs=64) does
+300,210 env-steps/s and allocates 8 MB for 256 agents, so neither MAX_STEPS
+22000 nor the trajectory buffer is a factor (both were checked and cleared).
+The nav wrapper is not, on its own: measured under the T11 mixture at K=120,
+
+    8 envs/proc     32.1 env-steps/s     64 envs/proc    83.7
+    256 envs/proc  287.5 env-steps/s  ->  x8 workers = 2300, epoch in 0.9 min
+
+which matches the 2.2K SPS the real j2nav bearings-only trainer logged. By that
+arithmetic the shipped shape should turn an epoch a minute; it did not. The gap
+is between the wrapper and the pufferl loop and was NOT characterised -- a
+worker sample showed 100% of time in `_PyEval_EvalFrameDefault` (interpreted
+Python, no numpy/BLAS frame), which locates it in a Python-level loop and no
+further.
+
+CONSEQUENCE FOR THE CAMPAIGN: rung A and rung B wall-clock are UNKNOWN. The
+K=120 ratios in Addendum 1 remain valid as ratios -- the day-warp costs 4.6x at
+K=0 and 120 is the knee -- but the absolute ETAs derived from the 2.2K-SPS
+calibration are NOT supported by any trainer measurement taken here. Do not
+schedule against them. Establish SPS from a short live rung-A run before
+committing the box to 250M steps.
+
+Everything else is green: anchors 25/25, gates 9/9, transplant bit-identity,
+and the evaluator exercising all 7 cells against real checkpoints.
