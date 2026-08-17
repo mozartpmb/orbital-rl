@@ -261,3 +261,65 @@ committing the box to 250M steps.
 
 Everything else is green: anchors 25/25, gates 9/9, transplant bit-identity,
 and the evaluator exercising all 7 cells against real checkpoints.
+
+================================================================================
+ ADDENDUM 4 — MAJOR-17: THE OOP SEED CEILING (rung-B crash-loop), FIXED
+================================================================================
+
+RUNG B DIED ON THE FIRST RESET, every worker, on MAJOR-16's own assert.
+
+WHICH OF THE TWO CANDIDATE MECHANISMS FIRED -- measured, not reasoned:
+
+  (a) THE FIXED 1e-1 CEILING.  CONFIRMED, and it is the whole crash.
+      The assert compares sig_rate_oop*rho0 >= v_oop using the SAME di on both
+      sides, so algebraically sig*rho0 = max(v_oop, sigma_v_ecc) >= v_oop
+      always -- a wrong di CANNOT violate it. Only the ceiling can, and it bites
+      when rho0 < v_oop/1e-1 = 1326 m at di=1 deg.
+          rho0 under the mixture is BIMODAL: p1 316 m, p50 32.3 km, p99 43.6 km
+          (the tight-box and drift-and-wait cells seed close).
+          rows sitting exactly on the ceiling ......... 16.4%
+          rows predicted by rho0 < 1326 m ............. 16.4%   <- exact match
+      No mixture is required to trigger it; the mixture only made close seeds
+      common.
+
+  (b) WRAPPER di vs PER-EPISODE CELL di.  REAL, but NOT the trigger.
+      wrapper _di_max = 1.00 deg (construction kwarg)
+      cell-table max  = 5.00 deg (W1_driftwait, di 2-5 deg)
+      A blind seed cannot know the episode's di, so its ignorance must span the
+      SCENARIO distribution. Fixed via `_di_seed_max`.
+
+COST OF THE WIDENED (5 deg) PRIOR ON NARROW CELLS -- the question that decides
+whether the fix is free. 96 envs x 250 steps x 2 seeds, random policy:
+
+    cell             di_seed      NEES_med   diverge    blind    posRMSE
+    E0_j2          1 deg (old)       1.206    0.0012   0.1793   4232518
+    E0_j2          5 deg (NEW)       1.351    0.0011   0.1791   4224787
+    W1_driftwait   1 deg (old)       1.396    0.0005   0.1305   3573485
+    W1_driftwait   5 deg (NEW)       1.366    0.0005   0.1306   3566004
+
+It is free. On the narrow cell NEES moves 1.21 -> 1.35, the conservative
+direction and still in the consistent band; divergence, blind fraction and
+position RMSE are flat to 3 digits. On the wide cell it is marginally BETTER
+(NEES 1.40 -> 1.37). Nothing here argues for keeping the narrow prior.
+
+SWEEP -- same class, other scalars. Two silent siblings, measured, NOT patched:
+    r_max        ctor 7.53e6  vs mixture-honest 1.868e7   2.48x TOO LOW
+    sigma_v_ecc  ctor 385 m/s vs mixture-honest 2310 m/s   6.0x TIGHT
+r_max is the serious one: E3_j2 draws a to 1.4371e7, so the range prior can
+EXCLUDE THE TRUE RANGE. Not patched because nothing asserts on these (they
+cannot crash-loop the campaign) and widening them moves the prior for every
+cell including the narrow ones rung A's floors are set against -- a deliberate
+re-baseline needing its own before/after, per the pre-existing r_min note.
+
+VERIFICATION
+    repro, 4000 steps x 256 envs, seeds 7 / 20260817 / 1337 ... 3/3 CLEAN
+    gate battery ............................................ 11/11 PASS
+        (G0 G6a G6b G7a G7b G1 G2 G3 G4 G5a G5b)
+    rung-B trainer smoke, EXACT rung-B command, 2M steps ..... PASS
+        Epoch 15, Steps 2.0M, Uptime 19m, 0 AssertionError,
+        final ckpt model_puffer_orbital_nav_000016.pt written
+
+    *** SPS = 1.7K ***  -- the number the previous turn could not obtain.
+    rung A  50M  ->   8.2 h        rung B 200M  ->  32.7 h   (A+B ~ 41 h)
+    Rung A runs t11_mixture=0 (no day-warp-heavy cells), so 8.2 h is an upper
+    bound; rung B's 32.7 h is measured on its own configuration.
