@@ -267,6 +267,22 @@ class OrbitalNav(Orbital):
             raise ValueError('nav_j2_mode=1 requires dim3_mode=1 '
                              '(the J2 filter is the 6-state MSC path).')
         self._di_max = float(kwargs.get('di_max_rad', -1.0))
+        # MAJOR-17: the blind OOP seed must span the SCENARIO distribution, not
+        # the construction kwarg. Under the T11 mixture the C sampler redraws
+        # di per episode from the cell table, so `di_max_rad` describes only the
+        # pre-mixture default and understates the widest cell by 5x.
+        self._di_seed_max = self._di_max
+        if int(kwargs.get('t11_mixture', 0) or 0) or \
+                int(kwargs.get('cell_mixture_mode', 0) or 0):
+            try:
+                from ..orbital import t11_cells as _t11
+                cell_di = max(float(c['di_max']) for _, c in _t11.CELLS)
+                self._di_seed_max = max(self._di_max, cell_di)
+            except Exception:
+                # A missing/!changed table must not take the env down; the
+                # construction kwarg is the conservative-but-narrow fallback,
+                # and G7 fails loudly if the widening silently stops happening.
+                pass
         self._kw3 = {k: kwargs.get(k) for k in
                      ('obs_di_scale_rad', 'de_max', 'obs_de_scale',
                       'shape_dv_ref_ms') if kwargs.get(k) is not None}
@@ -318,6 +334,33 @@ class OrbitalNav(Orbital):
         # Eccentricity-driven velocity-guess error (T4 §8.2: the circular-guess
         # error is ~v_c * e, not a function of range).
         self._sigma_v_ecc = max(7.7e3 * max(e_max, 0.02), 100.0)
+        # ── MAJOR-17 SIBLINGS, FOUND AND MEASURED, DELIBERATELY NOT PATCHED ──
+        # These three lines are the SAME defect class as the OOP seed below:
+        # a wrapper prior sized from a CONSTRUCTION kwarg while the T11 cell
+        # sampler redraws the underlying quantity PER EPISODE. Measured against
+        # the shipped cell table with the rung-B kwargs (a 6.671-7.171e6,
+        # e_max 0.05):
+        #
+        #   r_max        ctor 7.53e6  vs mixture-honest 1.868e7   2.48x TOO LOW
+        #   sigma_v_ecc  ctor 385 m/s vs mixture-honest 2310 m/s   6.0x TIGHT
+        #   r_min        ctor 6.337e6 vs mixture-honest 4.670e6   (see below)
+        #
+        # r_max is the serious one: E3_j2 draws a up to 1.4371e7, so for those
+        # episodes the range prior EXCLUDES THE TRUE RANGE rather than merely
+        # being tight — the bracket [lo, hi] that seeds rho0 is solved against
+        # r_max, so no amount of measurement recovers a target the prior placed
+        # outside the universe.
+        #
+        # NOT patched here, for two reasons. (1) Unlike the OOP seed these are
+        # silent: nothing asserts on them, so they cannot crash-loop the
+        # campaign — they degrade filter consistency on the wide-e cells only.
+        # (2) Widening them moves the range prior for EVERY cell including the
+        # narrow ones rung A's floors are defined against, which is exactly the
+        # "deliberate re-baseline, not silent" the r_min note above reserves.
+        # Fixing them belongs with its own before/after on the E-cell floors.
+        # r_min is listed for completeness only: widening it to 4.670e6 would
+        # widen the prior INTO THE EARTH, and the pre-existing note above
+        # already argues the honest floor is EARTH_KEEPOUT (6.571e6).
 
         self._nav_ready = False
         super().__init__(**kwargs)
@@ -678,11 +721,36 @@ class OrbitalNav(Orbital):
         # 1.15x of margin — and at di_max = 2 deg it is over-confident by ~3x
         # on a channel with no measurement of its own at epoch, which is the
         # classic bearings-only divergence trigger.
-        di = self._di_max if self._di_max > 0.0 else 0.0
+        #
+        # MAJOR-17, two defects, one crash. Under the T11 mixture the C sampler
+        # draws di PER EPISODE from the cell table (W1_driftwait: 2-5 deg),
+        # while `self._di_max` is a CONSTRUCTION kwarg fixed at 1 deg. So:
+        #
+        #   (b) the seed was sized for a plane error the episode need not have.
+        #       Measured: cell-table max di is 5 deg against the wrapper's 1.0.
+        #       `_di_seed_max` now covers the SCENARIO DISTRIBUTION, which is
+        #       what a blind seed's ignorance has to span -- the episode's own
+        #       di is not knowable at epoch, so the prior must cover the widest
+        #       cell the mixture can hand us.
+        #
+        #   (a) is what actually crashed it, and it needed no mixture at all:
+        #       the assert compares sig*rho0 against v_oop with the SAME di on
+        #       both sides, so a wrong di cannot violate it. Only the fixed
+        #       1e-1 ceiling can, and it bites whenever rho0 < v_oop/1e-1 --
+        #       1326 m at di=1 deg. rho0 is bimodal under the mixture (p1 316 m,
+        #       p50 32 km) because the tight-box and drift-and-wait cells seed
+        #       close, so 16.4% of rows landed on the ceiling and every one of
+        #       them tripped the assert. It fires on the FIRST reset.
+        #
+        # The ceiling now never pushes the seed below its own ignorance. That
+        # is the whole point of MAJOR-16: a ceiling that manufactures
+        # confidence the filter has not earned is the same overconfident-OOP
+        # bug MAJOR-16 was written to prevent, just arriving through the clip
+        # instead of through the sigma.
+        di = self._di_seed_max if self._di_seed_max > 0.0 else 0.0
         v_oop = v_c * np.sin(di)
-        sig_rate_oop = np.clip(
-            np.maximum(v_oop, self._sigma_v_ecc) / np.maximum(rho0, 1.0),
-            1e-5, 1e-1)
+        raw_oop = np.maximum(v_oop, self._sigma_v_ecc) / np.maximum(rho0, 1.0)
+        sig_rate_oop = np.clip(raw_oop, 1e-5, np.maximum(1e-1, raw_oop))
         assert np.all(sig_rate_oop * rho0 >= v_oop - 1e-9), \
             'MAJOR-16: out-of-plane rate seed is below its own ignorance'
         Py0 = np.zeros((idx.size, 6, 6))

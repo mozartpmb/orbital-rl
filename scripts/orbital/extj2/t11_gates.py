@@ -315,10 +315,59 @@ def gate_tick_cap():
           f'nav_env_kwargs K={nav_k}')
 
 
+def gate_oop_seed():
+    """MAJOR-17: the blind OOP seed must span the mixture, and no ceiling may
+    push it back under its own ignorance.
+
+    Two independent failures met here, and only one of them announced itself.
+
+    G7a: `di_max_rad` is a CONSTRUCTION kwarg (1 deg) while the C sampler
+    redraws di per episode from the cell table (W1_driftwait: up to 5 deg). A
+    blind seed cannot know the episode's own di, so its ignorance has to cover
+    the widest cell the mixture can deal. Silent when wrong -- an overconfident
+    OOP channel just diverges more often.
+
+    G7b: the fixed 1e-1 ceiling on sig_rate_oop bit whenever
+    rho0 < v_oop/1e-1 (1326 m at di=1 deg), and rho0 is bimodal under the
+    mixture (p1 316 m) because the tight-box and drift-and-wait cells seed
+    close. 16.4% of rows landed on the ceiling and every one tripped MAJOR-16's
+    assert -- on the FIRST reset. Note this needed no mixture at all: the assert
+    uses the same di on both sides, so only the ceiling can violate it.
+    """
+    print('\n== G7  out-of-plane seed spans the mixture and is never clipped '
+          'under its own ignorance ==')
+    from pufferlib.ocean.orbital_nav.orbital_nav import OrbitalNav
+    cell_di = max(float(c['di_max']) for _, c in T.CELLS)
+    kw = T.nav_env_kwargs(num_envs=8, nav_mode='bearings_only', j2_mode=1,
+                          nav_j2_mode=1, t11_mixture=1, di_max_rad=0.017453)
+    e = OrbitalNav(**kw)
+    seed_di = float(getattr(e, '_di_seed_max', -1.0))
+    e.close()
+    check('G7a blind OOP seed covers the widest cell, not the ctor kwarg',
+          seed_di >= cell_di - 1e-12,
+          f'_di_seed_max={math.degrees(seed_di):.2f} deg vs cell-table max '
+          f'{math.degrees(cell_di):.2f} deg (ctor kwarg was 1.00 deg)')
+
+    # The ceiling, exercised directly across the rho0 range the mixture spans.
+    v_c = math.sqrt(3.986004418e14 / 6.9e6)
+    v_oop = v_c * math.sin(seed_di)
+    sigma_v_ecc = 385.0
+    rho0 = np.array([100.0, 316.0, 1e3, 1326.0, 5e3, 6624.0, 3.2e4, 4.4e4])
+    raw = np.maximum(v_oop, sigma_v_ecc) / np.maximum(rho0, 1.0)
+    sig = np.clip(raw, 1e-5, np.maximum(1e-1, raw))
+    ok = bool(np.all(sig * rho0 >= v_oop - 1e-9))
+    worst = float(np.min(sig * rho0 - v_oop))
+    check('G7b the OOP ceiling never manufactures confidence', ok,
+          f'v_oop={v_oop:.1f} m/s at di={math.degrees(seed_di):.2f} deg; '
+          f'worst (sig*rho0 - v_oop) = {worst:+.3e} m/s over rho0 in '
+          f'[{rho0.min():.0f}, {rho0.max():.0f}] m (must be >= 0)')
+
+
 def main():
     print('=== T11 gates ===')
     gate_tables()
     gate_tick_cap()
+    gate_oop_seed()
     gate_inert()
     gate_weights()
     gate_clock()
