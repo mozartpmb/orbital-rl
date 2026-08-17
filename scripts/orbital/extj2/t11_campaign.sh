@@ -224,6 +224,11 @@ train_arm() {
         --env.legacy-action-space 31 \
         --env.i-target-min-rad 0.5235987755982988 \
         --env.i-target-max-rad 1.0471975511965976 \
+        --env.di-max-rad 0.017453 \
+        --env.fuel-frac-min 0.113 --env.fuel-frac-max 0.20 \
+        --env.episode-cap-steps 3000 \
+        --env.a-min-override 6.671e6 --env.a-max-override 7.171e6 \
+        --env.e-max-target 0.05 --env.e-max-sat 0.05 \
         --env.nav-mode bearings_only \
         --env.nav-sensor-dt 60.0 --env.nav-noise-mult 1.0 \
         --env.nav-acq-min-sec 2700.0 --env.nav-acq-gate 0.20 \
