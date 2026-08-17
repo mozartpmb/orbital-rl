@@ -334,33 +334,51 @@ class OrbitalNav(Orbital):
         # Eccentricity-driven velocity-guess error (T4 §8.2: the circular-guess
         # error is ~v_c * e, not a function of range).
         self._sigma_v_ecc = max(7.7e3 * max(e_max, 0.02), 100.0)
-        # ── MAJOR-17 SIBLINGS, FOUND AND MEASURED, DELIBERATELY NOT PATCHED ──
-        # These three lines are the SAME defect class as the OOP seed below:
-        # a wrapper prior sized from a CONSTRUCTION kwarg while the T11 cell
-        # sampler redraws the underlying quantity PER EPISODE. Measured against
-        # the shipped cell table with the rung-B kwargs (a 6.671-7.171e6,
-        # e_max 0.05):
+        # ── MAJOR-17 SIBLINGS: MIXTURE-HONEST, AND ONLY UNDER MIXTURE ────────
+        # Same defect class as the OOP seed below — a wrapper prior sized from a
+        # CONSTRUCTION kwarg while the T11 cell sampler redraws the underlying
+        # quantity PER EPISODE — but with a sharper consequence than "tight".
         #
-        #   r_max        ctor 7.53e6  vs mixture-honest 1.868e7   2.48x TOO LOW
-        #   sigma_v_ecc  ctor 385 m/s vs mixture-honest 2310 m/s   6.0x TIGHT
-        #   r_min        ctor 6.337e6 vs mixture-honest 4.670e6   (see below)
+        # Under `t11_mixture=1` the ctor r_max is 7.53e6 while E3_j2 (weight
+        # 0.15) draws a up to 1.4371e7. The bracket [lo, hi] that seeds rho0 is
+        # solved AGAINST r_max, so for those episodes the range prior does not
+        # merely understate the range, it EXCLUDES THE TRUE RANGE — and no
+        # amount of measurement recovers a target the prior placed outside the
+        # universe.
         #
-        # r_max is the serious one: E3_j2 draws a up to 1.4371e7, so for those
-        # episodes the range prior EXCLUDES THE TRUE RANGE rather than merely
-        # being tight — the bracket [lo, hi] that seeds rho0 is solved against
-        # r_max, so no amount of measurement recovers a target the prior placed
-        # outside the universe.
+        # What makes that a flagship-level defect rather than a wide-cell wart:
+        # every single-cell EVAL constructs with that cell's own band and gets
+        # an honest prior, while MIXTURE TRAINING gets the narrow one. That is a
+        # train/eval split baked into the headline result — bug-#15's class.
         #
-        # NOT patched here, for two reasons. (1) Unlike the OOP seed these are
-        # silent: nothing asserts on them, so they cannot crash-loop the
-        # campaign — they degrade filter consistency on the wide-e cells only.
-        # (2) Widening them moves the range prior for EVERY cell including the
-        # narrow ones rung A's floors are defined against, which is exactly the
-        # "deliberate re-baseline, not silent" the r_min note above reserves.
-        # Fixing them belongs with its own before/after on the E-cell floors.
-        # r_min is listed for completeness only: widening it to 4.670e6 would
-        # widen the prior INTO THE EARTH, and the pre-existing note above
-        # already argues the honest floor is EARTH_KEEPOUT (6.571e6).
+        # So these are gated exactly like `_di_seed_max`: mixture-spanning when
+        # the mixture is on, ctor-derived otherwise. Every single-cell eval,
+        # every floor already recorded, and every published lineage is therefore
+        # bit-untouched. `r_min` stays ctor-derived unconditionally per its
+        # standing note above — widening it would widen the prior INTO THE
+        # EARTH, and that note already argues the honest floor is EARTH_KEEPOUT.
+        self._r_max_ctor = self._r_max
+        self._sigma_v_ecc_ctor = self._sigma_v_ecc
+        self._mixture_priors = False
+        if int(kwargs.get('t11_mixture', 0) or 0) or \
+                int(kwargs.get('cell_mixture_mode', 0) or 0):
+            try:
+                from ..orbital import t11_cells as _t11
+                e_mix = max(max(float(c['e_max_target']),
+                                float(c['e_max_sat'])) for _, c in _t11.CELLS)
+                r_mix = max(float(c['a_max']) * (1.0 + max(
+                    float(c['e_max_target']), float(c['e_max_sat'])))
+                    for _, c in _t11.CELLS)
+                if nav_r_max_m <= 0:
+                    self._r_max = max(self._r_max, r_mix)
+                self._sigma_v_ecc = max(self._sigma_v_ecc,
+                                        max(7.7e3 * max(e_mix, 0.02), 100.0))
+                self._mixture_priors = True
+            except Exception:
+                # A missing/changed table must not take the env down; the ctor
+                # values are the conservative-but-narrow fallback, and G8 fails
+                # loudly if the widening silently stops happening.
+                pass
 
         self._nav_ready = False
         super().__init__(**kwargs)

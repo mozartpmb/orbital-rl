@@ -323,3 +323,65 @@ VERIFICATION
     rung A  50M  ->   8.2 h        rung B 200M  ->  32.7 h   (A+B ~ 41 h)
     Rung A runs t11_mixture=0 (no day-warp-heavy cells), so 8.2 h is an upper
     bound; rung B's 32.7 h is measured on its own configuration.
+
+================================================================================
+ ADDENDUM 5 — MAJOR-17b: r_max / sigma_v_ecc, MIXTURE-GATED (train/eval split)
+================================================================================
+
+The r_max finding from Addendum 4 was NOT a deferrable re-baseline. Under
+mixture TRAINING the ctor prior excluded the true range; under every single-cell
+EVAL the wrapper is constructed with that cell's own band and gets an honest
+one. That is a train/eval split baked into the flagship number, not a wide-cell
+wart -- so it is fixed, and fixed the same way `_di_seed_max` was: the
+mixture-spanning values apply ONLY when t11_mixture=1 / cell_mixture_mode=1.
+Every single-cell eval, every floor already on record, and every published
+lineage is bit-untouched.
+
+                            ctor            mixture-honest
+    r_max                7.529550e6           1.8682300e7
+    sigma_v_ecc              385.0 m/s            2310.0 m/s
+    r_min                6.337450e6           UNCHANGED (standing note)
+
+HOW BAD IT ACTUALLY WAS -- from the new coverage gate, 2000 mixture draws:
+
+    true |r_t| spans      6.5762e6 .. 1.7029e7
+    ctor-only prior max   7.5296e6
+    -> the ctor prior would have EXCLUDED 39.1% OF TRUE TARGET RADII
+
+Not 15% (the E3_j2 weight I first estimated) -- E2_j2 and LONGRANGE also draw
+past 7.53e6, so the excluded mass is the combined weight of every cell whose
+band clears the ctor ceiling. Two episodes in five were being navigated with a
+prior that placed the target outside the universe.
+
+COST ON NARROW CELLS -- 96 envs x 250 steps x 2 seeds, random policy:
+
+    cell                  prior     NEES_med  diverge   blind  acq_lat_s  acq_n
+    E0_j2            ctor (old)        1.206   0.0012  0.1793     2745.0    322
+    E0_j2         mixture (NEW)        1.365   0.0015  0.1799     2745.0    322
+    TIGHT_5k1        ctor (old)        1.206   0.0012  0.1793     2745.0    322
+    TIGHT_5k1     mixture (NEW)        1.365   0.0015  0.1799     2745.0    322
+
+FREE. Acquisition latency -- the metric singled out as the one that would stop
+the ship -- is IDENTICAL to the tenth of a second, 2745.0 s in all four rows,
+over an identical 322 acquisitions. There is a mechanism for that and it is not
+luck: the median sits on BLOCKER-2's nav_acq_min_sec floor (2700 s), so
+acquisition here is FLOOR-limited, not information-limited, and prior width
+cannot move it. NEES moves 1.206 -> 1.365, the conservative direction and still
+consistent; divergence +0.0003 (against 0.109 at K=30 in the tick-cap sweep, so
+three orders inside that noise floor); blind fraction +0.0006.
+
+E0_j2 and TIGHT_5k1 return identical rows because they differ only in the
+SUCCESS BOX (30 km/50 m/s vs 5 km/1 m/s), which the navigation filter never
+reads -- same band, same e, same di, same cap, same seed.
+
+VERIFICATION (all re-run against the combined MAJOR-17 + 17b tree)
+    repro, 4000 steps x 256 envs, seeds 7 / 20260817 / 1337 .... 3/3 CLEAN
+    gate battery .............................................. 12/12 PASS
+        G0 G6a G6b G7a G7b G8 G1 G2 G3 G4 G5a G5b
+    rung-B trainer smoke, EXACT rung-B command, 2M steps ....... PASS
+        Epoch 15, Steps 2.0M, Uptime 18m, SPS 1.8K, 0 AssertionError,
+        final ckpt model_puffer_orbital_nav_000016.pt written
+
+    ETA unchanged in shape, marginally better at 1.8K SPS:
+        rung A  50M ->  7.7 h (upper bound; rung A is t11_mixture=0)
+        rung B 200M -> 30.9 h        A+B -> ~39 h

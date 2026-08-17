@@ -363,11 +363,55 @@ def gate_oop_seed():
           f'[{rho0.min():.0f}, {rho0.max():.0f}] m (must be >= 0)')
 
 
+def gate_range_prior():
+    """MAJOR-17b: the range prior must CONTAIN the true range under mixture.
+
+    This is the gate that was missing, and its absence is why the defect could
+    only be found by reading. `_r_max` brackets the target's orbital radius and
+    is what [lo, hi] -- and therefore the rho0 seed -- is solved against. Under
+    `t11_mixture=1` the ctor value is 7.53e6 while E3_j2 (weight 0.15) draws a
+    to 1.4371e7, so on those episodes the prior EXCLUDES THE TRUE RANGE. A
+    filter cannot recover a target it has placed outside the universe, and
+    nothing asserts on it, so it is silent.
+
+    Worse than silent: every single-cell EVAL constructs with that cell's own
+    band and gets an honest prior, while MIXTURE TRAINING gets the narrow one --
+    a train/eval split in the flagship number. Hence the check runs over
+    mixture draws specifically.
+    """
+    print('\n== G8  range prior contains the true range over mixture draws ==')
+    from pufferlib.ocean.orbital_nav.orbital_nav import OrbitalNav
+    N, BATCHES = 250, 8                       # 2000 draws
+    kw = T.nav_env_kwargs(num_envs=N, nav_mode='bearings_only', j2_mode=1,
+                          nav_j2_mode=1, t11_mixture=1, cell_mixture_mode=1)
+    e = OrbitalNav(**kw)
+    e.reset(seed=4242)
+    rng = np.random.default_rng(4242)
+    r_t = []
+    for _ in range(BATCHES):
+        _, _, _, tgt_c = e._decode()
+        r_t.append(np.linalg.norm(np.asarray(tgt_c)[:, :3], axis=1).copy())
+        e.step(rng.integers(0, 31, N, dtype=np.int32))
+    r_min, r_max = float(e._r_min), float(e._r_max)
+    ctor_max = float(getattr(e, '_r_max_ctor', r_max))
+    e.close()
+    r_t = np.concatenate(r_t)
+    inside = (r_t >= r_min) & (r_t <= r_max)
+    esc_ctor = float(np.mean(r_t > ctor_max))
+    check('G8 the mixture range prior contains every true target radius',
+          bool(np.all(inside)),
+          f'{r_t.size} draws; true |r_t| in [{r_t.min():.4e}, {r_t.max():.4e}]; '
+          f'prior [{r_min:.4e}, {r_max:.4e}]; outside={int((~inside).sum())}; '
+          f'the ctor-only prior ({ctor_max:.4e}) would have EXCLUDED '
+          f'{100.0 * esc_ctor:.1f}% of them')
+
+
 def main():
     print('=== T11 gates ===')
     gate_tables()
     gate_tick_cap()
     gate_oop_seed()
+    gate_range_prior()
     gate_inert()
     gate_weights()
     gate_clock()
