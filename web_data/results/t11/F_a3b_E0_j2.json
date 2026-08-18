@@ -1,0 +1,26 @@
+{
+  "label": "F_a3b_E0_j2",
+  "ckpt": "t11_root_a3b_wide.pt",
+  "cell": "E0_j2",
+  "nav_mode": "truth",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 185,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.925,
+  "causes": {
+    "success": 185,
+    "safety_cap": 15
+  },
+  "md5": "ddbc3b1364b2017d895038599ca7f0f4",
+  "dv_used_med": 287.0660171779832,
+  "dv_ref_med": 257.77666451903883,
+  "dv_budget_med": 502.9348083227672,
+  "efficiency_med": 1.0832320233254644,
+  "budget_used_med": 0.5773614598372276,
+  "ep_len_med": 886.0,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 0.3930227756500244
+}

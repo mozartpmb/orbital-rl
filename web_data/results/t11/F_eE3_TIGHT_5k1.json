@@ -1,0 +1,26 @@
+{
+  "label": "F_eE3_TIGHT_5k1",
+  "ckpt": "t11_root_eE3_wide.pt",
+  "cell": "TIGHT_5k1",
+  "nav_mode": "bearings_only",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 0,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.0,
+  "causes": {
+    "collision": 7,
+    "safety_cap": 193
+  },
+  "md5": "89206ca395202eb9a3fc1f08cc0e9768",
+  "dv_used_med": NaN,
+  "dv_ref_med": NaN,
+  "dv_budget_med": NaN,
+  "efficiency_med": NaN,
+  "budget_used_med": NaN,
+  "ep_len_med": NaN,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 624.8826427459717
+}

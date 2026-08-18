@@ -1,0 +1,27 @@
+{
+  "label": "F_a3b_LONGRANGE",
+  "ckpt": "t11_root_a3b_wide.pt",
+  "cell": "LONGRANGE",
+  "nav_mode": "truth",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 84,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.42,
+  "causes": {
+    "success": 84,
+    "safety_cap": 111,
+    "stranded": 5
+  },
+  "md5": "400c752327f6dedecf029d5938a8a01d",
+  "dv_used_med": 328.74368670764653,
+  "dv_ref_med": 284.0924826120617,
+  "dv_budget_med": 500.21160378025473,
+  "efficiency_med": 1.1697035161488838,
+  "budget_used_med": 0.6854579619238483,
+  "ep_len_med": 1137.0,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 2.318851947784424
+}

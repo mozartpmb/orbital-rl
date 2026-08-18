@@ -1,0 +1,27 @@
+{
+  "label": "F_j2bonav_E2_j2",
+  "ckpt": "t11_root_j2bonav_wide.pt",
+  "cell": "E2_j2",
+  "nav_mode": "bearings_only",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 75,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.375,
+  "causes": {
+    "success": 75,
+    "safety_cap": 122,
+    "stranded": 3
+  },
+  "md5": "428a9509775a75fbbb5b648178731b48",
+  "dv_used_med": 332.8427124746199,
+  "dv_ref_med": 252.49894480386754,
+  "dv_budget_med": 527.4629795177177,
+  "efficiency_med": 1.2728986167544103,
+  "budget_used_med": 0.6713139483523785,
+  "ep_len_med": 1668.0,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 874.136950969696
+}

@@ -1,0 +1,27 @@
+{
+  "label": "F_j2bonav_TIGHT_5k1",
+  "ckpt": "t11_root_j2bonav_wide.pt",
+  "cell": "TIGHT_5k1",
+  "nav_mode": "bearings_only",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 0,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.0,
+  "causes": {
+    "collision": 3,
+    "safety_cap": 193,
+    "stranded": 4
+  },
+  "md5": "bf59f0fe4b1af74e440cb45d184d6e73",
+  "dv_used_med": NaN,
+  "dv_ref_med": NaN,
+  "dv_budget_med": NaN,
+  "efficiency_med": NaN,
+  "budget_used_med": NaN,
+  "ep_len_med": NaN,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 698.3001010417938
+}

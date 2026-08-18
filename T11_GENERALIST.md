@@ -1,0 +1,89 @@
+# T11 — the generalist (2026-08-18, `t11_campaign.sh`)
+
+**One policy flies J2 × the full eccentricity range × bearings-only
+navigation × long-range transfer at 97–100% per cell with uniform ~1.28×
+fuel efficiency and graded budget-awareness — five of the seven mixture
+cells. The two failures (drift-and-wait, tight box) are both instances of
+the project's most-replicated mechanism, and both are stated, bounded, and
+diagnosed.** Single seed (42), mean-element claims under J2 throughout.
+
+## Construction
+
+- **Root**: `extj2_A3b_j2_box5k1` (J2 tight, the matrix's strongest
+  generalist-adjacent checkpoint) **transplanted** into the wide normalizer
+  family — the GEN_MATRIX's 99-pp "normalizer barrier" is a parameterization
+  artifact: the encoder is linear on raw obs, so a 7-column weight rescale
+  reproduces the source bit-identically (gate-verified every launch). Head
+  expanded 30→31 (day-warp row, logits seeded from the hour-warp row —
+  zero-init measured vacuous at P=3.9e−9).
+- **Rung A** (50M): J2 + inclined targets in the wide pairing, bearings-only
+  → 100.0%/99.5% native at E0/E1_j2 (truth 99.0/98.5). Bug #15 en route: a
+  single-cell rung must specify its cell as completely as the mixture
+  sampler does (di/fuel/cap/band fell to ini defaults; 50M of plane-free
+  training scored 0.998 rolling and 50% at eval — train/eval split).
+- **Rung B** (200M): 7-cell weighted mixture, **fuel budget sampled
+  U(0.113, 0.20) ≈ 353–656 m/s per episode** (scarcity pressure in lieu of
+  any fuel-bonus reward term — reward-reshape is the known-collapse path),
+  per-episode cell sampler C-side (caps 3000–22000 mixed in one batch,
+  obs-clock per episode's own cap).
+- Pre-launch red-team catches, both measured-free on narrow cells before
+  shipping: MAJOR-16 OOP seed ceiling (16.4% of mixture seeds sat on a fixed
+  numerical clip), and the range-prior ceiling — **the constructor-derived
+  prior excluded 39.1% of true target radii under the mixture** (two in five
+  episodes navigated with the target outside the prior's universe; now
+  mixture-honest only when the mixture is on, single-cell evals untouched;
+  containment gate G8 added).
+
+## The envelope table (200 eps/cell, held-out seed 123, real batch IOD)
+
+| cell | native BO | truth | fuel eff. | lean tank (353 m/s) | rich tank (656 m/s) |
+|---|---|---|---|---|---|
+| E0_j2 | 97.0% | 96.5% | 1.28× | 88.0% | 99.0% |
+| E1_j2 | 100.0% | 97.5% | 1.29× | 97.0% | 100.0% |
+| E2_j2 | 99.5% | 98.0% | 1.28× | 96.0% | 99.0% |
+| E3_j2 | 97.5% | 97.0% | 1.23× | 88.5% | 99.0% |
+| LONGRANGE | 99.0% | 100.0% | 1.28× | 96.5% | 99.0% |
+| **W1_driftwait** | **0.0%** | **0.0%** | — | 0.0% | 0.0% |
+| **TIGHT_5k1** | **0.0%** | **0.0%** | — | 0.0% | 0.0% |
+
+Budget-awareness reads: graded capability with tank size (88–97% lean →
+99–100% rich on the same cells), and adaptive spending — the policy uses
+margin when it has margin (1.48× efficiency at E3-rich vs 1.23× at the
+sampled mix). The fuel skill came from scenario pressure, not reward
+surgery.
+
+## The two zeros — one mechanism, diagnosed
+
+Both fail by timeout (cap 198–200/200), both identical under truth state
+(nav exonerated), and both are the bootstrap mechanism measured four times
+before (T3 flatline, W4, R5, MAJOR-10): **a cell whose effective warm root
+is incompetent never bootstraps under sparse terminal reward in-mixture;
+rehearsal weight is not a substitute for a competent root.** Drift-and-wait
+was never in this lineage (the specialist is a separate branch); the tight
+box skill eroded during the loose-cells-only rung A. The rolling-perf
+arithmetic confirms both cells sat at ~0 for their entire 40M/20M shares
+(0.756 final ≈ 0.95 × the other cells' weight).
+
+Additional honest confound on W1×nav: the mixture's drift-and-wait cell is
+the first-ever bearings-only drift-and-wait attempt, and its day-warp blind
+windows (~24 h) sit **beyond the acquisition surrogate's validated boundary**
+(measured optimistic 3.3% at 6 h, unmeasured beyond) — the spec's own
+re-measure gate was not run for this regime. The W1 zero is therefore
+over-determined: incompetent root AND unverified training signal. Any
+future attempt must re-validate or replace the surrogate at day-warp arcs
+first.
+
+## Deployment reading
+
+The shipped capability set is: **generalist checkpoint for the
+J2/eccentric/long-range envelope + specialist checkpoints for drift-and-wait
+(truth) and the tight box (bearings-only) + gap-conditioned selection** —
+a standard flight-software architecture (mode table), with the boundary
+measured rather than guessed. A 7/7 single-policy attempt is possible
+(bootstrap the two roots first, then re-mix) but is gated on the surrogate
+re-validation above and ~1.5–2 days of compute.
+
+Checkpoints `models/t3/t11_{rungA_j2wide,generalist_rungB}.pt`; per-cell
+JSON `web_data/results/t11/` (incl. all floors); wandb `t11-*`;
+campaign `scripts/orbital/extj2/t11_campaign.sh`; design + red-team
+`scripts/orbital/ext_recon/reports/t11_generalist_design.md`.

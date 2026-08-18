@@ -1,0 +1,27 @@
+{
+  "label": "F_j2bonav_LONGRANGE",
+  "ckpt": "t11_root_j2bonav_wide.pt",
+  "cell": "LONGRANGE",
+  "nav_mode": "bearings_only",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 108,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.54,
+  "causes": {
+    "success": 108,
+    "safety_cap": 56,
+    "stranded": 36
+  },
+  "md5": "6383512d6ea2012d54d2c52da3a4d89c",
+  "dv_used_med": 351.9543648263015,
+  "dv_ref_med": 270.8356877176583,
+  "dv_budget_med": 521.8387037290963,
+  "efficiency_med": 1.2860031499839062,
+  "budget_used_med": 0.6940679468501718,
+  "ep_len_med": 2070.5,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 1715.6878261566162
+}
