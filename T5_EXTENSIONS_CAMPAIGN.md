@@ -8,6 +8,7 @@
 > **ext-nav** (both pushed), with the embedded port additive on `main`.
 > Recon/red-team reports: `scripts/orbital/ext_recon/reports/` (9 reports + 2 red-teams
 > + curriculum-literature sweep). wandb: `orbital-rl` project, groups `t5-*`.
+> **Successor campaigns T6–T11: see `CAMPAIGNS.md`** (index, headlines and the bug ledger); checkpoint registry in `MODELS.md`.
 
 ## 1. T5-EMB — embedded C port of the flight policy ✅ (on `main`)
 

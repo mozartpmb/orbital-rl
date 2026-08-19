@@ -123,3 +123,75 @@ component is at most **1.7%** of state magnitude across all episodes.
 - Ratios and decompositions are over successful episodes only.
 - Single evaluation seed (123) per lineage; these are distributions over
   scenarios, not over training seeds.
+
+---
+
+## Addendum — the T11 generalist against the same comparator (2026-08-18)
+
+`models/t3/t11_generalist_rungB.pt` at its five green mixture cells, 200 held-out
+episodes each at seed 123, real batch IOD. Same box-credited time-matched Lambert
+comparator as the four specialist rows above.
+
+**Why re-measure something T11 already reports.** `T11_GENERALIST.md` quotes a
+uniform "~1.28× fuel efficiency", but that is a **different reference** — the
+cell's own linearised direct-burn estimate — and is not comparable to a
+box-credited Lambert ratio. Putting the generalist in this table required running
+it through this script's comparator, not copying its number across. Each cell is
+built by `t11_eval.env_kwargs`, the generalist's **own** eval path including its
+acquisition configuration, because the quantity being audited is the fuel the
+shipped policy actually spends and swapping the acquisition front-end would change
+the trajectory before the comparator ever ran. The two red cells (W1_driftwait,
+TIGHT_5k1) are omitted: both score 0.0%, so there are no successes to audit.
+
+| lineage | success | Δv med (p90) m/s | raw ratio med | **in-plane box-credited med / p90** | decomposition med: tan / plane / fine | burns med | Lambert med |
+|---|---|---|---|---|---|---|---|
+| **T3-canonical** 2D, 30 km / 50 m/s | 200/200 | 235 (340) | 1.18 | **1.55** / 2.34 | 235 / 0 / 0 | 10 | 151 |
+| **TB5-3D** 3D + BO, 5 km / 1 m/s | 196/200 | 363 (391) | 2.22 | **1.81** / 2.99 | 294 / 138 / 14 | 28 | 161 |
+| **E3** 3D + BO, e→0.30, 30 km / 50 m/s | 190/200 | 250 (325) | 1.42 | **1.79** / 3.25 | 225 / 25 / 0 | 13 | 123 |
+| **J2-A3b** 3D + J2, 5 km / 1 m/s | 198/200 | 315 (391) | 1.86 | **1.41** / 2.12 | 242 / 133 / 16 | 24 | 171 |
+| T11 generalist @ E0_j2 | 194/200 | 334 (441) | 1.89 | **2.15** / 3.62 | 285 / 100 / **0** | 16 | 130 |
+| T11 generalist @ E1_j2 | 200/200 | 308 (403) | 2.00 | **2.44** / 4.27 | 252 / 100 / **0** | 14 | 106 |
+| T11 generalist @ E2_j2 | 199/200 | 308 (396) | 1.83 | **2.04** / 3.24 | 255 / 110 / **0** | 14 | 119 |
+| T11 generalist @ E3_j2 | 195/200 | 319 (411) | 1.75 | **2.00** / 3.49 | 260 / 100 / **0** | 15 | 131 |
+| T11 generalist @ LONGRANGE | 198/200 | 319 (431) | 1.84 | **1.95** / 3.42 | 252 / 122 / **0** | 14 | 131 |
+
+### Reading
+
+**The generalist pays a consistent fuel premium.** Its box-credited ratio spans
+**1.95–2.44 (median 2.04)** against **1.41–1.81** for every specialist — worse
+than the worst specialist in all five cells. The premium is not explained by
+harder geometry: the generalist's cells have *lower* Lambert references
+(106–131 m/s versus 123–171), so it is spending more against an easier in-plane
+optimum. Nor is it a capability trade — success is 97.0–100% across the five.
+
+**It spends zero on fine burns, in every cell.** `dv_fine` is **0 m/s** for all
+five generalist cells, while the two tight-box specialists spend 14 and 16 m/s
+there. The generalist is a coarse-burn policy. That is consistent with its two
+red cells being the tight box and drift-and-wait, and it connects to a result
+measured independently: `NAVF_RESULTS.md` and `N3DNAV_RESULTS.md` §MAJOR-10 both
+found the fine actuation rows to be **guidance-critical, not informational**
+(masking rows 20/21 drops TB5-3D from 98.0% to 51.0% even with perfect state). A
+policy that never uses them is not equipped for a tight box — which is what the
+mixture result already showed from the other side.
+
+**Verdict against the R5 bar: no fuel intervention.** The excess over the best
+specialist is ~0.5 on a box-credited ratio, roughly 30–60 m/s of median spend
+against a ~478 m/s budget — real, consistent, and still far too small to justify
+what it would cost. `R5` established that reward-reshaping a committed policy
+collapses it (all four variants below 10%), so a fuel bonus cannot be bolted onto
+`t11_generalist_rungB` and would require a fresh-ish rung at 200M steps. The
+cheaper lever already exists and is already in the policy: T11 sampled the fuel
+budget per episode and got **graded budget-awareness** (88–97% on a 353 m/s lean
+tank, 99–100% on a 656 m/s rich one). Widening or re-weighting that sampling
+costs nothing extra at train time and targets the same quantity. If fuel ever
+does become the objective, the measurement to take first is whether the missing
+fine-burn repertoire — not the coarse schedule — is where the excess lives.
+
+### Note on this script
+
+The CSV writer used to **truncate** `web_data/results/fuel_audit.csv` to whatever
+`--lineages` named, so auditing one lineage silently destroyed the others. A
+4-episode smoke run during this work deleted 800 rows of measured data, which
+survived only because they happened to be committed. The writer now merges:
+rows for the lineages just measured are replaced, every other lineage is carried
+through (`1800 rows: 1000 new, 800 carried`).

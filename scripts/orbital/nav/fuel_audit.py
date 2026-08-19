@@ -42,11 +42,13 @@ ROOT = os.path.abspath(os.path.join(_HERE, '..', '..', '..'))
 sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(ROOT, 'pufferlib'))
 sys.path.insert(0, os.path.join(ROOT, 'scripts', 'orbital'))
+sys.path.insert(0, os.path.join(ROOT, 'scripts', 'orbital', 'extj2'))
 
 from pufferlib.ocean.orbital.orbital import Orbital                # noqa: E402
 from pufferlib.models import Default, LSTMWrapper                  # noqa: E402
 import t1_lambert_baseline as T1                                   # noqa: E402
 import eval_relnav3d as ER3                                        # noqa: E402
+from pufferlib.ocean.orbital_nav.orbital_nav import OrbitalNav      # noqa: E402
 
 MU = 3.986004418e14
 DT = 60.0
@@ -116,6 +118,24 @@ LINEAGES = {
         note='3D + J2 (mean elements), i_t 30-60 deg, box 5 km / 1 m/s'),
 }
 
+# ── the T11 generalist, one row per GREEN mixture cell ──────────────────────
+# Added so the generalist is measured against the SAME comparator as the four
+# specialists above rather than against T11's own internal 1.23-1.29x figure,
+# which is a different reference (the cell's linearised direct-burn estimate)
+# and is therefore not comparable to a box-credited Lambert ratio.
+#
+# Each cell is built by t11_eval.env_kwargs -- the generalist's OWN eval path,
+# including its acquisition configuration -- because the quantity being audited
+# is the fuel the shipped policy actually spends, and swapping in a different
+# acquisition front-end would change the trajectory before the comparator ever
+# ran. The two red cells (W1_driftwait, TIGHT_5k1) are omitted: both score 0.0%,
+# so there are no successful episodes to audit.
+for _c in ('E0_j2', 'E1_j2', 'E2_j2', 'E3_j2', 'LONGRANGE'):
+    LINEAGES[f'T11-{_c}'] = dict(
+        ckpt='models/t3/t11_generalist_rungB.pt', mode='t11', cell=_c,
+        lambert='inplane',
+        note=f'T11 generalist (200M, 7-cell mixture) at cell {_c}')
+
 
 # ── collection ──────────────────────────────────────────────────────────────
 def build_env(name, spec, traj_dir):
@@ -123,6 +143,12 @@ def build_env(name, spec, traj_dir):
     traj = dict(traj_log_dir=traj_dir, traj_log_every=1)
     if spec['mode'] == 'guidance':
         return Orbital(num_envs=1, **dict(spec['kw'], **traj))
+    if spec['mode'] == 't11':
+        import t11_eval as T11E
+        kw = dict(T11E.env_kwargs(spec['cell'], 'bearings_only', None), **traj)
+        env = OrbitalNav(num_envs=1, nav_mode='bearings_only', **kw)
+        env._acq_real = True            # exactly what t11_eval.run() sets
+        return env
     over = {}
     if spec.get('box'):
         over.update(ER3.box_kw(spec['box']))
@@ -373,6 +399,9 @@ def _box_vel(spec):
     """The rel-velocity tolerance the lineage's own success test uses."""
     if spec['mode'] == 'guidance':
         return float(spec['kw'].get('rel_vel_tol_ms', 50.0))
+    if spec['mode'] == 't11':
+        import t11_eval as T11E
+        return float(T11E.env_kwargs(spec['cell'], 'truth', None)['rel_vel_tol_ms'])
     if spec.get('box'):
         return float(ER3.BOXES[spec['box']][1])
     return float(ER3.RUNGS[spec['rung']]['rel_vel_tol_ms'])
@@ -537,13 +566,26 @@ def main():
               flush=True)
 
     if all_rows:
+        # MERGE, don't clobber. This used to truncate the file to whatever
+        # --lineages named, so auditing one lineage silently destroyed the
+        # other three -- a 4-episode smoke run deleted 800 rows of measured
+        # data that only existed because it happened to be committed. Rows for
+        # the lineages just measured are replaced; every other lineage in the
+        # file is carried through untouched.
         os.makedirs(os.path.dirname(CSV_OUT), exist_ok=True)
-        keys = sorted({k for r in all_rows for k in r})
+        prev = []
+        if os.path.exists(CSV_OUT):
+            done = {r['lineage'] for r in all_rows}
+            prev = [r for r in csv.DictReader(open(CSV_OUT))
+                    if r['lineage'] not in done]
+        merged = prev + all_rows
+        keys = sorted({k for r in merged for k in r})
         with open(CSV_OUT, 'w', newline='') as f:
-            w = csv.DictWriter(f, fieldnames=keys)
+            w = csv.DictWriter(f, fieldnames=keys, restval='')
             w.writeheader()
-            w.writerows(all_rows)
-        print(f'wrote {CSV_OUT} ({len(all_rows)} rows)')
+            w.writerows(merged)
+        print(f'wrote {CSV_OUT} ({len(merged)} rows: {len(all_rows)} new, '
+              f'{len(prev)} carried)')
     for s in summaries:
         print(s)
     return 0

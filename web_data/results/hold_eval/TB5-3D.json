@@ -1,0 +1,53 @@
+{
+ "arm": "TB5-3D",
+ "ckpt": "n3dnav_T-BO3D-TB5.pt",
+ "mode": "bearings_only",
+ "box_r": 5000.0,
+ "box_v": 1.0,
+ "episodes": 200,
+ "captured": 192,
+ "capture_rate": 0.96,
+ "note": "3D bearings-only nav, real batch-IOD acquisition",
+ "tau_post_entry": {
+  "1": 160,
+  "5": 1,
+  "30": 336,
+  "60": 1
+ },
+ "stream_ok": 147,
+ "hold_5": 0.5609756097560976,
+ "occ_5": 0.6422764227642276,
+ "why_5": {
+  "left_pos": 0,
+  "left_vel": 10,
+  "left_both": 8,
+  "episode_ended": 0
+ },
+ "unresolved_5": 151,
+ "n_scored_5": 41,
+ "hold_15": 0.40869565217391307,
+ "occ_15": 0.44021739130434784,
+ "why_15": {
+  "left_pos": 0,
+  "left_vel": 51,
+  "left_both": 17,
+  "episode_ended": 0
+ },
+ "unresolved_15": 77,
+ "n_scored_15": 115,
+ "hold_30": 0.21465968586387435,
+ "occ_30": 0.26807127174463774,
+ "why_30": {
+  "left_pos": 0,
+  "left_vel": 123,
+  "left_both": 27,
+  "episode_ended": 0
+ },
+ "unresolved_30": 1,
+ "n_scored_30": 191,
+ "causes": {
+  "no_approach": 0,
+  "safety_cap": 8,
+  "running": 192
+ }
+}

@@ -1,0 +1,52 @@
+{
+ "arm": "A3b-j2",
+ "ckpt": "extj2_A3b_j2_box5k1.pt",
+ "mode": "truth",
+ "box_r": 5000.0,
+ "box_v": 1.0,
+ "episodes": 200,
+ "captured": 196,
+ "capture_rate": 0.98,
+ "note": "J2 inclined, truth-state control lineage",
+ "tau_post_entry": {
+  "1": 265,
+  "30": 40,
+  "60": 195
+ },
+ "stream_ok": 200,
+ "hold_5": 0.7,
+ "occ_5": 0.8,
+ "why_5": {
+  "left_pos": 0,
+  "left_vel": 9,
+  "left_both": 0,
+  "episode_ended": 0
+ },
+ "unresolved_5": 166,
+ "n_scored_5": 30,
+ "hold_15": 0.4393939393939394,
+ "occ_15": 0.4835858585858586,
+ "why_15": {
+  "left_pos": 0,
+  "left_vel": 36,
+  "left_both": 1,
+  "episode_ended": 0
+ },
+ "unresolved_15": 130,
+ "n_scored_15": 66,
+ "hold_30": 0.21551724137931033,
+ "occ_30": 0.2614479050797182,
+ "why_30": {
+  "left_pos": 0,
+  "left_vel": 75,
+  "left_both": 16,
+  "episode_ended": 0
+ },
+ "unresolved_30": 80,
+ "n_scored_30": 116,
+ "causes": {
+  "no_approach": 0,
+  "safety_cap": 4,
+  "running": 196
+ }
+}
