@@ -198,7 +198,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--ckpt', required=True)
     p.add_argument('--cell', default='all',
-                   choices=['all'] + list(T.NAMES))
+                   choices=['all'] + list(T.ALL_CELLS.keys()))
     p.add_argument('--nav-mode', default='bearings_only',
                    choices=['truth', 'bearings_only', 'rb_ekf', 'recon'])
     p.add_argument('--episodes', type=int, default=200)
