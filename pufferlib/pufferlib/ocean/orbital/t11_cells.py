@@ -98,6 +98,47 @@ NAMES = [n for n, _ in CELLS]
 TABLE = [c for _, c in CELLS]
 
 
+# ── the tight-box LADDER (T11-tight campaign) — NOT part of the mixture ──────
+# SINGLE-CELL TRAINING specs for the 6/7 attempt, kept out of `CELLS` on
+# purpose: `CELLS` is the shipped mixture that G1/G2, every recorded floor and
+# every published lineage are defined against, and stage 4 re-evaluates that
+# mixture unchanged. A row added here would silently move rung B's own weights.
+#
+# fuel_min is 0.133, NOT the mixture's 0.113, and that is a MEASURED change.
+# The tight box needs a terminal fine-burn train (~27 x 1 m/s at TB5) that the
+# transfer-only feasibility estimate does not price. Infeasible mass for
+# transfer + 27 m/s, 1024 draws:
+#
+#     352.8 m/s (fuel 0.1130) -> 15.8%   <- ABOVE G4's 12% gate
+#     418.9 m/s (fuel 0.1327) ->  2.1%   <- shipped; matches LONGRANGE's 2.3%
+#     499.0 m/s (fuel 0.1560) ->  0.1%   (range too narrow for fuel-awareness)
+#
+# At the mixture floor one TB5 episode in six is unwinnable, which is bootstrap
+# poison for a rung whose whole purpose is to bootstrap the skill. 0.133 keeps a
+# 419-656 m/s spread (1.57x) so budget-awareness still has signal. Stage 4
+# evaluates the tight cell BOTH ways — at this training range, and at the
+# mixture's shipped 0.113 with its ~84% feasibility ceiling stated — so the gain
+# number stays comparable to the existing T11 lineage.
+_TIGHT_FUEL_MIN = 0.133
+
+TIGHT_CELLS = [
+    # The intermediate rung. 10 km / 10 m/s: loose enough that the rung-B child
+    # has a gradient to follow, tight enough that it is not merely E0 again.
+    _cell('TIGHT_10k10', 0.0, 3000, 10000.0, 10.0, 6.671e6, 7.171e6, 0.05,
+          fuel_min=_TIGHT_FUEL_MIN),
+    # The target rung. Same box as the mixture's TIGHT_5k1, own fuel floor.
+    # cap stays 3000 — the setting proven at TB5 in the narrow pairing, and
+    # 3000 substeps is 50 h (~30 orbits) for a same-band transfer, so the cap is
+    # not the binding constraint. Kept unless evidence says otherwise.
+    _cell('TIGHT_5k1_T', 0.0, 3000, 5000.0, 1.0, 6.671e6, 7.171e6, 0.05,
+          fuel_min=_TIGHT_FUEL_MIN),
+]
+
+# One lookup for the evaluator; `CELLS` stays the mixture and only the mixture.
+ALL_CELLS = dict(CELLS)
+ALL_CELLS.update(dict(TIGHT_CELLS))
+
+
 def as_array():
     import numpy as np
     return np.array([[c[f] for f in FIELDS] for c in TABLE], dtype=np.float64)

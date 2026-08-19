@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(
 from pufferlib.ocean.orbital.t11_cells import (           # noqa: F401,E402
     CELLS, TABLE, NAMES, FIELDS, as_array, base_env_kwargs, nav_env_kwargs,
     OBS_ALT_SCALE, LVLH_SCALE, FUEL_MIN, FUEL_MAX, NAV_MAX_TICKS,
+    TIGHT_CELLS, ALL_CELLS,
 )
 
 if __name__ == '__main__':

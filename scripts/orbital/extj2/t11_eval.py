@@ -68,7 +68,9 @@ def env_kwargs(cell, nav_mode, fuel_fixed=None):
     if cell == 'all':
         kw.update(t11_mixture=1)
     else:
-        c = dict(T.CELLS)[cell]
+        # ALL_CELLS = the mixture PLUS the tight-ladder training cells.
+        # `T.CELLS` stays the mixture alone so `--cell all` is unchanged.
+        c = T.ALL_CELLS[cell]
         kw.update(
             cell_mixture_mode=0, episode_cap_steps=int(c['cap']),
             rendezvous_radius_m=c['box_r'], rel_vel_tol_ms=c['box_v'],
