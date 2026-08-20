@@ -362,7 +362,16 @@ class Orbital(pufferlib.PufferEnv):
         )
 
         if t11_mixture:
-            from pufferlib.ocean.orbital.t11_cells import TABLE as _T11_TABLE
+            # 1 = the shipped 7-cell mixture. 2 = the CONSOLIDATION variant:
+            # same seven cells and same physics, consolidation weights and the
+            # tight cell's measured fuel floor. Bit-inert for 0 and 1 — a run
+            # that never passes 2 loads exactly the table it always loaded.
+            if int(t11_mixture) == 2:
+                from pufferlib.ocean.orbital.t11_cells import (
+                    CONSOL_TABLE as _T11_TABLE)
+            else:
+                from pufferlib.ocean.orbital.t11_cells import (
+                    TABLE as _T11_TABLE)
             self.set_cells(_T11_TABLE)
 
         # Pre-allocated trajectory buffer (reused every call).

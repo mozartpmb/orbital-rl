@@ -139,6 +139,67 @@ ALL_CELLS = dict(CELLS)
 ALL_CELLS.update(dict(TIGHT_CELLS))
 
 
+# ── the CONSOLIDATION mixture (t11_mixture=2) ────────────────────────────────
+# Same seven cells, same physics, DIFFERENT WEIGHTS AND ONE FUEL FLOOR. Derived
+# from `CELLS` programmatically rather than restated, so the cell physics cannot
+# drift from the shipped mixture: this experiment's whole point is that weights
+# + LR + root are the ONLY things that change.
+#
+# WHY THESE WEIGHTS. The T11-tight seesaw measured a bidirectional failure at
+# the full acquisition LR (1e-2): the forward swing collapsed the wide cells,
+# the back swing re-zeroed the tight box at 0.10 rehearsal weight. Both
+# mechanisms are addressed here — LR drops to 1e-3 (maintenance, not
+# acquisition; set on the command line) and the minority skill stops being a
+# minority. TIGHT goes 0.10 -> 0.25 because it is the skill that has twice
+# proven hardest to rebuild; the wide cells rebuild readily under majority
+# gradient, which is the asymmetry both swings showed.
+#
+# W1_driftwait is EXCLUDED (weight 0.0), stated rather than quietly dropped: it
+# scored 0.0 in all three seesaw states — dead gradient in both directions — and
+# its 22000-step cap costs disproportionate wall-clock per unit of learning.
+# The target here is the SIX-skill consolidation. W1 is still EVALUATED, so the
+# zero stays on the record honestly instead of vanishing from the battery.
+#
+# A zero weight is safe in the C picker because W1 is not the last row: the
+# cumulative walk can only land on a zero-weight cell via the trailing
+# `pick = c` fallthrough, which is reachable only for the FINAL index when
+# rounding puts u past the total. G9 asserts the zero empirically so a future
+# reordering of `CELLS` cannot turn this into a silent 22000-step cell.
+_CONSOL_WEIGHTS = {
+    'TIGHT_5k1':    0.25,
+    'E3_j2':        0.20,
+    'E2_j2':        0.15,
+    'LONGRANGE':    0.15,
+    'E0_j2':        0.125,
+    'E1_j2':        0.125,
+    'W1_driftwait': 0.0,
+}
+# Per-cell fuel floors, exactly as the shipped mixture already does it: the
+# tight cell carries the MEASURED floor (0.133 = 419 m/s) because at 0.113 the
+# terminal fine-burn train is unaffordable in 15.8% of tight episodes, and
+# training a consolidation run on unwinnable episodes would look like
+# interference while actually being infeasibility. Every other cell keeps the
+# shipped 0.113 — their floors were already measured against their own bands.
+_CONSOL_FUEL_MIN = {'TIGHT_5k1': _TIGHT_FUEL_MIN}
+
+CONSOL_CELLS = []
+for _n, _c in CELLS:
+    _d = dict(_c)
+    _d['weight'] = _CONSOL_WEIGHTS[_n]
+    if _n in _CONSOL_FUEL_MIN:
+        _d['fuel_min'] = _CONSOL_FUEL_MIN[_n]
+    CONSOL_CELLS.append((_n, _d))
+CONSOL_TABLE = [c for _, c in CONSOL_CELLS]
+assert abs(sum(c['weight'] for c in CONSOL_TABLE) - 1.0) < 1e-12
+assert len(CONSOL_TABLE) == len(TABLE)
+
+
+def consol_as_array():
+    import numpy as np
+    return np.array([[c[f] for f in FIELDS] for c in CONSOL_TABLE],
+                    dtype=np.float64)
+
+
 def as_array():
     import numpy as np
     return np.array([[c[f] for f in FIELDS] for c in TABLE], dtype=np.float64)

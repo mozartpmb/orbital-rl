@@ -363,6 +363,69 @@ def gate_oop_seed():
           f'[{rho0.min():.0f}, {rho0.max():.0f}] m (must be >= 0)')
 
 
+def gate_consol_weights(n_draws=2000):
+    """The CONSOLIDATION variant (t11_mixture=2) draws its own weights, and the
+    excluded cell is drawn ZERO times.
+
+    Two things are checked because two different things can go wrong.
+
+    G9a: the realized distribution matches `CONSOL_TABLE`. Same method as G2 —
+    a mixture whose weights silently differ from the table is the failure that
+    makes an interference result unreadable, since the whole experiment is
+    "same cells, different weights".
+
+    G9b: W1_driftwait, at weight 0.0, is drawn EXACTLY zero times. The C picker
+    walks a cumulative sum and can only land on a zero-weight row through the
+    trailing `pick = c` fallthrough, which is reachable only for the LAST index
+    when float rounding puts u past the total. W1 is index 4 of 7 today, so the
+    zero is structural — but it is structural only as long as nobody reorders
+    `CELLS`, and a 22000-step cell drawn by accident would quietly eat the
+    wall-clock budget. Hence measured, not argued.
+
+    G9c: the shipped mixture is untouched by the variant's existence.
+    """
+    print('\n== G9  consolidation mixture (t11_mixture=2) ==')
+    kw = T.base_env_kwargs()
+    env = Orbital(num_envs=250, **kw)
+    env.set_cells(T.CONSOL_TABLE)
+    w = np.array([c['weight'] for c in T.CONSOL_TABLE], dtype=np.float64)
+    w = w / w.sum()
+    seen = np.zeros(len(T.CONSOL_TABLE))
+    rounds = max(1, n_draws // 250)
+    for k in range(rounds):
+        env.reset(seed=4600 + k)
+        for j in env.last_cell_indices():
+            seen[j] += 1
+    env.close()
+    tot = seen.sum()
+    frac = seen / tot
+    print(f'  {"cell":14s} {"table w":>8s} {"realized":>9s} {"draws":>7s}')
+    worst = 0.0
+    for i, nm in enumerate(T.NAMES):
+        worst = max(worst, abs(frac[i] - w[i]))
+        print(f'  {nm:14s} {w[i]:8.3f} {frac[i]:9.3f} {int(seen[i]):7d}')
+    tol = 3.0 * math.sqrt(0.25 / tot)
+    check('G9a realized consolidation mixture matches its table',
+          worst <= tol,
+          f'{int(tot)} draws; worst |realized-table| = {worst:.4f} vs 3-sigma '
+          f'tol {tol:.4f}')
+
+    w1 = T.NAMES.index('W1_driftwait')
+    check('G9b the excluded cell is drawn exactly zero times',
+          seen[w1] == 0,
+          f'W1_driftwait weight {w[w1]:.3f}, drawn {int(seen[w1])} times in '
+          f'{int(tot)}; it is index {w1} of {len(T.NAMES)} and only the LAST '
+          f'index can catch the picker\'s rounding fallthrough')
+
+    ship = {n: c['weight'] for n, c in T.CELLS}
+    check('G9c the shipped mixture is unchanged by the variant',
+          abs(sum(ship.values()) - 1.0) < 1e-12 and len(T.CELLS) == 7
+          and abs(ship['W1_driftwait'] - 0.20) < 1e-12
+          and abs(ship['TIGHT_5k1'] - 0.10) < 1e-12,
+          f'shipped weights sum {sum(ship.values()):.6f}, {len(T.CELLS)} cells, '
+          f'W1 {ship["W1_driftwait"]:.3f}, TIGHT {ship["TIGHT_5k1"]:.3f}')
+
+
 def gate_range_prior():
     """MAJOR-17b: the range prior must CONTAIN the true range under mixture.
 
@@ -412,6 +475,7 @@ def main():
     gate_tick_cap()
     gate_oop_seed()
     gate_range_prior()
+    gate_consol_weights()
     gate_inert()
     gate_weights()
     gate_clock()

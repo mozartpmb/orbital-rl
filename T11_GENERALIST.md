@@ -93,9 +93,11 @@ campaign `scripts/orbital/extj2/t11_campaign.sh`; design + red-team
 # T11-tight — the 6/7 attempt, and the interference seesaw it measured (2026-08-19)
 
 **The tight-box skill is fully bootstrappable into the generalist lineage
-(0/200 → 98.5% via the proven ladder), but one network at this capacity and
-weighting cannot HOLD the tight box and the wide envelope simultaneously:
-the interference is bidirectional, and both directions are now measured.**
+(0/200 → 98.5% via the proven ladder), but this training recipe cannot HOLD
+the tight box and the wide envelope simultaneously: the interference is
+bidirectional, and both directions are now measured. Both swings ran at the
+full acquisition LR (1e-2), so this is an optimization/curriculum result —
+NOT a capacity limit (see Reading).**
 Campaign `t11_tight_campaign.sh`, single seed, mean-element claims under J2.
 
 ## The three-state seesaw (200 eps/cell, held-out seed 123, native BO)
@@ -126,14 +128,37 @@ Campaign `t11_tight_campaign.sh`, single seed, mean-element claims under J2.
 
 ## Reading
 
-Two swings measured in opposite directions upgrade the earlier "bootstrap
-mechanism" story to a stronger claim: **tight-box and wide-envelope skills
-interfere structurally in this architecture** (128-hidden LSTM). The honest
-deployment shape is what the fleet already provides — **the generalist for
-the envelope, the tight child for proximity operations, gap-conditioned
-selection** — now justified by measurement rather than convenience. A third
-swing (higher tight weight / longer re-mix / larger network) is a capacity
-research question with a measured risk on both sides; not taken.
+Two swings measured in opposite directions establish that **this training
+recipe cannot hold both skills at once**. They do **not** establish a
+capacity limit, and an earlier draft of this section said they did — the
+correction matters enough to state plainly.
+
+**Both swings ran at the full acquisition learning rate** (1e-2, annealed),
+which is the rate for *learning a skill*, not for *maintaining* one. At that
+rate the majority gradient re-learns its cells from scratch early in the run
+and bulldozes the minority skill before rehearsal can defend it; the back
+swing then hands the tight box a 0.10 weight, which is the bootstrap problem
+the ladder existed to solve. So what is measured is an
+**optimization/curriculum failure**, and the two mechanisms — full-LR
+re-learning and an under-weighted minority — are exactly the two things a
+consolidation run changes.
+
+The representation evidence points the other way. At the same 128 hidden
+units, the **TB5-3D specialist holds tight and loose boxes simultaneously**,
+and the **E-ladder child holds four wide-band skills at once**. A network
+that demonstrably represents four wide-band skills, and separately
+represents tight+loose together, is not obviously out of room for six.
+
+**Unresolved: optimization vs capacity.** Both swings were run at
+acquisition LR, so neither can distinguish them. The discriminating
+experiment is consolidation — low LR, consolidation weights, warm from the
+root holding the hardest-to-rebuild skill — and it is the next run, not a
+conclusion already reached.
+
+Meanwhile the honest deployment shape is what the fleet already provides —
+**the generalist for the envelope, the tight child for proximity operations,
+gap-conditioned selection** — justified by measurement, and not contingent
+on how the capacity question resolves.
 
 Boundary notes carried from this campaign's red-team: at TB5 under J2 the
 neglected short-period terms (Brouwer radial amplitude 3.3 km) **exceed the
