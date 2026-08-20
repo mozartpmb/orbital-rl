@@ -248,15 +248,22 @@ one_eval() {
 
 CELLS_ALL="E0_j2 E1_j2 E2_j2 E3_j2 W1_driftwait TIGHT_5k1 LONGRANGE"
 
-# the warm root's own battery, from T11-tight (200 eps, seed 123, native BO)
-declare -A BASE=( [E0_j2]=97.0 [E1_j2]=96.5 [E2_j2]=29.0 [E3_j2]=6.5
-                  [W1_driftwait]=0.0 [TIGHT_5k1]=92.5 [LONGRANGE]=40.0 )
+# the warm root's own battery, from T11-tight (200 eps, seed 123, native BO).
+# A function, not `declare -A`: this machine's only bash is 3.2, which parses
+# associative-array subscripts as arithmetic and dies under set -u at launch.
+base_of() {
+    case "$1" in
+        E0_j2) echo 97.0;;  E1_j2) echo 96.5;;  E2_j2) echo 29.0;;
+        E3_j2) echo 6.5;;   W1_driftwait) echo 0.0;;
+        TIGHT_5k1) echo 92.5;;  LONGRANGE) echo 40.0;;  *) echo "?";;
+    esac
+}
 
 battery() {      # battery <prefix> <ckpt>
     local pre="$1" ck="$2"
     for C in $CELLS_ALL; do
         one_eval "${pre}_${C}" "$ck" "$C" bearings_only
-        say "  ^ ${C} baseline (tight child) was ${BASE[$C]}%"
+        say "  ^ ${C} baseline (tight child) was $(base_of "$C")%"
     done
 }
 
@@ -289,10 +296,17 @@ if want 1; then
       say "  NOTE staged LR requested; leg 1 = $LR to $LR_SWITCH, leg 2 = $LR2"
       say "       (leg 2 is a SECOND invocation warm from leg 1 — see red-team (a))"
     fi
+    # checkpoint-interval 20 (~2.6M steps, 570KB each): pure telemetry for the
+    # probe sidecar. Both prior collapses COMPLETED within 50M and the earliest
+    # updates are the documented kill window (warm-start value error backprops
+    # through the shared trunk hardest at the start), so a 26M cadence can only
+    # bracket a collapse, never localize one. Interval 20 lands the tripwire
+    # (first ckpt >= ep 190 -> 200) and the mid battery (first >= 381 -> 400) on
+    # the SAME epochs as the default 200 — the script's behavior is unchanged.
     python3 -m pufferlib.pufferl train puffer_orbital_nav \
         --train.device cpu --train.total-timesteps "$STEPS" --train.seed "$T11C_SEED" \
         --train.data-dir "$ARM_DIR" --load-model-path "$ROOT" \
-        $LR_ARGS \
+        $LR_ARGS --train.checkpoint-interval "${T11C_CKPT_INT:-20}" \
         --env.num-debris-min 0 --env.num-debris-max 0 \
         --env.same-orbit-init 0 --env.init-phase-gap-max 3.14159 \
         --env.valid-init-only 1 --env.gave-up-action terminate \

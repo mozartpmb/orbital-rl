@@ -1,0 +1,497 @@
+[
+ {
+  "label": "",
+  "findings": [
+   {
+    "claim": "The definitive capacity-vs-optimization discriminator is a supervised fit: 'overfit one batch... verify that we can reach the lowest achievable loss.' If a network can fit the data under supervised learning, capacity is sufficient and any RL-time failure is optimization/data-distribution, not representation.",
+    "source": "Andrej Karpathy, 'A Recipe for Training Neural Networks' (karpathy.github.io/2019/04/25/recipe/), 2019 \u2014 'overfit' stage",
+    "relevance": "The planned distillation fallback is not just a fallback \u2014 it is the diagnostic this project still lacks. A student that supervised-fits the mode-table of both teachers (generalist 5 cells + tight specialist) at high accuracy would prove the 38->128->LSTM(128)->31 net can hold all skills simultaneously, converting 'probably not capacity' (inferred from specialists holding subsets) into a measured fact. Worth running the supervised fit even if T13 succeeds.",
+    "confidence": "established"
+   },
+   {
+    "claim": "When fine-tuning pretrained weights, use a much smaller learning rate for the pretrained parameters than for fresh ones, because 'we expect the ConvNet weights to be relatively good, so we don't wish to distort them too quickly and too much' \u2014 the standard heuristic is ~10x below the from-scratch LR.",
+    "source": "CS231n course notes, 'Transfer Learning' (cs231n.github.io/transfer-learning/), Karpathy et al.",
+    "relevance": "The seesaw runs fine-tuned a competent checkpoint at LR 1e-2 \u2014 the same LR that trained it \u2014 which by this heuristic is exactly the regime that clobbers existing skills. T13's drop to 1e-3 is the textbook-correct move; the practitioner literature predicts LR, not mixture weight, was the dominant destroyer in both directions of the seesaw. If tight still decays at 1e-3, the next lever is another LR drop or an explicit KL/update-size constraint, not re-weighting.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Karpathy's Adam default is 3e-4 ('adam is safe... in the early stages of setting baselines I like to use Adam with a learning rate of 3e-4'), and LR schedules should be tuned 'all the way at the very end'.",
+    "source": "Andrej Karpathy, 'A Recipe for Training Neural Networks', 2019",
+    "relevance": "1e-2 is ~30x the safe Adam default and unusual even for from-scratch PPO+LSTM; even T13's 1e-3 is 3x above it. Since 1e-2 evidently worked for from-scratch skill acquisition in this env, it isn't wrong per se \u2014 but it means the project has been fine-tuning at an aggressive from-scratch LR, and 1e-3 may still be high for pure consolidation. A cheap hedge: if the mid-run eval shows any retained cell slipping, have a 3e-4 continuation branch ready rather than concluding 'rebalancing failed'.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Monitor per-condition policy entropy relative to maximum and watch its dynamics: entropy pinned near max = not learning; entropy collapapsed to ~0 = policy collapsed into a likely-myopic mode; entropy or residual variance oscillating wildly = learning rate too high. KL(old||new) per update should be small-but-positive; very low KL means you can afford a higher LR.",
+    "source": "Andy Jones, 'Debugging Reinforcement Learning Systems' (andyljones.com/posts/rl-debugging.html), 2021; corroborated by Schulman's Nuts and Bolts talk notes (github.com/williamFalcon/DeepRLHacks): entropy 'going down too fast \u2192 deterministic, won't explore', KL update size '0.01 is very small, 10 is too much'",
+    "relevance": "The seesaw has only been characterized by end-state success rates. Logging per-cell entropy and per-update KL during T13 would distinguish the two competing stories: (a) update-size problem \u2014 KL oscillates, wide-cell entropy churns while tight is trained (fix: LR/KL clamp); (b) data-starvation problem \u2014 updates are calm but the tight cell's action distribution drifts smoothly toward wide-cell modes (fix: mixture/architecture). These have opposite remedies and current instrumentation can't tell them apart.",
+    "confidence": "established"
+   },
+   {
+    "claim": "'If you ever see a plot or a behaviour that just seems weird, chase right after it... Give up on your plan for the day and chase the anomaly instead' \u2014 and when something breaks, 'assume you have a bug' before reaching for architecture or hyperparameters.",
+    "source": "Andy Jones, 'Debugging Reinforcement Learning Systems', 2021",
+    "relevance": "The rehearsal run re-zeroing tight to literally 0/200 (not 30%, zero) while tight held 10% mixture weight is an anomaly worth chasing before T13: evaluate the rehearsal run's intermediate checkpoints to get the tight-skill decay curve. Instant collapse in the first few M steps implicates update size / catastrophic interference; slow decay implicates insufficient rehearsal signal. Also worth ruling out a boring bug (e.g., the tight cell's episodes mis-weighted, obs normalization mismatch across cells) given this project's history of eval-classifier and gauge bugs.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Run multiple random seeds before concluding anything ('Try different random seeds!! ... If not, you're likely to overfit'; a cited case showed 3 'different algorithms' that were actually the same algorithm on different seeds), and keep 'a battery of benchmarks you run occasionally' across all previous problems to detect regressions.",
+    "source": "John Schulman, 'The Nuts and Bolts of Deep RL Research' (NeurIPS 2016 talk), via the widely-circulated notes at github.com/williamFalcon/DeepRLHacks; seed variance independently established by Henderson et al., 'Deep Reinforcement Learning that Matters', arXiv:1709.06560, 2017",
+    "relevance": "This project already has direct evidence of seed pointiness (Phase 4: seed 42 = 81.3%, seed 1337 = 0%; Stage 3's 64% was a 'seed-42 pointy-max'). A single-seed T13 that hits 6/7 does not establish the recipe, and a single-seed T13 that seesaws does not falsify it. Also, the 'battery' advice argues for cheap per-cell probes (20-50 episodes each) every ~10M steps rather than one mid-run full eval \u2014 forgetting here has been fast enough (50M re-mix fully re-zeroed tight) that a single midpoint check can miss the collapse onset entirely.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Mixing earlier/easier tasks into training on later tasks is what prevents catastrophic forgetting in curricula (Zaremba & Sutskever 2014: the 'combined' naive+mix strategy beat naive-only precisely because it avoided forgetting), and uniform sampling over tasks is 'a surprisingly strong benchmark' that sophisticated task-selection strategies often fail to beat (Graves et al. 2017; Matiisen et al. 2017).",
+    "source": "Lilian Weng, 'Curriculum for Reinforcement Learning' (lilianweng.github.io/posts/2020-01-29-curriculum-rl/), 2020, citing Zaremba & Sutskever 2014, Graves et al. 2017, Matiisen et al. 2017",
+    "relevance": "External literature agrees with this project's own 5x-replicated mechanism, with a sharper boundary: mixing/rehearsal is a defense mechanism for present skills, never a bootstrapping mechanism for absent ones. This validates T13's core design (warm-start from the checkpoint that HAS tight, defend everything by mixing) and simultaneously cautions against over-engineering the weights: 0.25/deepened/excluded is three hand-tuned choices in a regime where uniform-over-the-6-live-cells is a known-strong baseline. If T13's weights were chosen by intuition rather than measurement, uniform is the more defensible and more interpretable control.",
+    "confidence": "established"
+   },
+   {
+    "claim": "In multi-task RL with one network, differences in per-task return scale bias learning toward large-return tasks \u2014 the gradient share a task gets is set by its return magnitude times its data share, not by its sampling weight alone. PopArt fixes this by normalizing value targets per-task while preserving outputs, and it took single-policy Atari-57 above median-human.",
+    "source": "Hessel, van Hasselt et al., 'Multi-task Deep Reinforcement Learning with PopArt', arXiv:1809.04474 + DeepMind blog 'Preserving Outputs Precisely while Adaptively Rescaling Targets', 2018",
+    "relevance": "The 7 cells span 3000-22000-step episodes with gamma=1 potential shaping, so cumulative shaping return and value-target scale plausibly differ by several-fold across cells. T13 deepens the hard-long-episode cells, increasing the share of large-scale value targets; the tight cell's 0.25 sampling weight may translate to a much smaller effective gradient share. Worth measuring per-cell value-target statistics (mean/std of returns hitting the value loss) before trusting mixture weights; if scales differ >2-3x, per-cell advantage/return normalization is a cheap PopArt-lite.",
+    "confidence": "established"
+   },
+   {
+    "claim": "In on-policy RL with a shared function approximator, learning dynamics exhibit 'ray interference': coupled data generation + gradient interference makes the agent learn one component at a time, traversing plateaus/saddles, with winner-take-all dynamics between task components \u2014 'effectively constraining the agent to learn one thing at a time even when learning in parallel is better.' Suggested remedies are decoupling data generation from learning (off-policy/replay) and distillation-style approaches.",
+    "source": "Schaul, Borsa, Modayil, Pascanu, 'Ray Interference: a Source of Plateaus in Deep Reinforcement Learning', arXiv:1904.11455, DeepMind 2019",
+    "relevance": "This is the closest theoretical account of the observed bidirectional seesaw: on-policy PPO on a mixture doesn't average tasks, it lets the currently-dominant task's data distribution capture the gradient. It predicts exactly what was measured \u2014 whichever skill set generates more successful (high-advantage) trajectories wins, the other decays \u2014 and it predicts mixture weight is a weak lever because the interference is in gradient/data coupling, not sampling frequency. It independently points at the same escape hatch the fallback plan chose: distillation decouples the data distribution from the policy being consolidated.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "Kickstarting (multi-teacher policy distillation done right): student trains on ITS OWN trajectories with loss = RL_loss + lambda_k * CE(teacher || student), with a per-task teacher applied on that task's data. Constant lambda causes the student to plateau at teacher level; annealing lambda to ~0 lets the student surpass teachers (DMLab-30: matched from-scratch in ~10x fewer steps, surpassed final performance by 42%). Pure distillation without the RL loss significantly underperforms the combined loss.",
+    "source": "Schmitt, Hudson, Zidek et al., 'Kickstarting Deep Reinforcement Learning', arXiv:1803.03835, DeepMind 2018",
+    "relevance": "Directly upgrades the T13 fallback design. As currently specified \u2014 pure supervised imitation of a 2-teacher mode-table, then optional low-LR RL polish \u2014 it is the configuration Schmitt et al. found inferior: pure BC plateaus at/below teacher and the sharp BC->RL handoff is where this project has repeatedly seen collapse (R5: all shaping-on-warm-start variants <10%). The literature-backed version is single-phase: PPO on the 7-cell mixture with an added per-cell teacher-CE term (generalist teaches its 5 cells, tight specialist teaches tight), annealed to zero. The dense CE signal also directly patches this project's known mechanism \u2014 it gives the in-mixture gradient that sparse terminal reward cannot provide for a skill the current policy lacks.",
+    "confidence": "established"
+   },
+   {
+    "claim": "OpenAI Five kept one parameter lineage alive for 10 months via 'surgery' (one surgery per ~2 weeks across env/architecture/obs changes) \u2014 proving long-lived fine-tuning of a single policy is viable \u2014 but the 'Rerun' control (training from scratch with the final recipe) reached the same level in 2 months at 20% of the compute, showing an accumulated surgical lineage carries substantial inefficiency versus a clean retrain once the recipe is known.",
+    "source": "OpenAI, 'Dota 2 with Large Scale Deep Reinforcement Learning', arXiv:1912.06680, 2019 (cdn.openai.com/dota-2.pdf); openai.com/index/openai-five-defeats-dota-2-world-champions/",
+    "relevance": "This project is deep into the surgery pattern: warm-start chains (Stage1->2->3, generalist->tight ladder->T13) accumulating scar tissue. The Rerun lesson: once T13 (or kickstarting) identifies a working consolidation recipe, the strongest portfolio/defensible artifact is likely one clean final run \u2014 fresh training or single distillation pass with the final mixture, LR schedule, and curriculum \u2014 rather than the N-times-operated-on checkpoint. Also sets expectations: even OpenAI's surgeries came 'with minimal loss', not zero loss.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Experiment hygiene fundamentals before drawing conclusions: fix random seeds so runs are reproducible; evaluate over the full (large) test set, not samples; build up 'one step at a time' with a single validated change per experiment ('neural net training fails silently... everything could be correct syntactically, but the whole thing isn't arranged properly'); use input-independent and trivial baselines to confirm the model extracts signal at all.",
+    "source": "Andrej Karpathy, 'A Recipe for Training Neural Networks', 2019",
+    "relevance": "T13 bundles at least four changes versus the failed runs: LR 1e-2->1e-3, tight weight 10%->25%, hard-long cells deepened, dead cell excluded. Whatever happens, attribution is lost \u2014 and this project's next decision (distill vs iterate) hinges on attribution. Given the external evidence that LR is the highest-prior suspect, the hygienic version is LR-drop-only first (keep the 50M re-mix's exact mixture at 1e-3); it is also the cheapest, since the re-mix run is the direct control. The full T13 bundle then becomes the second run if needed.",
+    "confidence": "established"
+   }
+  ],
+  "design_risks": [
+   "Confounded attribution: T13 changes >=4 variables simultaneously (LR 10x drop, tight weight 10%->25%, deepened hard-long cells, dead-cell exclusion) relative to both failed runs, so neither success nor failure will identify the operative lever \u2014 and the fallback decision (distill vs iterate) depends on knowing it. The 50M re-mix at 1e-3 with everything else unchanged is the clean, cheaper control the practitioner literature (Karpathy recipe; Andy Jones) would demand first.",
+   "Single mid-run full eval may miss the collapse onset: this project's forgetting has been fast (50M sufficed to take tight from ~98.5% to 0/200), so a midpoint snapshot brackets, but does not localize, when/how skills decay. Schulman's 'battery of benchmarks' pattern maps to cheap per-cell probes (20-50 eps/cell) every ~10M plus per-cell entropy and per-update KL logging \u2014 without these, an update-size failure (KL/entropy churn -> clamp LR) is indistinguishable from a data-starvation failure (smooth drift -> change mixture/architecture), and they have opposite fixes.",
+   "Sampling weight is not gradient share: with gamma=1 shaping over 3000-22000-step episodes, per-cell return/value-target scales plausibly differ several-fold, and T13's deepened long cells increase the large-scale share. PopArt (Hessel/van Hasselt 2018) exists because large-return tasks capture the shared network regardless of sampling weights; tight's 0.25 weight may be a much smaller effective gradient fraction. Measure per-cell value-target stats before trusting the weights; per-cell return normalization is the cheap fix.",
+   "Single-seed inference: given documented in-project seed pointiness (seed 1337: 0% where seed 42: 81.3%) and Schulman/Henderson seed-variance warnings, a one-seed T13 outcome \u2014 either direction \u2014 is weak evidence about the recipe. At minimum plan a second seed before writing conclusions into memory.",
+   "The fallback as specified (pure supervised distillation, then optional low-LR RL polish) is the configuration Kickstarting (Schmitt et al. 2018) found inferior: pure distillation plateaus at/below teacher, and a sharp BC->RL handoff recreates the reward-reshape-on-committed-policy transition that failed 4/4 times in R5. The literature-backed variant is single-phase RL + per-cell annealed teacher cross-entropy on the student's own trajectories (generalist teaching its 5 cells, tight specialist its cell), lambda annealed to zero \u2014 this also supplies the dense in-mixture signal that this project's replicated 'never bootstraps under sparse reward' mechanism says is missing.",
+   "Even if T13 works, the delivered checkpoint is a 4-times-operated-on lineage; OpenAI Five's Rerun result (from-scratch with final recipe = same strength at 20% compute) suggests the final defensible artifact should be one clean run of the discovered recipe, not the surgical lineage itself.",
+   "Unchased anomaly: tight going to literally 0/200 (not partial) under a 10%-weight rehearsal deserves a decay-curve autopsy on the re-mix run's intermediate checkpoints \u2014 instant collapse vs gradual decay discriminates interference from starvation, and this project's bug history (eval classifier, \u03d6 gauge, true_to_mean) justifies also re-verifying that the tight cell's episodes were actually sampled, weighted, and evaluated as intended in that run."
+  ]
+ },
+ {
+  "label": "",
+  "findings": [
+   {
+    "claim": "Forgetting after fine-tuning is predicted by the KL divergence between the fine-tuned and base policy measured ON THE NEW TASK's distribution, and on-policy RL forgets less than SFT precisely because it is implicitly biased toward KL-minimal solutions among those that solve the new task ('RL's Razor').",
+    "source": "RL's Razor: Why Online Reinforcement Learning Forgets Less \u2014 Shenfeld et al. 2025, arXiv:2509.04259",
+    "relevance": "Gives T13 a cheap, causal early-warning metric: log KL(pi_t || pi_warmstart) separately on states from each of the 7 cells during training. Wide-cell forgetting in the ladder run and tight-cell re-zeroing in the rehearsal run should both have shown up as KL drift on those cells' state distributions long before the eval collapse. Also implies the 10x LR drop helps only insofar as it reduces cumulative KL drift over 100M steps \u2014 it is not a guarantee, since a long low-LR run can accumulate the same KL as a short high-LR run.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "In continual post-training, removing the explicit KL penalty from the RL objective caused NO additional forgetting (forgetting measure unchanged) but did cause late-stage training instability requiring checkpoint restarts; the anti-forgetting mechanism is attributed to advantage-weighted updates on on-policy data (zero advantage \u2192 zero gradient on already-mastered behavior), not to the KL term.",
+    "source": "Reinforcement Fine-Tuning Naturally Mitigates Forgetting in Continual Post-Training \u2014 arXiv:2507.05386 (GRPO FM -2.3% vs SFT -10.4%; ScienceQA 95.2\u219276.1 under SFT vs 95.6\u219293.0 under GRPO)",
+    "relevance": "Directly answers the 'is a KL-anchor the right consolidation tool' question: an explicit KL-to-frozen-policy penalty buys stability, not retention. For T13 this means a KL anchor is a second-order tool; the first-order protections are on-policy rollouts on the protected cells (which the mixture already provides) and keeping advantages near zero on mastered cells. Caveat for this project: the potential-based shaping (gamma=1) keeps advantages NONZERO even on mastered cells, which removes the natural 'zero-advantage shield' this paper relies on \u2014 shaping actively invites drift on cells that are already at 97-100%.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "The same paper's controlled experiments show 'hard samples where no positive rewards exist degrade rather than learn' under RFT \u2014 a task the current policy cannot ever score on receives no useful gradient and does not bootstrap in-mixture.",
+    "source": "Reinforcement Fine-Tuning Naturally Mitigates Forgetting in Continual Post-Training \u2014 arXiv:2507.05386, hard-sample ablation",
+    "relevance": "Independent literature replication of this project's 5x-replicated bootstrap law ('a task whose warm-start root is incompetent never bootstraps under sparse reward in-mixture, regardless of weight'). Strengthens the T13 design choice to warm-start from the checkpoint that HAS tight \u2014 and raises a specific flag: the 6.5%-collapsed wide cell in that checkpoint may itself be at or below the competence threshold needed to recover in-mixture.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "Per-update policy entropy change is proportional to the covariance between action log-probability and advantage; this covariance stays positive through training, so entropy declines monotonically \u2014 a lower learning rate only scales the RATE of entropy erosion, it does not change its sign or freeze entropy. The standard entropy bonus opposes but does not reliably cancel this drift.",
+    "source": "The Entropy Mechanism of Reinforcement Learning for Reasoning Language Models \u2014 Cui et al. 2025, arXiv:2505.22617 (covariance term matched measured entropy deltas exactly; also verl 'Entropy Mechanism' recipe docs)",
+    "relevance": "Answers the entropy sub-question for T13: at LR 1e-3 the converged generalist's already-low entropy will keep eroding ~10x slower, which is mostly good (protects the 97-100% cells), but it also means the policy will NOT regain exploration on the degraded wide cells (29%/6.5%/40%) from the entropy bonus alone over 100M steps. Recovery of those cells must come from the dense shaping signal, not exploration.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "PPO's clipping induces asymmetric entropy biases independent of learning rate: clip-high (positive-advantage upside clipping) decreases entropy and clip-low increases it; symmetric defaults net toward entropy collapse in fine-tuning regimes.",
+    "source": "Clip-Low Increases Entropy and Clip-High Decreases Entropy in RL of LLMs \u2014 arXiv:2509.26114; corroborated by CE-GPPO (arXiv:2509.20712) and DAPO's clip-higher (arXiv:2503.14476)",
+    "relevance": "If T13 shows entropy pinning to zero on the tight cell (the recently-learned, most deterministic skill), an asymmetric clip (raise the upper clip bound only) is a targeted, LR-independent lever that does not risk the wide cells the way raising ent_coef globally would.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "Higher policy entropy smooths the policy-optimization landscape and is what LICENSES large learning rates; conversely a near-deterministic converged policy sits in a sharp landscape where large steps are destructive.",
+    "source": "Understanding the Impact of Entropy on Policy Optimization \u2014 Ahmed, Le Roux, Norouzi, Schuurmans, ICML 2019, arXiv:1811.11214",
+    "relevance": "Post-hoc explanation for why LR 1e-2 (tuned for fresh high-entropy training) shredded 3 wide cells when applied to a converged low-entropy generalist: the same LR is effectively a much larger step in a sharper landscape. Directly supports the T13 10x LR drop as the correct first-order fix rather than a hopeful tweak.",
+    "confidence": "established"
+   },
+   {
+    "claim": "In sequential-task training, the learning rate used on the LATER task is the single most influential hyperparameter for how much of the earlier task is forgotten \u2014 lower LR on the new task means less forgetting \u2014 with wide/flat minima (encouraged by LR decay, small-ish batches, dropout) as the proposed mechanism.",
+    "source": "Understanding the Role of Training Regimes in Continual Learning \u2014 Mirzadeh et al., NeurIPS 2020, arXiv:2006.06958",
+    "relevance": "The strongest established backing for T13's core bet (LR 1e-2 \u2192 1e-3). It also argues for DECAYING the LR further across the 100M run (e.g., 1e-3 \u2192 1e-4 linear) rather than holding it constant, since the run is itself a sequence of distribution shifts as cells recover at different rates.",
+    "confidence": "established"
+   },
+   {
+    "claim": "LR annealing helps PPO modestly but consistently (better final performance in 4/5 continuous-control tasks in a 250k-agent sweep); per-minibatch advantage normalization had little average effect in the same sweep \u2014 it is neither load-bearing nor harmless-by-default, its effect is task-dependent.",
+    "source": "What Matters In On-Policy Reinforcement Learning? A Large-Scale Empirical Study \u2014 Andrychowicz et al. 2020, arXiv:2006.05990 (decisions C31, fig. 35)",
+    "relevance": "Supports annealed-over-constant LR for the T13 fine-tune, and licenses experimenting with turning batch advantage normalization OFF or making it per-cell \u2014 the mega-study says you are not giving up a known-critical component by changing it.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Batch-level advantage normalization is a biased estimator that interacts badly with heterogeneous trajectory lengths; VAPO introduces decoupled GAE and length-adaptive weighting specifically 'to prevent long traces from dominating value estimates', and REINFORCE++ replaced group normalization with global normalization for the same length-interaction reason.",
+    "source": "VAPO (ByteDance, arXiv:2504.05118) and REINFORCE++ (arXiv:2501.03262), as surveyed in 'Beyond PPO' (ydnyshhh.github.io/posts/policy_optimization) and Mode-Dependent Rectification (arXiv:2602.05619)",
+    "relevance": "T13's batches mix 3000-step and 22000-step episodes with per-cell weights deliberately deepened toward the hard long cells. Every env contributes equal timesteps per batch, but terminal +10 events are ~7x denser per timestep in short-episode cells, so batch mean/std of advantages is set by whichever cells have dense large-magnitude advantages \u2014 normalization then silently rescales (and via mean-subtraction, sign-shifts) the other cells' learning signal. Per-cell advantage normalization or no-mean-subtraction variants are the mapped fix.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "When one network trains on multiple tasks whose returns/advantages have different scales, the large-scale task dominates the shared-parameter gradient; PopArt-style per-task value/advantage rescaling equalizes each task's contribution and was the key to the first single-policy median-human result on all 57 Atari games.",
+    "source": "Multi-task Deep Reinforcement Learning with PopArt \u2014 Hessel et al., AAAI 2019, arXiv:1809.04474",
+    "relevance": "The established version of the mixed-episode-length concern. With gamma=1, the accumulated potential-shaping return over a 22000-step episode has a very different scale and variance than over a 3000-step episode, so the shared critic and encoder are pulled hardest by the long cells \u2014 which is exactly the direction T13's re-weighting also pushes. Per-cell return normalization (PopArt or a static per-cell scale) is the standard remedy.",
+    "confidence": "established"
+   },
+   {
+    "claim": "A stale or mis-matched critic at warm-start actively damages the policy in early fine-tuning updates: 'without critic warm-up, early random/erroneous critic gradients corrupt the shared backbone and the policy must unlearn them'; the standard fix is a critic-only warm-up phase (policy frozen, value trained for a fixed number of steps) before joint training, used in RLHF pipelines and residual-RL fine-tuning alike.",
+    "source": "What Makes Value Learning Efficient in Residual Reinforcement Learning? \u2014 arXiv:2602.10539; corroborated by Secrets of RLHF Part I (arXiv:2307.04964) and apxml RLHF course notes on policy/value implementation",
+    "relevance": "T13's warm-start critic was fitted to the 2-rung tight-ladder distribution at LR 1e-2; the new 6-cell mixture with deepened long cells is a different return distribution, so the first ~N updates run on systematically wrong advantages. A 1-5M-step critic-only warm-up (policy LR 0, value LR normal) at the start of T13 is a cheap, literature-standard insurance that costs ~2% of the budget.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Overly long critic-only warm-up overfits the critic and makes the subsequent policy-gradient phase oscillate; warm-up must be bounded, and separate (lower) critic learning rates during joint training are the standard complement.",
+    "source": "ReinFlow: Fine-tuning Flow Matching Policy with Online RL \u2014 arXiv:2505.22094 (warm-up instability finding); Warm-Start Actor-Critic: From Approximation Error to Sub-optimality Gap \u2014 Wang et al., arXiv:2306.11271 (theory: warm-start approximation error propagates to sub-optimality gap)",
+    "relevance": "Bounds the critic warm-up recommendation for T13: a short fixed warm-up (until value loss plateaus on the new mixture, not longer), then joint training \u2014 optionally with the value LR held at 1e-3 while trying policy LR 3e-4 if the first mid-run eval shows early wide-cell damage.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "PPO's ratio clipping does not by itself enforce a trust region \u2014 the trust region actually maintained is an artifact of optimizer details (learning rate, epochs, early stopping), and maximum ratios routinely violate the clip bound; drift over many epochs on stale rollouts is what precedes performance collapse.",
+    "source": "Implementation Matters in Deep Policy Gradients: A Case Study on PPO and TRPO \u2014 Engstrom et al., ICLR 2020, arXiv:2005.12729; corroborated by 'Prosperity before Collapse' (arXiv:2510.01161) on stale-data epoch overfitting",
+    "relevance": "Answers 'what breaks first at 10x lower LR': nothing in PPO's objective protects the wide cells \u2014 protection comes entirely from step-size economics. LR 1e-3 shrinks per-epoch drift, but if T13 uses multiple PPO epochs per batch, KL still compounds within each update; capping update epochs or adding a KL early-stop (target-KL) is the mechanism-level version of the LR drop and worth setting explicitly.",
+    "confidence": "established"
+   },
+   {
+    "claim": "In offline-to-online RL fine-tuning, pre-trained policies collapse quickly at the start of online training due to sudden distribution shift plus critic error, and keeping a behavior-cloning/policy-constraint term from pre-training through early fine-tuning prevents the collapse \u2014 with the known cost that a fixed BC weight caps final performance, so the weight should be annealed.",
+    "source": "Adaptive Behavior Cloning Regularization for Stable Offline-to-Online RL \u2014 Zhao et al., arXiv:2210.13846; TD3+BC lineage per 'Improving TD3-BC' (arXiv:2211.11802) and 'Finetuning from Offline RL: Challenges, Trade-offs and Practical Solutions' (arXiv:2303.17396)",
+    "relevance": "Supports a light BC-to-own-warm-start auxiliary loss during T13's first phase: a self-BC term on tight-cell states (cloning the warm-start's own tight behavior) protects the fragile new skill during the period when the critic is re-fitting, then anneals to zero. This targets the observed failure (rehearsal re-zeroed tight at 0/200) more directly than a global KL anchor, because it can be applied per-cell.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Distilling multiple task-specific teacher policies into one student via supervised policy distillation is a robust, established route to a single multi-task policy (Distral: shared distilled policy as centroid of task policies; DisCoRL: continual RL via distillation; single Atari students matching or exceeding teachers), and is more stable than joint RL because the student objective is supervised and stationary.",
+    "source": "Distral: Robust Multitask Reinforcement Learning \u2014 Teh et al., NeurIPS 2017, arXiv:1707.04175; DisCoRL \u2014 Traor\u00e9 et al. 2019; Continual deep RL with task-agnostic policy distillation \u2014 Sci. Reports 2024",
+    "relevance": "Validates the T13 fallback exactly as planned (student imitating a mode-table of the 5-cell generalist + tight specialist). Literature adds two specifics: distill action DISTRIBUTIONS (KL to teacher logits) rather than argmax actions, and generate the distillation dataset from each teacher on ITS OWN cells' state distribution (on-policy per teacher) \u2014 off-distribution states are where student policies degrade.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Plasticity loss is documented in on-policy PPO specifically (not just off-policy replay settings): trained-then-shifted PPO agents underperform freshly initialized ones on new distributions, with dead units, weight-norm growth, and feature-rank collapse as mechanisms; regenerative resets/regularization mitigate it.",
+    "source": "A Study of Plasticity Loss in On-Policy Deep Reinforcement Learning \u2014 Juliani & Ash, NeurIPS 2024, arXiv:2405.19153; Plasticity Loss in Deep RL: A Survey \u2014 arXiv:2411.04832; Loss of Plasticity in Continual Deep RL \u2014 Abbas et al., CoLLAs 2023",
+    "relevance": "Names the mechanism behind this project's independently-discovered 'plasticity lock' (Phase 5.5) and the R3/R5 warm-start-continuation failures. For T13 it predicts the deepened hard-long cells will improve more slowly per step than they would from scratch; if the mid-run eval shows a hard-long cell flat while others move, layer-norm / partial last-layer reset on the encoder is the literature's targeted intervention \u2014 not more mixture weight (which the project already proved useless for bootstrapping).",
+    "confidence": "established"
+   }
+  ],
+  "design_risks": [
+   "Shaping keeps advantages nonzero on mastered cells: the literature's main explanation for why on-policy RL fine-tuning forgets little (zero advantage on already-correct behavior \u2192 zero gradient) is disabled by this project's dense potential-based shaping at gamma=1 \u2014 the 97-100% cells will receive continuous nonzero gradients for all 100M steps, so T13's protection rests almost entirely on the LR drop. Consider whether shaping can be attenuated (not removed) on cells already above ~97%.",
+   "Cumulative KL drift, not per-step LR, is what predicts forgetting (RL's Razor): 100M steps at 1e-3 can accumulate drift comparable to 10M at 1e-2. The single mid-run full eval may be too coarse \u2014 logging per-cell KL(pi_t || pi_warmstart) continuously is nearly free and would catch a slow seesaw tens of millions of steps before an eval does.",
+   "The 6.5% wide cell may be below the bootstrap-competence threshold: both the project's own 5x-replicated law and the RFT continual-learning paper's hard-sample result say tasks the policy can rarely score on degrade rather than recover in-mixture. T13's plan treats all three collapsed wide cells (29%, 6.5%, 40%) as recoverable-by-rehearsal; the 6.5% cell is the one to watch at the mid-run eval, and the distillation fallback may be needed for that cell even if T13 otherwise works.",
+   "Stale critic on a re-weighted mixture: the warm-start critic was fitted to the tight-ladder distribution at LR 1e-2; the first updates on the new 6-cell mixture will run on systematically wrong advantages, and literature says this early phase is when the policy backbone takes damage. A short critic-only warm-up (policy frozen, ~1-5M steps) is standard, cheap, and absent from the T13 plan.",
+   "Batch advantage normalization couples the 7 cells: with terminal-reward density differing ~7x between 3000- and 22000-step cells and the mixture deepened toward long cells, batch mean/std normalization will rescale and mean-shift the short cells' signal \u2014 a plausible hidden contributor to the original seesaw that the LR drop does not address. Per-cell advantage normalization (or dropping mean subtraction) is a one-line change; PopArt-style per-cell value scaling is the established heavier fix for the gamma=1 return-scale mismatch across episode lengths.",
+   "A KL/BC anchor to the T13 warm-start checkpoint would anchor to BROKEN wide-cell behavior (that checkpoint is at 29%/6.5%/40% on three wide cells). If any anchoring is used, it must be per-cell (anchor tight-cell states only to the warm-start; wide-cell states, if anchored at all, to the 5/7 generalist) \u2014 which is functionally the distillation fallback's mode-table applied as a regularizer, and argues for promoting a weak version of the fallback into T13 rather than holding it in reserve.",
+   "Constant 1e-3 for the full 100M is weakly suboptimal per the literature: both the continual-learning result (lower LR on later training reduces forgetting) and the on-policy mega-study (annealing helps) point to decaying 1e-3 \u2192 ~1e-4 across the run, with any KL-based early stopping (target-KL per update) as the mechanism-level complement, since PPO clipping itself does not bound drift.",
+   "If T13 uses multiple PPO epochs per rollout batch, the effective trust region is set by epochs x LR, not LR alone \u2014 halving epochs is as protective as halving LR and cheaper to evaluate; verify what the current config actually uses before attributing any T13 outcome to the LR drop."
+  ]
+ },
+ {
+  "label": "",
+  "findings": [
+   {
+    "claim": "Multi-task gradient interference is characterized by a 'tragic triad': conflicting gradient directions (negative cosine similarity), high curvature, and large gradient-magnitude differences; PCGrad projects out the conflicting component and improved multi-task RL data efficiency. CAGrad (Liu et al. 2021) extends this by optimizing worst-case local improvement while provably converging on the average loss.",
+    "source": "Gradient Surgery for Multi-Task Learning, Yu et al. 2020, arxiv.org/abs/2001.06782; Conflict-Averse Gradient Descent, Liu et al. 2021, arxiv.org/abs/2110.14048",
+    "relevance": "Don't adopt PCGrad/CAGrad (see Kurin/Xin findings), but steal their diagnostic: log per-cell gradient cosine similarity and per-cell gradient-norm ratios inside the PPO update during T13 (a few lines in the trainer, near-zero cost). Negative cosines between tight-cell and wide-cell gradients = genuine directional interference; large norm ratios = the magnitude/scale problem PopArt addresses. This distinguishes 'tight and wide skills fight over shared weights' from 'long-episode cells drown everything by scale' \u2014 two different fixes.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Unitary scalarization (plain weighted loss sum) plus standard regularization/stabilization matches or beats PCGrad, MGDA, IMTL, GradDrop, and RLW on Metaworld MT10/MT50 multi-task RL; the paper argues specialized multi-task optimizers act partly as regularizers.",
+    "source": "In Defense of the Unitary Scalarization for Deep Multi-Task Learning, Kurin et al., NeurIPS 2022, arxiv.org/abs/2201.04122 (RL benchmarks confirmed via github.com/yobibyte/unitary-scalarization-dmtl)",
+    "relevance": "Directly supports T13's design philosophy: fix the mixture weights, LR, and normalization rather than bolting on gradient surgery. If T13 seesaws, the literature says the next lever is normalization/regularization/curriculum, not PCGrad \u2014 so the distillation fallback is the right escalation path.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Large-scale independent replication: multi-task optimization methods (PCGrad etc.) yield no performance improvement over well-tuned scalarization across language and vision; apparent MTO wins trace to under-tuned baselines and evaluation pitfalls.",
+    "source": "Do Current Multi-Task Optimization Methods in Deep Learning Even Help?, Xin et al., NeurIPS 2022, arxiv.org/abs/2209.11379",
+    "relevance": "Second independent confirmation that the T13 knobs (weights, LR) span the same solution space as gradient surgery. Corollary warning: the mixture-weight/LR grid is doing all the work, so a single point (tight=0.25, LR=1e-3) is one sample from a sensitive space \u2014 cheap short-horizon sweeps before committing 100M steps are more valuable than any exotic optimizer.",
+    "confidence": "established"
+   },
+   {
+    "claim": "In multi-task RL with a single shared value function, tasks with larger return scales dominate learning; per-task adaptive normalization of value targets (PopArt) fixed this, raising IMPALA's Atari-57 median human-normalized score from 59.7% to 110% with negligible compute cost.",
+    "source": "Multi-task Deep Reinforcement Learning with PopArt, Hessel et al., AAAI 2019, arxiv.org/abs/1809.04474",
+    "relevance": "The sharpest concrete gap in the T13 plan. With gamma=1, potential shaping, and episode lengths 3000\u201322000 steps across cells, per-cell return and value-target magnitudes plausibly differ by ~7x; a single un-normalized value head means value-loss gradients and advantage scales are dominated by long-episode/deepened cells regardless of mixture weight (weights multiply sample counts, not per-sample gradient scale). Per-cell running return/advantage normalization (PopArt-lite: track mean/std of returns per cell, normalize value targets per cell) is a small trainer change with the strongest literature pedigree for exactly this mixed-horizon setting.",
+    "confidence": "established"
+   },
+   {
+    "claim": "On-policy RL with shared function approximation on a multi-component objective exhibits 'ray interference': winner-take-all dynamics that traverse sequential plateaus, learning one component at a time. Necessary conditions are (a) negative interference between components and (b) performance-coupled data generation ('the improving behavior policy generates the future training data'). A component at zero performance sits at a saddle (f_k(0)=0) it cannot leave because it generates no reward-bearing data. Discussed remedies: off-policy/replay data diluting the coupling, modular/multi-head architectures, and training separate networks per component then distilling into one.",
+    "source": "Ray Interference: a Source of Plateaus in Deep Reinforcement Learning, Schaul et al. 2019, arxiv.org/abs/1904.11455 (remedies from Section 4, ar5iv.labs.arxiv.org/html/1904.11455)",
+    "relevance": "This is the closest published mechanism to both project observations: the bidirectional seesaw is the winner-take-all dynamic, and the 5x-replicated 'a skill whose warm-start root is incompetent never bootstraps in-mixture under sparse reward' is precisely the f_k(0)=0 saddle \u2014 the collapsed cell generates no successes, so no gradient, so mixture weight is irrelevant. Two consequences: (1) T13's danger zone is any mid-run dip of tight below the success-generating threshold, after which the remaining steps cannot recover it \u2014 monitor per-cell rolling success continuously, not just one mid-run eval, and keep per-cell-best checkpoints; (2) the paper explicitly endorses the T13 fallback (train specialists separately, distill into one) as a principled remedy for exactly this failure mode.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "A single distilled multi-task network matched or outperformed 10 single-task DQN teachers (89.3% geometric-mean generalization score) and outperformed a jointly-RL-trained multi-task DQN, at up to 15x compression with no degradation.",
+    "source": "Policy Distillation, Rusu et al. 2015, arxiv.org/abs/1511.06295",
+    "relevance": "Direct precedent for the T13 fallback: supervised distillation from a mode-table of teachers succeeds where joint RL training fails, at SMALLER capacity than the teachers combined. Strong prior that one 128-hidden LSTM can hold all 6 skills and that the failure is optimization/interference, not representation.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Shallow networks trained to mimic deep teachers reach accuracy they cannot reach when trained directly on the data \u2014 demonstrating that mimicry training separates 'cannot represent' from 'cannot learn via this objective'. Caveat: Urban et al. 2016 found the result does not transfer to settings needing convolutional depth (CIFAR-10).",
+    "source": "Do Deep Nets Really Need to be Deep?, Ba & Caruana, NeurIPS 2014 (follow-up: Do Deep Convolutional Nets Really Need to be Deep and Convolutional?, Urban et al., arxiv.org/abs/1603.05691)",
+    "relevance": "This is the epistemic license for distillation-as-capacity-probe: run a SHORT supervised distillation of both teachers into a fresh 38->128->LSTM(128) student BEFORE or in parallel with T13. If the student fits all 6 cells to high success, capacity is proven sufficient and any T13 seesaw is definitively an optimization/interference failure; if the student plateaus with tight-vs-wide tradeoff even under dense supervised signal, that is the first real evidence FOR a capacity limit at width 128. Either outcome makes the T13 result interpretable. Supervised distillation on CPU over logged teacher rollouts is orders of magnitude cheaper than 100M env steps.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Minima found by sequential (continual) training and the corresponding multitask minimum are typically connected by linear low-error paths in weight space when trained from a shared initialization; MC-SGD exploits this to approximate the multitask solution.",
+    "source": "Linear Mode Connectivity in Multitask and Continual Learning, Mirzadeh et al., ICLR 2021, arxiv.org/abs/2010.04495",
+    "relevance": "Grounds the cheapest measurement available: the tight-skilled checkpoint was produced by fine-tuning the generalist itself (2-rung ladder), i.e., the two checkpoints share an init \u2014 the exact setting where linear connectivity holds. Sweep alpha in theta = (1-alpha)*theta_generalist + alpha*theta_tight (10 values), eval ~200 episodes/cell each: pure evaluation, zero training. If some alpha holds tight and the wide cells simultaneously at high success, that single afternoon of evals proves one 128-net represents all 6 skills AND hands you a better-than-either warm start for T13.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "Weight interpolation/averaging of models fine-tuned from a shared init combines their abilities: model soups (Wortsman et al. 2022) and task arithmetic via task vectors theta_ft - theta_init (Ilharco et al. 2022) are established for supervised nets; Rewarded Soups (Rame et al., NeurIPS 2023) verified linear mode connectivity holds for RL-fine-tuned policies trained on different rewards and that interpolation trades off their capabilities smoothly.",
+    "source": "Model soups, Wortsman et al., ICML 2022, arxiv.org/abs/2203.05482; Editing Models with Task Arithmetic, Ilharco et al. 2022; Rewarded Soups, Rame et al., NeurIPS 2023, arxiv.org/abs/2306.04488",
+    "relevance": "Rewarded Soups is the RL-specific evidence that the interpolation probe (previous finding) is not a supervised-only trick \u2014 RL fine-tunes from a shared init stayed linearly connected. Caveat for this project: their policies were large pretrained models with short RL fine-tunes; a 2-rung ladder at LR 1e-2 moves a tiny LSTM much further in weight space, so connectivity may fail \u2014 but failure of the probe is only inconclusive (permutation/basin drift), while success is decisive, and the probe costs nothing but eval time.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "Network width strongly reduces catastrophic forgetting in continual learning; wide nets' task gradients are more orthogonal and closer to the lazy/NTK regime, so new-task updates overwrite less. Effect of depth is much weaker or adverse.",
+    "source": "Wide Neural Networks Forget Less Catastrophically, Mirzadeh et al., ICML 2022, arxiv.org/abs/2110.11526 (companion: Architecture Matters in Continual Learning, arxiv.org/abs/2202.00275)",
+    "relevance": "Reframes the capacity question: the counter-evidence (128-hidden holds tight+loose in one specialist, 4 wide skills in another) shows REPRESENTATIONAL capacity suffices, but width also governs TRAINING-TIME interference, which is where the seesaw lives. A 128->256 encoder/LSTM widening for the consolidation run only (then optionally distill back to 128 for the embedded C port) is a cheap orthogonal lever if T13 seesaws \u2014 it attacks gradient overlap, which neither LR nor mixture weights touch.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "When continual-learning task accuracy collapses, linear probes on frozen intermediate features show representations are often largely preserved; retraining only the output head recovers much of the lost performance \u2014 forgetting concentrates near the output.",
+    "source": "Probing Representation Forgetting in Supervised and Unsupervised Continual Learning, Davari et al., CVPR 2022, openreview.net/forum?id=YzAZmjJ-4fL (corroborated by feature-forgetting follow-ups, e.g. arxiv.org/abs/2304.00933)",
+    "relevance": "Cheap measurement #2, applicable to the already-existing wreckage: take the 50M re-mix checkpoint where tight went 0/200, freeze the encoder+LSTM, and retrain ONLY the action/value heads on tight-cell data (RL, or supervised toward the tight specialist's actions). If head-only training recovers tight competence, the trunk still encodes the skill and the seesaw is a head/readout phenomenon \u2014 low-LR consolidation or head-anchoring will work. If it doesn't, the trunk itself was overwritten, which raises the risk that T13 at 1e-3 still erodes trunk features and strengthens the case for distillation or a KL anchor.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Full fine-tuning distorts pretrained features under distribution shift because early large head-gradients backpropagate into the trunk; linear-probe-then-fine-tune (LP-FT) \u2014 fit the head first, then unfreeze \u2014 preserves features and beat full fine-tuning by ~10% OOD.",
+    "source": "Fine-Tuning can Distort Pretrained Features and Underperform Out-of-Distribution, Kumar et al., ICLR 2022, arxiv.org/abs/2202.10054",
+    "relevance": "T13's first updates are its most dangerous: the warm-start checkpoint meets a new mixture (re-weighted cells, re-included wide cells) and the initial value-function error produces large early gradients through the shared trunk \u2014 the same mechanism that likely re-zeroed tight in the 50M re-mix within the first fraction of training. An LP-FT-style schedule (first few M steps: heads-only or 10x-lower trunk LR, then unfreeze) is nearly free and directly targets the kill window. Transfer of this result to RL/LSTM is plausible but not published.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Kickstarting adds an auxiliary cross-entropy/KL loss pulling the student toward teacher policies on the student's own trajectories (per-teacher coefficients, annealed over training), letting RL proceed while preventing loss of teacher skills; Distral was explicitly motivated by 'gradients from different tasks interfere negatively' and 'different reward schemes lead to one task dominating', and anchors all task policies to a shared distilled policy via KL.",
+    "source": "Kickstarting Deep Reinforcement Learning, Schmitt et al. 2018, arxiv.org/abs/1803.03835; Distral, Teh et al., NeurIPS 2017, arxiv.org/abs/1707.04175",
+    "relevance": "The literature-standard insurance T13 currently lacks: the tight specialist exists, so add a small KL(pi_tight_teacher || pi) term on tight-cell minibatches (and optionally KL to the generalist on wide cells). Because the anchor is a dense supervised signal, it defends the skill even during stretches where the sparse reward for that cell goes silent \u2014 exactly the regime where the project's 'rehearsal weight cannot rebuild a lost skill' mechanism bites. Annealable to zero, so it need not cap final performance.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Teacher-driven distillation (matching the teacher on the TEACHER's state distribution) suffers covariate shift at deployment; student-driven distillation (matching the teacher on states the student visits) yields more robust policies, but the naive on-policy objective is not a proper gradient field \u2014 corrected objectives (e.g., expected-entropy-regularized distillation) fix convergence.",
+    "source": "Distilling Policy Distillation, Czarnecki et al., AISTATS 2019, proceedings.mlr.press/v89/czarnecki19a.html",
+    "relevance": "Design spec for the fallback: do NOT distill purely on logged teacher trajectories. With a recurrent student and 3000\u201322000-step episodes, small action mismatches compound and push the student off the teachers' orbit-phase distribution. Run the student in each cell's env, query the matching teacher for target action distributions at student-visited states (DAgger-style), and train on sequences so the LSTM state is consistent. This is cheap since teachers are tiny CPU nets.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "Naive RL fine-tuning on top of a supervised/offline-initialized policy frequently collapses early because the fresh or stale critic is inaccurate and over-optimistic on newly visited states; standard mitigations are calibrating/warming the critic before policy updates (Cal-QL) and adaptive behavior-cloning/KL regularization that decays as the critic becomes reliable.",
+    "source": "Cal-QL, Nakamoto et al., NeurIPS 2023, arxiv.org/abs/2303.05479; Adaptive Behavior Cloning Regularization for Stable Offline-to-Online RL, Zhao et al. 2022, arxiv.org/abs/2210.13846; PROTO, Li et al. 2023, arxiv.org/abs/2305.15669",
+    "relevance": "Targets the fallback's 'optional low-LR RL polish' step: after supervised distillation the student has no matched value function, so the first PPO updates run on garbage advantages and can destroy the distilled 6/7 policy. Before any polish: freeze the policy and train the value head to convergence on rollouts, then unfreeze with a KL-to-distilled-self anchor. Skipping this is the most likely way the fallback snatches defeat from victory.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Networks trained on sequences of RL prediction targets progressively lose the ability to fit new targets ('capacity loss' / plasticity loss), with feature-rank collapse and dormant units as measurable signatures; damage is worst in sparse-reward tasks. Warm-starting in general yields worse final generalization than fresh training, partially fixed by shrink-and-perturb.",
+    "source": "Understanding and Preventing Capacity Loss in RL, Lyle et al., ICLR 2022, arxiv.org/abs/2204.09560; Understanding Plasticity in Neural Networks, Lyle et al., ICML 2023; On Warm-Starting Neural Network Training, Ash & Adams, NeurIPS 2020",
+    "relevance": "The project already observed this class of failure (R3/R5: every trained variant collapses, untrained warm-start beats them; 'plasticity is prerequisite'). Before spending 100M steps, measure the T13 init's effective feature rank and dormant-unit fraction on a batch of states from each cell (minutes of compute): the tight checkpoint has been through two high-LR rungs, and if its features are rank-collapsed, slow wide-cell recovery in T13 will masquerade as a capacity limit. Distillation into a FRESH student sidesteps accumulated plasticity damage entirely \u2014 an underrated argument for the fallback beyond interference.",
+    "confidence": "established"
+   }
+  ],
+  "design_risks": [
+   "Value/return scale imbalance is unaddressed: with gamma=1 and episode lengths 3000-22000, per-cell value-target magnitudes differ by up to ~7x, and the single shared value head lets deepened long-episode cells dominate value-loss gradients and advantage scales at ANY mixture weight (weights change sample counts, not per-sample gradient magnitude). PopArt-style per-cell return normalization (or at minimum per-cell advantage normalization) is the missing lever with the strongest evidence base for exactly this mixed-horizon setting.",
+   "The LR drop attacks update size but not the mechanism: the seesaw is on-policy coupling (Ray Interference) \u2014 if tight's success rate dips below the data-generation threshold at any point mid-run, it enters the project's own 5x-replicated never-bootstraps regime and no remaining steps or weights recover it. One mid-run full eval is too coarse to catch this; per-cell rolling success on training batches is nearly free and should gate early stopping / per-cell-best checkpointing.",
+   "No behavioral anchor on the tight skill: defense rests entirely on the 0.25 mixture weight, whose adequacy at LR 1e-3 is untested. A kickstarting-style KL to the tight specialist on tight-cell minibatches (annealed) defends the skill with a dense supervised signal even through silent-reward stretches, at trivial cost \u2014 the plan omits the single best-supported insurance in the literature.",
+   "T13 spends 100M steps before answering the capacity question. Two cheap probes would make any T13 outcome interpretable first: (a) zero-training alpha-sweep interpolation between the generalist and tight checkpoints (they share an init, the model-soups/rewarded-soups setting) evaluated per cell \u2014 success proves one 128-net holds all 6 skills and yields a better warm start; (b) a short supervised distillation of both teachers into a fresh 128-hidden student \u2014 success proves capacity and pre-builds the fallback; failure under dense supervision would be the first genuine evidence of a width-128 limit.",
+   "The first few M steps are the kill window: fresh value-error on the re-weighted mixture backpropagates large gradients through the shared trunk (the LP-FT distortion mechanism), which is plausibly how the 50M re-mix re-zeroed tight early. A heads-first schedule (freeze trunk or 10x-lower trunk LR for the initial phase) is nearly free protection the plan lacks.",
+   "The tight-skilled init has been through two rungs at LR 1e-2; if its features are rank-collapsed (capacity/plasticity loss), wide-cell recovery at 1e-3 will be slow and a T13 failure will masquerade as a capacity limit. Measure effective feature rank / dormant units per cell at init (minutes) so the failure mode is attributable.",
+   "Fallback-specific risks if T13 seesaws: (a) distilling a recurrent student purely on teacher trajectories will covariate-shift over 3000-22000-step episodes \u2014 use student-driven rollouts with teacher-queried targets, trained on sequences; (b) the 'low-LR RL polish' will collapse the distilled policy if PPO starts with an untrained value head \u2014 freeze the policy, fit the critic first, then polish under a KL-to-distilled-self anchor."
+  ]
+ },
+ {
+  "label": "",
+  "findings": [
+   {
+    "claim": "CLEAR prevents forgetting in continual RL with a 50:50 new:replay ratio (75:25 also works; 100% replay is the most forgetting-resistant at slight cost to new-task learning speed), and the replay buffer can shrink to 0.56% of total experience (5M of 900M frames, reservoir sampling) with only a slight robustness loss. Critically, replay is paired with behavioral-cloning anchoring losses (policy-KL weight 0.01, value-L2 weight 0.005) on top of V-trace off-policy learning \u2014 replay alone is weaker.",
+    "source": "Experience Replay for Continual Learning (CLEAR), Rolnick et al., NeurIPS 2019 \u2014 https://arxiv.org/abs/1811.11682 (full text via ar5iv)",
+    "relevance": "T13's 'tight=0.25 mixture weight' is NOT the CLEAR mechanism. CLEAR replays stored trajectories from when the policy was competent, plus clones its own past outputs. T13's rehearsal is fresh on-policy rollouts in the tight cell \u2014 those only carry gradient signal while the policy still succeeds there (sparse terminal reward). If churn dips tight success transiently, the 'rehearsal' data becomes rewardless and you re-enter your replicated never-bootstraps regime mid-run. CLEAR's defense has an anchor T13 lacks.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Ray interference: in on-policy multi-task RL with shared function approximation, updates from tasks where reward is currently easy dominate and the learner traverses winner-take-all plateaus, effectively learning/retaining one thing at a time; tasks that currently earn no reward supply no gradient and cannot recover in-mixture. This is a data-generation coupling (agent controls its future data), so it is not removed by lowering the learning rate \u2014 LR only slows the traversal.",
+    "source": "Ray Interference: a Source of Plateaus in Deep Reinforcement Learning, Schaul, Borsa, Modayil, Pascanu, 2019 \u2014 https://arxiv.org/abs/1904.11455",
+    "relevance": "This is the published version of your replicated mechanism ('a task whose warm-start root is incompetent NEVER bootstraps in-mixture'). It predicts the seesaw is structural to sparse-reward on-policy mixtures, and that T13's 10x LR drop changes the timescale, not the attractor: if tight success rate ever hits ~0 during the 100M run, weight 0.25 will not bring it back.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Learning rate is the single most influential training-regime knob for forgetting, but is explicitly insufficient alone: their 'stable SGD' regime (initially high LR decayed at each task boundary + small batch 10\u201316 + dropout 0.25\u20130.5) cut forgetting from 0.52 to 0.10 (46.3%\u219270.8% average accuracy, 20-task Rotated MNIST); the paper frames high LR on later tasks as the main destroyer of prior minima, with the fix being the combined regime, not LR reduction by itself.",
+    "source": "Understanding the Role of Training Regimes in Continual Learning, Mirzadeh, Farajtabar, Pascanu, Ghasemzadeh, NeurIPS 2020 \u2014 https://arxiv.org/abs/2006.06958",
+    "relevance": "Directly supports T13's LR 1e-2 \u2192 1e-3 drop as the highest-leverage single change (your LR 1e-2 runs seesawed in both directions, consistent with their high-LR result). But the literature's prediction is 'less forgetting', not 'no forgetting' \u2014 LR-only regimes still forget without a stability term (weight-space or output-space regularization).",
+    "confidence": "established"
+   },
+   {
+    "claim": "In continual pre-training (supervised analog), rehearsal fraction needed scales with shift severity: 5% replay largely mitigated weak-shift forgetting (loss 2.44\u21922.23 vs union baseline 2.17) but a strong shift needed 25% replay (3.56\u21922.33 vs union 2.26). Separately, halving max LR (3e-4\u21921.5e-4) reduced forgetting but measurably worsened adaptation to the new data \u2014 a documented LR stability/plasticity trade, not a free win.",
+    "source": "Simple and Scalable Strategies to Continually Pre-train Large Language Models, Ibrahim et al., 2024 \u2014 https://arxiv.org/abs/2403.08763",
+    "relevance": "The best quantitative anchor for 'is 25% enough': 25% rehearsal was the strong-shift-defending fraction even in the benign supervised case with dense loss on every replayed token. T13's tight cell at 0.25 weight is at the right order of magnitude to DEFEND a present skill \u2014 consistent with your 10%-at-LR-1e-2 failure being under-weighted AND over-plastic. But their LR finding also predicts T13's deepened hard-long cells will learn noticeably slower at 1e-3; budget expectations accordingly.",
+    "confidence": "established"
+   },
+   {
+    "claim": "RL fine-tuning forgets pre-trained capabilities specifically on the state subspace not visited early in fine-tuning, and vanilla fine-tuning fails even when the capability is needed later; explicit knowledge-retention terms fix it \u2014 behavioral cloning (loss weight 2.0, no decay) and kickstarting/online distillation (weight 0.5, decay 0.99998/step) were the top performers (NetHack SOTA 5K\u219210K+), while EWC (coeff 2e6) helped initially then deteriorated. The paper does NOT test low LR as a mitigation at all.",
+    "source": "Fine-tuning Reinforcement Learning Models is Secretly a Forgetting Mitigation Problem, Wolczyk et al., ICML 2024 spotlight \u2014 https://arxiv.org/abs/2402.02868",
+    "relevance": "Closest published setting to T13 (warm-started RL policy, capabilities that must survive continued RL). Their answer to your key question is: output-space anchoring (BC/KL to the checkpoint that has the skill) is the fix that works; weight-space EWC is second-tier and decays; LR-only is not even on the menu. A cheap addition to T13: a KL term to the warm-start policy restricted to tight-cell rollouts, or BC on a few hundred stored successful tight trajectories \u2014 this is exactly CLEAR's and Wolczyk's load-bearing component and composes with your existing PPO loss.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Warm-starting pathologies are not fixed by learning-rate tuning: across LR sweeps {0.001, 0.01, 0.1}, warm-started models that matched random-init generalization lost all the speed benefit of warm-starting (CIFAR-10 gap 3.6pp, CIFAR-100 gap 6.4pp). Shrink-perturb (shrink \u03bb\u22480.3\u20130.6, noise \u03c3\u22481e-5\u20131e-2) closes the gap while keeping the speedup.",
+    "source": "On Warm-Starting Neural Network Training, Ash & Adams, NeurIPS 2020 \u2014 https://arxiv.org/abs/1910.08475",
+    "relevance": "Second independent line of evidence that 'drop LR 10x' alone is not a documented complete fix for continued-training pathologies. Note shrink-perturb is NOT recommended for T13 itself \u2014 shrinking would partially destroy the tight skill, and your replicated mechanism says anything lost in warm-start never rebootstraps in-mixture. It is relevant only if a future run needs restored plasticity on a skill you can afford to re-learn from scratch.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Primacy bias / heavy priming: an agent trained 100K updates on its first 100 transitions never recovers with subsequent standard training (catastrophic memorization); periodic full-network resets recover or improve performance ONLY because the replay buffer of past experience is retained \u2014 the data outlives the weights.",
+    "source": "The Primacy Bias in Deep Reinforcement Learning, Nikishin et al., ICML 2022 \u2014 https://proceedings.mlr.press/v162/nikishin22a.html (heavy-priming numbers via ICLR 2024 blog post 'It's Time to Move On', https://iclr-blogposts.github.io/2024/blog/primacy-bias-and-why-it-helps-to-forget/)",
+    "relevance": "Explains why every reset-style remedy in the literature is buffer-dependent: recovery requires off-policy data from the competent regime. PPO+LSTM has no persistent buffer, so T13 has no recovery channel if tight collapses \u2014 reinforcing that T13's design must PREVENT the dip (anchor loss, frequent evals) rather than assume 25% weight can repair one.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Policy churn: a single gradient update changes the greedy action in ~10% of states in typical deep RL (DQN/Atari). Functional drift on unsupported state regions happens on the timescale of tens-to-hundreds of updates, orders of magnitude faster than a 100M-step campaign.",
+    "source": "The Phenomenon of Policy Churn, Schaul, Barreto, Quan, Ostrovski, NeurIPS 2022 \u2014 https://arxiv.org/abs/2206.00730",
+    "relevance": "Answers 'does the minority skill survive 100M steps of majority gradient?' mechanistically: survival is never passive. At 1e-3 the per-update churn shrinks but the number of updates (~tens of thousands over 100M steps) dwarfs the drift timescale. The tight skill survives only if the tight cell keeps generating rewarded episodes continuously \u2014 so monitor tight success rate as a live training metric, not just at the 50M eval.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Loss of plasticity is a distinct failure mode from forgetting: standard deep learning progressively loses the ability to learn NEW things under continued training regardless of task order; L2 regularization plus small random weight perturbation substantially eases it, and continual backprop (reinitializing a small fraction of low-utility units) prevents it. Smaller step sizes delay but do not prevent the degradation.",
+    "source": "Loss of Plasticity in Deep Continual Learning, Dohare et al., Nature 632:768\u2013774, 2024 \u2014 https://www.nature.com/articles/s41586-024-07711-7",
+    "relevance": "T13 asks a checkpoint that has been through multiple high-LR (1e-2) ladders to ALSO deepen the hard-long-episode cells at 1e-3. If those cells plateau, the cause may be plasticity loss rather than mixture weighting \u2014 diagnose with dormant-unit fraction / feature rank on the 128-d encoder before concluding the mixture design failed. Your 'same architecture holds these skills in other checkpoints' counter-evidence rules out capacity, not plasticity of THIS lineage.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Policy distillation reliably consolidates multiple RL teachers into one student at or above teacher performance: a single distilled network reached 89.3% (geometric mean) of 10 single-task DQN teachers, multi-task distilled agents outperformed both single-task teachers and jointly-trained multi-task DQN on 3-game sets, and students 1.7\u201325% of teacher size retain >90% performance. Distillation is supervised (dense KL loss), so it has no sparse-reward bootstrap problem.",
+    "source": "Policy Distillation, Rusu et al., ICLR 2016 \u2014 https://arxiv.org/abs/1511.06295",
+    "relevance": "Strong support for the T13 fallback. Your failure mode (sparse-reward in-mixture bootstrap) is exactly the thing distillation deletes: the student gets dense per-state supervision on tight-cell states whether or not it can currently reach the reward. The 38\u2192128\u2192LSTM\u219231 student has ample capacity given your specialist counter-evidence. The one caveat: Rusu's teachers were value-based; for your LSTM policy distill action distributions (KL) and consider also matching LSTM-visible behavior over whole episodes, since the tight skill likely lives in recurrent state.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Distillation state distribution matters more than loss choice: student-driven distillation (student rolls out, teacher labels the student's states) recovers full teacher performance ~3x faster than teacher-driven (learning from teacher trajectories) and ~10x faster than uniform; teacher-driven suffers covariate shift when the student strays into states the teacher data never covered. Naive on-policy distillation mixed with reward optimization is not a true gradient field and can oscillate \u2014 do pure supervised distillation first, RL polish separately after.",
+    "source": "Distilling Policy Distillation, Czarnecki, Pascanu et al., AISTATS 2019 \u2014 https://arxiv.org/abs/1902.02186",
+    "relevance": "Concrete design guidance for the fallback's 'mode-table of 2 teachers': roll out the STUDENT in each cell, query the cell's owning teacher for target action distributions at the student's visited states. A static dataset of teacher trajectories would fail precisely at tight-box terminal-approach states where small policy differences compound over 3000\u201322000-step episodes. Also validates 'supervised first, optional low-LR RL polish second' as the right ordering rather than mixing the two losses.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Per-technique hyperparameter details worth copying if T13 adds an anchor: CLEAR used policy-cloning KL weight 0.01 and value-cloning L2 weight 0.005 against standard loss weights (policy 1.0, value 0.5, entropy ~0.005); Wolczyk used BC weight 2.0 (undecayed) and kickstarting 0.5 with 0.99998/step decay. Both regimes kept the anchored skill within a few percent of its pre-fine-tuning level across the full run.",
+    "source": "CLEAR (Rolnick et al. 2019, https://arxiv.org/abs/1811.11682) and Wolczyk et al. 2024 (https://arxiv.org/abs/2402.02868)",
+    "relevance": "If you add a tight-cell KL-to-warm-start-policy term to T13's PPO loss, the literature's working range is roughly 0.01x (gentle, CLEAR-style, against a same-lineage anchor) to ~0.5\u20132x (aggressive, Wolczyk-style, against a diverging fine-tune). Given T13's student IS the anchor checkpoint at step 0, start at the CLEAR end (0.01\u20130.05 relative weight) and only on tight-cell rollouts, so the deepening cells stay unconstrained.",
+    "confidence": "reported-once"
+   }
+  ],
+  "design_risks": [
+   "T13 conflates mixture rehearsal with replay rehearsal: every published defense of a minority skill during continued RL (CLEAR, Wolczyk) pairs data rehearsal with an output-space anchor (behavioral cloning / KL to the competent policy). T13's tight-cell gradient signal exists only while tight episodes keep succeeding under sparse terminal reward \u2014 a transient churn-induced dip in tight success zeroes that signal and re-enters the replicated never-bootstraps regime with 25% of compute then actively feeding majority-task drift. Cheapest literature-backed insurance: a small KL term to the warm-start policy applied only on tight-cell rollouts (start ~0.01\u20130.05 relative weight), or BC on a few hundred stored successful tight trajectories.",
+   "No paper documents low LR alone as a sufficient forgetting fix; three independent lines (Mirzadeh 2020, Ash & Adams 2020, Ibrahim 2024) show LR reduction lessens forgetting but either leaves residual forgetting or costs adaptation. Concretely for T13: expect the deepened hard-long-episode cells to learn 2\u20135x slower at 1e-3 than they would at 1e-2, so a 100M budget may show 'no seesaw but also no deepening' \u2014 that outcome would be an LR-trade artifact, not evidence the mixture is wrong.",
+   "A single mid-run eval at ~50M is too coarse for the failure timescale: policy churn operates over tens-to-hundreds of updates, and your previous collapses (99\u219229, 97\u21926.5) completed well within 50M steps. Literature-consistent monitoring is a cheap per-cell success-rate probe every ~10M steps (or tight-cell rolling success in training telemetry) with a stop/rollback rule, since PPO has no replay buffer to recover from a completed collapse.",
+   "If T13 fails and the distillation fallback runs: use student-driven state sampling (student rolls out, per-cell teacher labels those states) \u2014 Czarnecki 2019 shows ~3x faster convergence and avoids covariate shift exactly where your task is hardest (terminal tight-box approach after 3000\u201322000-step episodes); and keep the supervised distillation phase strictly separate from any RL polish, since mixed distill+reward objectives can oscillate. Distill action distributions, and validate with full-episode rollouts because the skill partly lives in LSTM state that per-state KL matching does not directly supervise.",
+   "Plasticity loss can masquerade as a mixture-design failure: this checkpoint lineage has passed through multiple high-LR ladders, and Dohare (Nature 2024) / Lyle show the ability to learn NEW things degrades independently of forgetting. If the deepened cells plateau at 1e-3, check dormant-unit fraction and feature rank of the 128-d encoder before revising mixture weights \u2014 the specialist counter-evidence rules out capacity, not this lineage's remaining plasticity."
+  ]
+ },
+ {
+  "label": "",
+  "findings": [
+   {
+    "claim": "Loss choice: KL/cross-entropy against the teacher's FULL softmax beats both cross-entropy on argmax actions (NLL) and MSE regression. Rusu Table 1 (same-size students): KL = 94.7-155% of teacher score per game, NLL = 77.6-147.6%, MSE as low as 33.9% on Breakout. MSE fails because greedy actions hinge on tiny score differences that MSE down-weights; argmax-CE amplifies teacher noise when multiple actions are near-tied.",
+    "source": "Policy Distillation, Rusu et al., ICLR 2016, arXiv:1511.06295 (read from PDF, Sec 4.2 + Table 1)",
+    "relevance": "For the fallback student: distill the full 31-way teacher softmax per step, never argmax labels, never MSE on logits. With near-deterministic PPO teachers the action-gap info in the softmax tail is exactly what argmax-CE throws away.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Temperature: Rusu's famous tau=0.01 (picked from {1.0, 0.1, 0.01, 0.001}) is SHARPENING applied to unnormalized Q-VALUES to turn them into a peaky distribution \u2014 'rather than soften these targets, we expect we may need to make them sharper.' Actor-Mimic, converting Q to a Boltzmann policy, used tau=1 in all experiments. Kickstarting, whose teachers already output a softmax policy (like PPO), used the teacher's probabilities unmodified \u2014 no temperature at all.",
+    "source": "Rusu et al. arXiv:1511.06295 Sec 3.2/4.2; Actor-Mimic, Parisotto et al., ICLR 2016, arXiv:1511.06342 (experimental details: 'softmax temperature of 1 in all cases'); Kickstarting, Schmitt et al. 2018, arXiv:1803.03835 Eq. 3 (all read from PDFs)",
+    "relevance": "The teachers here are PPO softmax policies, not Q-values \u2014 the correct default is tau=1, i.e., distill the teacher's output distribution as-is. The tau=0.01 folklore does NOT transfer to softmax-policy teachers; it was a device for un-normalized Q outputs.",
+    "confidence": "established"
+   },
+   {
+    "claim": "State distribution: student-driven distillation (student collects trajectories, teacher labels them) recovers full teacher performance in ~3x fewer optimization steps than teacher-driven, and ~10x fewer than a uniform control policy, across 1k random 20x20 grid MDPs. Teacher-driven wins only on the artificial metric 'expected KL under teacher trajectories'. Paper's summary: 'distillation using student-generated trajectories replicates the teacher policy in more states that are relevant under the student's behaviour distribution.'",
+    "source": "Distilling Policy Distillation, Czarnecki et al., AISTATS 2019, PMLR v89 (read from PDF, Sec 3.2)",
+    "relevance": "The fallback spec must be student-driven: student rolls out in the 6-cell mixture, the appropriate teacher is queried on the student's own states each step. Do not pre-generate a teacher trajectory dataset.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Behavioral cloning on expert-generated states suffers compounding errors growing quadratically with horizon (O(T^2 * eps)); interactive methods that label the LEARNER's visited states (DAgger) reduce this to O(T * eps). With a programmatic teacher (not a human), DAgger's expert-query cost is zero \u2014 every student step can be labeled online.",
+    "source": "Ross, Gordon & Bagnell, 'A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning', AISTATS 2011 (and Ross & Bagnell 2010 for the T^2 bound); standard result",
+    "relevance": "Episodes here are 3000-22000 steps \u2014 the worst possible regime for offline BC on teacher trajectories. T^2 compounding at T=22000 means even tiny per-step divergence strands the student off-distribution. On-policy labeling is mandatory, not optional.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Caveat from the same analysis: on-policy 1-step distillation (per-step CE on student states) is not the gradient of any function and can oscillate/not converge specifically WHEN MIXED WITH ENVIRONMENT REWARDS. Their fix, 'expected entropy regularised distillation' (maximize E_{pi_S}[sum log pi_T(a_t|s_t)] via a 1-step reverse-CE term plus an intrinsic log-prob reward), is convergent and 'strictly dominates popular alternatives'. The variance failure of the pure reward-channel variant only appeared when scaling the action space from 4 to 4k actions.",
+    "source": "Czarnecki et al., AISTATS 2019 (read from PDF, Table 1, Sec 3.3, Fig 2, Fig 4)",
+    "relevance": "With Discrete(31) the action space is small, so plain per-step CE works; but since the plan mixes distill loss with env reward (gamma=1 shaping + terminal +10) in the polish, either decay lambda to zero (see QDagger weaning) or use the expected-entropy-regularised estimator to avoid the documented oscillation mode.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Kickstarting recipe (the canonical joint RL+distill): total loss = standard actor-critic loss + lambda_k * H(pi_T(a|x_t) || pi_S(a|x_t)) computed on trajectories sampled BY THE STUDENT; lambda scheduled online via population based training and decays toward zero (plot shows 1e-1 -> ~1e-4..1e-9 over 1e10 frames); with K per-task teachers, separate lambda per teacher, factorized lambda_k^i = alpha_k * rho_k^i so PBT can scale all teachers jointly. Results: single-teacher student surpasses teacher by +43.4% (56.9 vs 39.7 DMLab-30); multi-teacher student matches from-scratch in 9.58x fewer steps and beats its final score by +42.2%.",
+    "source": "Kickstarting Deep Reinforcement Learning, Schmitt et al. 2018, arXiv:1803.03835 (read from PDF, Eq. 2-3, Sec 2.3, 4.2, 5.1-5.2)",
+    "relevance": "This is exactly the 2-teacher mode-table: generalist teacher labels episodes from its 5 cells, tight specialist labels tight-cell episodes, one lambda per teacher, PPO reward loss stays on throughout. Without PBT infrastructure, a hand-designed exponential decay of lambda substitutes (kickstarting says manual schedules work, PBT just avoids tuning).",
+    "confidence": "established"
+   },
+   {
+    "claim": "Multi-teacher routing and data balance: Actor-Mimic consolidated 8 expert DQNs into one same-size net using per-game replay memories (100k frames each, 10x smaller than DQN's) with experts assigned per game, reaching close-to-expert on 7 of 8 games within ~5M frames. Rusu's 10-game consolidation likewise used separate per-game replay memories with teachers taking turns, minibatches drawn from one randomly chosen game at a time.",
+    "source": "Parisotto et al. arXiv:1511.06342 (Sec 3.1, 5.1, experimental details); Rusu et al. arXiv:1511.06295 Appendix A (both read from PDFs)",
+    "relevance": "Route teacher by cell ID (mode table), keep per-cell buffers, and sample minibatches balanced BY CELL, not by env-step count \u2014 otherwise the 22000-step cells dominate gradient mass over the 3000-step cells purely via episode length, recreating the imbalance that fed the seesaw.",
+    "confidence": "established"
+   },
+   {
+    "claim": "LSTM handling: in Kickstarting both teacher and student are conv+LSTM agents; the teacher is simply fed the STUDENT's observation stream ('what would my teacher do if it were in my shoes') and unrolled with its own hidden state alongside the student. There is no hidden-state matching loss and no teacher-hidden-state storage problem \u2014 distillation is purely on the per-step output distributions over the shared on-policy sequence.",
+    "source": "Schmitt et al. arXiv:1803.03835 (read from PDF, Sec 1-2, Fig 1); corroborating: OPRD arXiv:2606.06021 does add hidden-state supervision on student trajectories, showing output-level is the baseline standard",
+    "relevance": "Concretely: during student rollout collection, run each teacher LSTM forward in lockstep on the same obs (teacher hidden state resets at episode reset, same as student) and store teacher probs per step in the rollout buffer. The PufferLib PPO TBPTT machinery needs no change \u2014 the distill CE is just another per-step loss aligned with stored targets.",
+    "confidence": "established"
+   },
+   {
+    "claim": "If sequences must instead be replayed from a buffer starting mid-episode (offline distillation), stored-hidden-state + burn-in is the standard fix for recurrent state staleness: R2D2 stores length-80 sequences overlapping by 40, never crossing episode boundaries, with a stored initial hidden state and a burn-in prefix used only to warm the LSTM before loss is applied.",
+    "source": "Kapturowski et al., 'Recurrent Experience Replay in Distributed RL' (R2D2), ICLR 2019, openreview r1lyTjAqYX",
+    "relevance": "Only needed if the fallback is built as offline BC over logged sequences. The on-policy kickstart pattern avoids the whole issue \u2014 one more reason to prefer it given the LSTM(128) student.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Value function: Kickstarting does NOT use the teacher's critic \u2014 the student's value head trains on environment rewards concurrently because RL and distillation run jointly from step one, so when lambda decays the critic is already calibrated. Czarnecki adds that a teacher's critic, if available, is mainly useful to correct IMPERFECT teachers (their 'teacher V reward' variant: r_hat = r + V_teacher(s') - V_student(s)). QDagger (Reincarnating RL) likewise runs distillation + TD loss jointly and decays the distillation coefficient over training ('weaning').",
+    "source": "Schmitt et al. arXiv:1803.03835 Eq. 3 (read from PDF); Czarnecki et al. AISTATS 2019 Sec 4/Table 1 (read from PDF); Agarwal et al., 'Reincarnating RL', NeurIPS 2022, arXiv:2206.01626",
+    "relevance": "Answer to sub-question 4: the student does NOT need the teachers' value functions IF distill and PPO run jointly \u2014 the critic self-trains on returns during distillation. What it does need is for the value head to be trained before the distill loss is fully weaned. Avoid a pure supervised phase followed by cold-start PPO.",
+    "confidence": "established"
+   },
+   {
+    "claim": "If a pure supervised distill phase is used anyway, the documented failure is the fresh random critic: right after cloning, advantage estimates are noise and early PPO updates can collapse the cloned policy. Documented mitigations: (a) freeze the policy head and run critic-only updates until value loss stabilizes before unfreezing (used in recent BC+PPO pipelines, e.g. SABR 2025 and residual-RL finetuning papers); (b) AlphaStar's approach \u2014 keep a KL penalty to the supervised/cloned policy during all subsequent RL, which both preserves the cloned skills and aids exploration.",
+    "source": "SABR, arXiv:2509.10486 and Residual Off-Policy RL for Finetuning BC Policies, arXiv:2509.19301 (critic warmup); Vinyals et al., AlphaStar, Nature 2019 (KL to supervised policy during RL) via The Gradient analysis cyk1337.github.io",
+    "relevance": "The 'optional low-LR RL polish' in the fallback plan needs one of these two guards. The cheapest robust combo for this codebase: 20-30M steps of critic-only warmup at the end of distillation (policy frozen), then polish with a small KL-to-distilled-policy anchor.",
+    "confidence": "reported-once"
+   },
+   {
+    "claim": "Typical student:teacher ratios \u2014 same-size single-task students: 94.7-155% of teacher (Rusu, KL loss); 4x-smaller students: 108%; 15x-smaller: ~100%; 25x-smaller: 84% geometric mean. Multi-task consolidation: 10 games into one net (4x larger than one teacher) = 89.3% of the 10 specialists; 3 games into a SAME-size net = 116.9% (beating jointly-trained multi-task DQN's 83.5%). Actor-Mimic: near-expert 7/8 games, same-size net. Kickstarted students routinely EXCEED teachers (+42-43%) because the RL term stays on.",
+    "source": "Rusu et al. arXiv:1511.06295 Tables 1, 2, B1, B2, Fig 3-4 (read from PDF); Parisotto et al. arXiv:1511.06342 Fig 1/Table 1; Schmitt et al. arXiv:1803.03835 Sec 5",
+    "relevance": "Calibration for the fallback: a 128-hidden student consolidating 6 cells from 2 teachers should land at >=90% of each teacher's per-cell success rate under pure distillation, and can exceed teachers if RL stays in the loss. A cell at <<90% signals a routing/state-distribution bug, not capacity \u2014 consistent with your counter-evidence that 128 hidden already holds tight+loose in one net.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Entropy management with near-deterministic teachers: kickstarting deliberately keeps the A3C entropy bonus next to the distill term so the student explores beyond teacher supervision; Czarnecki notes the CE direction matters \u2014 H(teacher||student) replicates the teacher's full distribution, H(student||teacher) merely finds one teacher mode. Modern LLM practice (Thinking Machines, Oct 2025) independently converged on student-sampled trajectories + reverse KL against teacher log-probs for near-deterministic teachers, reporting RL-level gains at ~9-30x less compute.",
+    "source": "Schmitt et al. arXiv:1803.03835 Sec 2.2; Czarnecki et al. AISTATS 2019 Sec 3.3; thinkingmachines.ai/blog/on-policy-distillation (2025)",
+    "relevance": "Converged PPO teachers here are near-one-hot; distilling them will collapse student entropy unless a small entropy bonus is kept in the distill objective \u2014 otherwise the subsequent RL polish has no exploration left. Forward CE (teacher as target) + entropy bonus is the safe default for Discrete(31).",
+    "confidence": "established"
+   },
+   {
+    "claim": "Consolidation-pattern warning: in SEQUENTIAL settings, distillation itself forgets \u2014 Progress & Compress needed online-EWC protection on the knowledge base during each compress/distill phase. All successful multi-teacher consolidations (Rusu 10-game, Actor-Mimic 8-game, kickstarting multi-teacher) distilled all teachers SIMULTANEOUSLY with interleaved per-task data, not one teacher after another.",
+    "source": "Schwarz et al., 'Progress & Compress', ICML 2018, PMLR v80; contrast with Rusu/Parisotto/Schmitt above; see also DisCoRL, arXiv:1907.05855",
+    "relevance": "The fallback must distill the generalist's 5 cells and the tight cell in one mixed stream from day one. Do not 'first clone the generalist, then add tight' \u2014 that recreates the seesaw inside supervised learning.",
+    "confidence": "established"
+   },
+   {
+    "claim": "Concrete recipe spec synthesized from the above: (1) student = fresh Linear(38->128)+LSTM(128)+Discrete(31) net, same arch; (2) student collects rollouts across the 6-cell mixture with cell-balanced episode sampling; (3) per step, the cell's assigned teacher (generalist for its 5 cells, tight specialist for tight) is unrolled in lockstep on the student's obs, teacher probs stored in the rollout buffer; (4) loss = PPO loss (env reward incl. shaping, entropy bonus on) + lambda * CE(teacher_probs, student_probs) at tau=1, lambda_0 ~ 1.0 decayed exponentially to ~0 over the run (QDagger weaning), one lambda per teacher; (5) value head trains on returns throughout \u2014 no teacher V needed; (6) optional pure polish afterward keeps a small KL-to-distilled-checkpoint anchor. Expected: >=90% of each teacher per cell, plausibly >100% given the RL term.",
+    "source": "Synthesis of Schmitt et al. 1803.03835 (joint loss, multi-teacher, LSTM), Czarnecki et al. AISTATS 2019 (student-driven control), Rusu et al. 1511.06295 (loss/targets), Agarwal et al. 2206.01626 (lambda weaning), Vinyals et al. 2019 (polish anchor)",
+    "relevance": "Drop-in fallback plan for this repo: teacher checkpoints already exist (generalist + tight specialist from the 2-rung ladder); the only new plumbing is lockstep teacher inference during rollout collection and one extra CE term in the PPO update \u2014 no new training infrastructure.",
+    "confidence": "established"
+   }
+  ],
+  "design_risks": [
+   "T13 defends the tight skill only via 25% reward-weight rehearsal, but the project's own replicated mechanism says in-mixture RL cannot REBUILD a skill once lost \u2014 so if tight erodes at any point in the 100M run there is no recovery path inside T13. A kickstarting-style auxiliary CE from the tight-specialist teacher applied only on tight-cell episodes (small fixed lambda, e.g. 0.1-0.5, optionally decayed) would convert tight's defense from reward-based to supervised and removes this single point of failure \u2014 it can be bolted onto T13 itself rather than reserved for the fallback.",
+   "If T13 seesaws and the fallback is implemented as offline BC on teacher-generated trajectories, the 3000-22000-step horizons put it in the maximal compounding-error regime (O(T^2*eps), Ross & Bagnell) and Czarnecki's 3x gap grows with horizon \u2014 the fallback is only sound student-driven, with teachers queried on student states online.",
+   "A two-phase fallback (pure supervised distill, then PPO polish with a fresh or stale critic) risks the documented fresh-critic collapse: noisy advantages destroy the cloned policy in early updates. Run distill jointly with PPO so the value head trains on returns throughout, or insert a critic-only warmup with frozen policy before polish.",
+   "Mixing the distill CE with env reward (which the joint recipe does, and T13's shaping guarantees) is exactly the regime where Czarnecki proves 1-step on-policy distillation can oscillate \u2014 mitigate by decaying lambda to zero (weaning) so late training is pure RL, and treat non-monotone per-cell curves during the mixed phase as expected rather than as failure.",
+   "Near-deterministic PPO teachers give near-one-hot targets: distilling them without an entropy bonus will collapse student entropy and strand the optional RL polish without exploration; conversely, do NOT apply Rusu's tau=0.01 sharpening \u2014 that result is for Q-value teachers, and sharpening an already-peaky softmax further destroys what little dark knowledge remains.",
+   "Cell-imbalanced gradient mass: sampling distillation minibatches proportional to env steps lets the 22000-step cells dominate the 3000-step tight cell by ~7x per episode \u2014 the same imbalance suspected in the seesaw. All successful multi-teacher consolidations used per-task buffers with balanced draws; the fallback (and arguably T13's mixture weights) should balance by episode/cell, not by steps.",
+   "Sequential distillation (clone generalist first, add tight after) recreates catastrophic forgetting inside supervised learning (Progress & Compress needed EWC for exactly this); the two teachers must be distilled simultaneously in one interleaved stream."
+  ]
+ }
+]
