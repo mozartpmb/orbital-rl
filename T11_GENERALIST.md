@@ -87,3 +87,63 @@ Checkpoints `models/t3/t11_{rungA_j2wide,generalist_rungB}.pt`; per-cell
 JSON `web_data/results/t11/` (incl. all floors); wandb `t11-*`;
 campaign `scripts/orbital/extj2/t11_campaign.sh`; design + red-team
 `scripts/orbital/ext_recon/reports/t11_generalist_design.md`.
+
+---
+
+# T11-tight — the 6/7 attempt, and the interference seesaw it measured (2026-08-19)
+
+**The tight-box skill is fully bootstrappable into the generalist lineage
+(0/200 → 98.5% via the proven ladder), but one network at this capacity and
+weighting cannot HOLD the tight box and the wide envelope simultaneously:
+the interference is bidirectional, and both directions are now measured.**
+Campaign `t11_tight_campaign.sh`, single seed, mean-element claims under J2.
+
+## The three-state seesaw (200 eps/cell, held-out seed 123, native BO)
+
+| cell | generalist (rung B) | + tight ladder | + 50M rehearsal re-mix |
+|---|---|---|---|
+| E0_j2 | 97.0 | 97.0 | 93.5 |
+| E1_j2 | 100.0 | 96.5 | 95.5 |
+| E2_j2 | 99.5 | **29.0** | **98.5** |
+| E3_j2 | 97.5 | **6.5** | **84.5** |
+| LONGRANGE | 99.0 | **40.0** | **99.5** |
+| TIGHT_5k1 | 0.0 | **92.5** (98.5 @ training fuel-floor) | **0.0** |
+| W1_driftwait | 0.0 | 0.0 | 0.0 |
+
+- **Forward swing**: two 50M tight rungs (10 km/10 m/s → 5 km/1 m/s,
+  complete-cell specs per the bug-#15 discipline; flatline tripwires never
+  fired — perf 0.972 within 1 h from a 1.5% floor) recover the tight box
+  fully but collapse the wide-band cells (E2/E3/LONGRANGE), while the
+  narrow-band E0/E1 hold.
+- **Back swing**: the auto-gated rehearsal re-mix (7 cells, tight at 0.10)
+  recovers the wide cells but re-zeroes the tight box — a *maintenance*
+  failure this time: the skill existed at re-mix start and 10% rehearsal
+  weight could not defend it against 90% wide gradient. Truth rows match
+  native rows throughout (capability, not navigation).
+- E3's partial recovery (84.5 vs its 97.5 peak) says 50M of re-mix is thin
+  for the longest-episode cell; the direction of all other cells says more
+  re-mix would deepen the tight loss, not fix it.
+
+## Reading
+
+Two swings measured in opposite directions upgrade the earlier "bootstrap
+mechanism" story to a stronger claim: **tight-box and wide-envelope skills
+interfere structurally in this architecture** (128-hidden LSTM). The honest
+deployment shape is what the fleet already provides — **the generalist for
+the envelope, the tight child for proximity operations, gap-conditioned
+selection** — now justified by measurement rather than convenience. A third
+swing (higher tight weight / longer re-mix / larger network) is a capacity
+research question with a measured risk on both sides; not taken.
+
+Boundary notes carried from this campaign's red-team: at TB5 under J2 the
+neglected short-period terms (Brouwer radial amplitude 3.3 km) **exceed the
+5 km box** — every tight row is a mean-element claim with the neglected
+physics larger than the tolerance; and the tight cell's fuel floor was
+raised (0.113 → 0.133) after measuring that the terminal fine-burn train is
+unpriced by transfer-only feasibility (15.8% → 2.1% infeasible mass).
+
+Checkpoints `models/t3/t11t_{tight_child,remix_child}.pt`; JSON
+`web_data/results/t11_tight/`; wandb `t11t-*`. See also `HOLD_EVAL.md`
+(the box certifies arrival, not station-keeping — hold-30 ≈ 21% unprompted)
+and `FUEL_AUDIT.md` §generalist (coarse-burn policy, dv_fine = 0, box-credited
+2.04× median vs specialists' 1.41–1.81×).

@@ -1,0 +1,27 @@
+{
+  "label": "F_rungB_TIGHT_10k10",
+  "ckpt": "t11_generalist_rungB.pt",
+  "cell": "TIGHT_10k10",
+  "nav_mode": "bearings_only",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 3,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.015,
+  "causes": {
+    "success": 3,
+    "collision": 2,
+    "safety_cap": 195
+  },
+  "md5": "6a2fcdb5a197783c7f1ea4ac4ddb9d4c",
+  "dv_used_med": 481.06601717798276,
+  "dv_ref_med": 285.4273765275361,
+  "dv_budget_med": 619.8441332636489,
+  "efficiency_med": 1.7817260445730685,
+  "budget_used_med": 0.7856191938546773,
+  "ep_len_med": 771.0,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 1157.430495262146
+}
