@@ -179,3 +179,65 @@ Checkpoints `models/t3/t11t_{tight_child,remix_child}.pt`; JSON
 (the box certifies arrival, not station-keeping — hold-30 ≈ 21% unprompted)
 and `FUEL_AUDIT.md` §generalist (coarse-burn policy, dv_fine = 0, box-credited
 2.04× median vs specialists' 1.41–1.81×).
+
+---
+
+# T13 — consolidation at maintenance LR: the seesaw becomes a stable compromise (2026-08-20)
+
+**The discriminating experiment ran, and neither pure hypothesis survived.
+At LR 1e-3 (10× below acquisition), warm from the tight child, tight weight
+0.25: the wide envelope consolidates COMPLETELY and PERMANENTLY — five cells
+at 94.0–99.5% held from 50M through 100M — while the unanchored tight skill
+decays early (92.5 → ~40% by 21M) and then PLATEAUS (42.5% at 50M → 37.5% at
+100M, n=200 each, ~1 SE apart). No seesaw to zero: the acquisition-LR re-mix
+had tight at 0/200 by 50M; maintenance LR holds a six-skill compromise
+indefinitely.** Campaign `t11_consol_campaign.sh`, single seed 42,
+mean-element claims under J2, per-cell probes every ~2.6–10.5M
+(`web_data/results/t11_consol/probes/`).
+
+## The three-attempt table (200 eps/cell, held-out seed 123, native BO)
+
+| cell | tight child (root) | remix @1e-2 | **consol @1e-3 (mid 50M → fin 100M)** |
+|---|---|---|---|
+| E0_j2 | 97.0 | 93.5 | 95.5 → **95.0** @1.026× |
+| E1_j2 | 96.5 | 95.5 | 99.5 → **98.0** @1.052× |
+| E2_j2 | 29.0 | 98.5 | 99.5 → **99.5** @1.021× |
+| E3_j2 | 6.5 | 84.5 | 93.5 → **94.0** @1.098× |
+| LONGRANGE | 40.0 | 99.5 | 99.5 → **99.5** @0.998× |
+| TIGHT_5k1 | 92.5 | **0.0** | 42.5 → **37.5** @1.468× |
+| W1_driftwait | 0.0 | 0.0 | 0.0 (excluded by design, evaluated) |
+
+Reads that survive the statistics:
+
+1. **Strict dominance over the re-mix**: every live cell equal or better,
+   and tight 0.0 → 37.5. A third state, not a repeat of either swing.
+2. **The mechanism split**: LR was the seesaw's mechanism (no collapse to
+   zero at 1e-3) but LR alone is half a fix — reward-mediated defense of a
+   minority skill still leaks ~50pp before stabilizing. The probe mechanism
+   read: tight failures are ~all safety_cap with success episode length
+   stretching 1617 → 2499 vs cap 3000 at stable Δv — the wide gradient
+   smears the terminal fine-burn endgame, it does not overwrite the
+   transfer. Decline stops as the wides saturate (~21M) and the LR anneals.
+3. **An unasked-for fuel result**: wide-cell Δv fell 14–21% (mean ~18%) vs
+   the rung-B generalist — efficiencies now 1.00–1.10× the linearized
+   direct-burn reference (LONGRANGE 0.998×), bought with 9–24% longer
+   episodes at ~1.6pp success cost. Not inherited: the root ran 1.08–1.38×
+   on the same cells. Consolidation at low LR polished fuel nobody asked it
+   to polish.
+4. Budget-awareness survives inside the degraded skill (tight lean 26.0% →
+   rich 57.5%), and the fin truth row (46.0 vs 37.5 native) shows a small
+   nav component in the tight loss — new, previously truth ≈ native.
+5. **Probe-level honesty**: the n=20 probe tail (35/25/25/25/15 past e400)
+   over-reads as decay; Wilson CIs all overlap and the n=200 anchors
+   (42.5 → 37.5) say plateau. The final probe missed the final battery by
+   22.5pp — probe direction is quotable, probe levels are not.
+
+**Next (running)**: T13b = same run + a tight-cell-only replay anchor
+(CE to the root's softmax on 76,800 stored tight states, λ=0.02, bit-inert
+when off) — the dense defense the literature says reward-mediated rehearsal
+lacks. If tight holds ≥~90 while the wides repeat their T13 trajectory,
+the 6/7 single-policy generalist exists in one checkpoint.
+
+Checkpoints `models/t3/t13_consol_{mid50M,final}.pt`; JSON + probes
+`web_data/results/t11_consol/`; wandb `t11c-consol`; research packet
+`scripts/orbital/ext_recon/reports/t13_research_synthesis.md`.
