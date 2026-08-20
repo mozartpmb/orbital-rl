@@ -147,6 +147,27 @@ Phasing is the whole trade: buying phase with a large drift orbit is fast and ex
 
 5 km/1 m/s asks for a velocity tolerance *below* the quantum. 10 km/10 m/s is ~6× the floor and works. If a tightened criterion is wanted, **10 km / 10 m/s is the tightest defensible target**; anything tighter needs sub-1 m/s burn actions.
 
+**CORRECTED 2026-08-20 (`expert_boxladder_actuation_matched.md`, n=200 × 2 seeds/row):**
+an external review flagged the tight rows as actuation-mismatched (expert D16 vs the
+policies' D20 fine radial). The matched rerun refutes that mechanism and finds the real
+one: granting rows 18/19 changed **nothing** (bit-identical arms; the fine radial was
+emitted 0 times in 800 episodes — D16 already carries ±1/±2 m/s *tangential* rows 12–15,
+which dominate radial 2:1 for e-vector control, so the review's premise didn't describe
+this controller). What was actually binding: the **unscaled controller constants**
+(A_DEADBAND 6 km, DA_FLOOR 3 km — the 3 km floor alone implies ~1.62 m/s of |v_rel| at
+a 5 km box). Scaled at their 30 km design fractions: **5 km/5 m/s 53% → 64.2% ± 4.7,
+5 km/1 m/s 18% → 33.2% ± 4.6**; headline unmoved (99.0% both action sets). Failure
+anatomy: at 5 m/s every corrected-arm failure *never reached 5 km separation* — a
+guidance/position limitation, not actuation. Two standing caveats: the original ladder
+rows were n=100 single-seed with ~10 pp seed spread (don't read differences below that
+off them), and pooled in-box |v_rel| minima are **censored at box_v** (success terminates
+the instant tolerances are met), so the apparent "5.0 m/s floor" at the 5 m/s box partly
+manufactures its own corroboration — quote failed-episode distributions instead. The
+parked-residual derivation above remains a valid bound for park-and-coast architectures;
+the trained policies (97–98% at this box) evade it by timing the terminal instead of
+parking, which is exactly the demonstrated gap: **corrected expert 33.2% vs policy
+97–98% at 5 km/1 m/s is a guidance gap, with actuation eliminated as the mechanism.**
+
 ---
 
 ## 5. What limited it (evidence-backed, ranked)

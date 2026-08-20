@@ -110,7 +110,10 @@ the oft-quoted pre-fix 0.31× was vs IMMEDIATE, legitimately beatable by waiting
 truth 100.0% = EKF-nominal 100.0% at 60 s nav cadence (`t3_relnav_corrected.csv`).
 Capture at box edge (29.2 km / 34.8 m/s p50) — far-field rendezvous, not terminal capture.
 Classical scripted-GNC reference: 99.2% (500 eps) / 100 of 100 at T3 config
-(`scripts/orbital/t3/expert_controller.py --t3`).
+(`scripts/orbital/t3/expert_controller.py --t3`). Tight-box expert rows corrected
+2026-08-20 (constants scaled to the box, actuation shown non-binding): 5 km/5 m/s
+64.2% ± 4.7, 5 km/1 m/s 33.2% ± 4.6 (n=200 × 2 seeds; was 53/18 at n=100 single-seed;
+`expert_boxladder_actuation_matched.md`).
 
 ---
 

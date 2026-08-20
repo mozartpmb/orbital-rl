@@ -402,7 +402,10 @@ Phase-2 "wider action spaces regress" finding was a broken-signal artifact), TB2
 (95.5%) at 5 km/1 m/s** — all 9 failures benign cap timeouts; captures null to median
 0.91 m/s residual vs the 1.0 tolerance (p90 0.99), i.e. operating at the 0.71 m/s
 actuation floor with the predicted 1.4× margin. Pre-fix zero-shot at this box: 2.0%;
-scripted expert: 18%. Ckpts `models/t3/seed42_TB{3,4,5}_*.pt`.
+scripted expert: 33.2% ± 4.6 at matched conditions (corrected 2026-08-20 — the original
+18% was n=100 single-seed with unscaled controller constants; the matched-actuation
+rerun showed fine radial changes nothing and constant-scaling is worth +15 pp, leaving
+a ~64 pp guidance gap to the policy; `expert_boxladder_actuation_matched.md`). Ckpts `models/t3/seed42_TB{3,4,5}_*.pt`.
 
 ### 8.4 (C) MEO envelope ✅
 M lineage (obs scales 2.1e7/4e7, Discrete-20 with 3 h/6 h warps, cap up to 12000 =
