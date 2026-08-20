@@ -160,10 +160,17 @@ Meanwhile the honest deployment shape is what the fleet already provides —
 gap-conditioned selection** — justified by measurement, and not contingent
 on how the capacity question resolves.
 
-Boundary notes carried from this campaign's red-team: at TB5 under J2 the
-neglected short-period terms (Brouwer radial amplitude 3.3 km) **exceed the
-5 km box** — every tight row is a mean-element claim with the neglected
-physics larger than the tolerance; and the tight cell's fuel floor was
+Boundary notes carried from this campaign's red-team: every tight row under
+J2 is a **mean-element claim** — and the honest boundary number is the
+*relative* mean-vs-osculating slip: **83 m and 0.094 m/s per orbit at 5 km
+separation (9.4% of the velocity tolerance per orbit, 28% over three)**,
+per `j2_A_design.md`/`J2_DESIGN_NOTES.md`. The absolute short-period terms
+are common-mode at this separation and cancel in the relative state; an
+earlier draft here compared the 3.3 km absolute amplitude to the 5 km
+*relative* box — a frame error (and the amplitude arithmetic also mixed
+amplitude with peak-to-peak; inclination-weighted for the trained 30–60°
+band the absolute term is ~0.4–1.2 km regardless). Corrected 2026-08-20.
+And the tight cell's fuel floor was
 raised (0.113 → 0.133) after measuring that the terminal fine-burn train is
 unpriced by transfer-only feasibility (15.8% → 2.1% infeasible mass).
 

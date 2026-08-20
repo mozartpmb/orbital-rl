@@ -273,11 +273,13 @@ nulling, not terminal capture (the 10 km/10 m/s tightened-box goal remains futur
 task #8).
 
 **Physics-consistency (Lambert re-run, 200 eps, `t3_lambert_corrected.csv`):**
-policy/two-impulse **time-matched median 1.14×** — the pre-fix impossibility signature
-(0.31×, policy "beating" the optimum via burn-teleports) is resolved; ratios vs
-*immediate* (0.33×) and *free-departure* (0.35×) two-impulse plans are below 1
-legitimately (multi-impulse drift phasing classically undercuts two-impulse plans under
-a deadline).
+policy/two-impulse **time-matched median 1.14×** (pre-fix time-matched median was
+1.08× — but with an impossible tail via burn-teleports: p10 0.37 and 15.0% of episodes
+below HALF the fixed-time optimum, now p10 0.71 and 1.5%); ratios vs *immediate*
+(0.33×) and *free-departure* (0.35×) two-impulse plans are below 1 legitimately
+(multi-impulse drift phasing classically undercuts two-impulse plans under a deadline —
+which is also why the pre-fix 0.31×-vs-IMMEDIATE was never itself the impossibility:
+the clean policy still scores 0.33× there).
 
 **Multi-seed batch 1 (seeds 7 and 1337 — the historical 0%-flatline seed):**
 all four runs at **200/200 (100.0%)** held-out — both L1 dirs (`…176815`, `…177125`) and
@@ -329,7 +331,8 @@ at 100.0% held-out by 5/5 training seeds:**
 or escape). Context: pre-fix bug-assisted best = 97.5% single-seed / 93.7% 5-seed mean;
 post-fix pre-T3 plateau = 33.5%; scripted classical expert = 99.2%.
 
-Validation stack, all lawful: Lambert time-matched 1.14× (was impossible 0.31×);
+Validation stack, all lawful: Lambert time-matched 1.14×, tail clean (p10 0.37→0.71,
+below-half-optimum 15%→1.5%; the pre-fix "0.31×" was the IMMEDIATE ratio, legitimately <1);
 EKF closed-loop truth 100.0% = EKF-nominal 100.0% (NEES 0.944/NIS 0.951); zero-shot
 e-curve 100/100/100/98/71/56 at e = 0→0.07; learned maneuver structure = classical
 drift-orbit phasing (showcase: `plots/t3/ep_0000057.png`, 179.4° gap at 175 m/s).

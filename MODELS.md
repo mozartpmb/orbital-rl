@@ -104,8 +104,9 @@ radial ±1 m/s; exposed default still Discrete(16)); eval 20-head ckpts with
 EKF at wide envelope: nominal = truth = 200/200 (`t4_relnav_wl4.csv`).
 
 **Supporting numbers (seed-42 canonical):** Δv p50 235 m/s = 1.58× shape-only two-impulse
-lower bound (`t3_headline_characterization.csv`); Lambert time-matched ratio p50 1.14×
-(pre-fix impossibility 0.31× resolved, `t3_lambert_corrected.csv`); EKF closed-loop
+lower bound (`t3_headline_characterization.csv`); Lambert time-matched ratio p50 1.14×,
+tail clean — below-half-optimum 15%→1.5%, p10 0.37→0.71 (`t3_lambert_corrected.csv`;
+the oft-quoted pre-fix 0.31× was vs IMMEDIATE, legitimately beatable by waiting); EKF closed-loop
 truth 100.0% = EKF-nominal 100.0% at 60 s nav cadence (`t3_relnav_corrected.csv`).
 Capture at box edge (29.2 km / 34.8 m/s p50) — far-field rendezvous, not terminal capture.
 Classical scripted-GNC reference: 99.2% (500 eps) / 100 of 100 at T3 config

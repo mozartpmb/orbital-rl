@@ -31,8 +31,13 @@ i.e. after every burn, it set the chaser's mean anomaly with error ≈ 2e·sin(�
 
 **Found twice independently on the same day:**
 1. The T2 relative-navigation port audit (formula inspection while porting the obs math).
-2. The T1 Lambert baseline — the policy beat the two-impulse optimum (median ratio 0.31×,
-   physically impossible), which forced the trace-down.
+2. The T1 Lambert baseline — against the TIME-MATCHED two-impulse optimum the tail was
+   physically impossible (46.5% of episodes below the fixed-time optimum, 15.0% below
+   HALF of it, p10 0.368 — no policy legitimately halves a fixed-time two-impulse
+   optimum), which forced the trace-down. (The 0.31× median often quoted here was vs
+   the IMMEDIATE comparator, which forces departure at t0 and which a policy allowed
+   to wait legitimately beats — the corrected, teleport-free policy still scores
+   0.331× against it. The tail, not the median, was the impossibility.)
 
 **Why five months of work never saw it:** burns at apsides have sinθ ≈ 0, where the error
 vanishes to first order — and Hohmann-style policies burn at apsides. All 8 Phase-1 physics
