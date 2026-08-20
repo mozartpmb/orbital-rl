@@ -38,11 +38,15 @@ set -uo pipefail
 MAIN=/Users/pete/space_training
 PUF=$MAIN/pufferlib
 EVAL=$MAIN/scripts/orbital/extj2/t11_eval.py
+# All paths/patterns are env-overridable so the same sidecar can serve any
+# campaign of this family (T13 consol, T13b anchor, ...) without collisions.
 ARM_DIR=${T11C_ARM_DIR:-$PUF/experiments_t11_consol/consol}
-PROBE_DIR=$MAIN/web_data/results/t11_consol/probes
+PROBE_DIR=${T11C_PROBE_DIR:-$MAIN/web_data/results/t11_consol/probes}
 CKPT_KEEP=$PROBE_DIR/probe_ckpts
-LOG=/tmp/t11c_probe.log
-CAMPAIGN_PROG=/tmp/t11c_progress.log
+LOG=${T11C_PROBE_LOG:-/tmp/t11c_probe.log}
+CAMPAIGN_PROG=${T11C_CAMPAIGN_PROG:-/tmp/t11c_progress.log}
+COMPLETE_PAT=${T11C_COMPLETE_PAT:-'t11-consol campaign COMPLETE'}
+PGREP_PAT=${T11C_PGREP:-'experiments_t11_consol|t11_consol_campaign'}
 EPS=${T11C_PROBE_EPS:-20}
 SEED=123
 CELLS="TIGHT_5k1 E0_j2 E1_j2 E2_j2 E3_j2 LONGRANGE"
@@ -76,9 +80,8 @@ ckpt_for_epoch() {   # first ckpt at/past the epoch, sorted on extracted epoch
 }
 
 campaign_alive() {
-    grep -qF 't11-consol campaign COMPLETE' "$CAMPAIGN_PROG" 2>/dev/null && return 1
-    pgrep -f 'experiments_t11_consol' >/dev/null 2>&1 && return 0
-    pgrep -f 't11_consol_campaign' >/dev/null 2>&1 && return 0
+    grep -qF "$COMPLETE_PAT" "$CAMPAIGN_PROG" 2>/dev/null && return 1
+    pgrep -f "$PGREP_PAT" >/dev/null 2>&1 && return 0
     return 1
 }
 
