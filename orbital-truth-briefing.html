@@ -310,6 +310,8 @@
       <li><strong>IOD acceptance gates certify convergence, not precision</strong> — worst-case epoch error at acceptance can reach hundreds of km; latency and success numbers are honest, the "acquired" label is not a precision claim.</li>
       <li><strong>J2 rungs will claim mean elements only:</strong> the mean-vs-osculating gap at LEO (+5.6&nbsp;km in semi-major axis) exceeds the tight box, so tight-box fidelity under J2 requires a conversion layer that does not exist yet.</li>
       <li><strong>Single machine, CPU PPO.</strong> Results are wall-clock-honest (50M steps ≈ 1.5–2&nbsp;h per arm) but no distributed-training claims are made.</li>
+      <li><strong>The success box certifies arrival, not station-keeping</strong> — measured: after capture, unprompted box residence at 30 minutes is ~21% (velocity drifts; position holds). Nothing in the objective requests holding; a hold-criterion variant is a defined, untrained extension.</li>
+      <li><strong>One network does not hold the tight box and the wide envelope simultaneously</strong> — measured in both directions (the T11-tight seesaw): tight training collapses wide-band cells; wide rehearsal re-zeroes the tight skill at 10% weight. The deployment shape is a measured mode table (generalist + tight specialist + selection), not a single-policy claim.</li>
     </ul>
   </div>
 </section>
