@@ -278,7 +278,7 @@ say "steps:    $STEPS, mid battery at ~$MID_STEPS"
 say "W1:       EXCLUDED from training (0.0 in all three seesaw states, 22000 cap);"
 say "          still EVALUATED so the zero stays on the record."
 say "baseline: E0 97.0 E1 96.5 E2 29.0 E3 6.5 LONGRANGE 40.0 TIGHT 92.5 W1 0.0"
-say "STATE:    tight rows are MEAN-ELEMENT claims (Brouwer radial 3.3 km > 5 km box)"
+say "STATE:    tight rows are MEAN-ELEMENT claims (relative mean-vs-osc slip 83 m / 0.094 m/s per orbit at 5 km sep = 9.4% of vel tol/orbit)"
 say "stages requested: $STAGES   seed $T11C_SEED${SEED_SFX:+ (suffixed)}"
 preflight || exit 1
 if want 0; then anchor || exit 1; else say "---- stage 0 SKIPPED ----"; fi
