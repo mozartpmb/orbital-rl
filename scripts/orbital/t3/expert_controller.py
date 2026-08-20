@@ -92,6 +92,33 @@ A_DEADBAND_REL = float(os.environ.get('T3_DEADBAND_REL', 0.25))
 BURN_ACTIONS = (1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 15)
 WARPS = ((11, 60), (10, 30), (9, 5))
 
+# ── actuation-matched variant (2026-08-20) ──────────────────────────────────
+# The published tight-box expert rows were measured on Discrete-16, whose
+# finest radial authority is rows 7/8 at +-10 m/s. The tight-box POLICY
+# lineages fly Discrete-20, which adds rows 18/19 at +-1 m/s (orbital.h
+# ACTION_DV; mirrored in t3_expert_model.ACTION_DV). Comparing them at 5 km /
+# 1 m/s therefore compared two different actuators, not two guidance laws.
+#
+# `_burn` selects by searching BURN_ACTIONS for the best gain, so extending
+# this tuple is what actually grants the finer authority -- the RAD_OUT/RAD_IN
+# constants at t3_expert_model.py:53 are dead code, referenced nowhere.
+#
+# WARPS is deliberately NOT extended with the D20 rows 16/17 (180/360 min).
+# Adding them would change the cruise schedule as well as the actuator, and
+# arm B exists to isolate the actuator alone.
+BURN_ACTIONS_D16 = BURN_ACTIONS
+BURN_ACTIONS_D20 = BURN_ACTIONS + (18, 19)
+
+# Controller constants at their 30 km design point, as FRACTIONS of the box.
+# Both are absolute metres in the published controller and neither scales, so
+# at a 5 km box they are 120% and 60% of the whole tolerance. DA_FLOOR is the
+# more suspicious of the two: a parked semi-major-axis offset da implies a
+# relative speed |dv| ~ 0.5 * v * da / a, so at a = 7e6 m (v = 7546 m/s) the
+# 3 km floor alone implies 1.62 m/s -- already over a 1 m/s tolerance before
+# any guidance error. Scaling them is arm C.
+A_DEADBAND_FRAC = 6.0e3 / 30.0e3        # 0.20 of box_r
+DA_FLOOR_FRAC = 3.0e3 / 30.0e3          # 0.10 of box_r
+
 
 def _n(a):
     return math.sqrt(MU / (a * a * a))
@@ -131,7 +158,9 @@ class ExpertController:
         self.dirn = -1            # +1 → drive Δλ up (a<a_t); −1 → down (a>a_t)
         self.near = False         # latched once |Δλ| < NEAR_LATCH
         self.dv_cmd = 0.0
-        self.acts = [0] * 16
+        # 30, not 16: rows 18/19 (fine radial) index past the end of a
+        # 16-slot histogram and raise IndexError at the first fine burn.
+        self.acts = [0] * 30
         self.scan_cd = 0
         self.hold_t = 0.0
         self.plan_dv = 0.0
@@ -410,8 +439,19 @@ def _meta(sat, tgt):
 
 def run(episodes=200, seed=42, same_orbit=0, verbose=False, out_csv=None,
         e_max=0.05, gap_max=math.pi, debris=False, tag='headline', trace=False,
-        rows=None, box_r=30000.0, box_v=50.0, t3_mode=0):
+        rows=None, box_r=30000.0, box_v=50.0, t3_mode=0,
+        action_space=16, fine_radial=False, scale_consts=False):
     from pufferlib.ocean.orbital.orbital import Orbital
+
+    # ── actuation / constant arming, before the controller is constructed ──
+    global BURN_ACTIONS, DA_FLOOR, A_DEADBAND
+    BURN_ACTIONS = BURN_ACTIONS_D20 if fine_radial else BURN_ACTIONS_D16
+    if scale_consts:
+        A_DEADBAND = min(6.0e3, A_DEADBAND_FRAC * box_r)
+        DA_FLOOR = min(3.0e3, DA_FLOOR_FRAC * box_r)
+    else:
+        A_DEADBAND = float(os.environ.get('T3_DEADBAND', 6.0e3))
+        DA_FLOOR = float(os.environ.get('T3_DA_FLOOR', 3.0e3))
 
     # T3 regression config (red-team #3): the exact env the recovery arms
     # train in. decode_obs switches via om.DEFAULT_PHASE_OBS_MODE.
@@ -433,6 +473,7 @@ def run(episodes=200, seed=42, same_orbit=0, verbose=False, out_csv=None,
         gave_up_action="terminate",
         rendezvous_radius_m=box_r,
         rel_vel_tol_ms=box_v,
+        legacy_action_space=action_space,
         **t3_kwargs,
     )
     # the controller aims for the inside of whatever box the env enforces
@@ -451,8 +492,30 @@ def run(episodes=200, seed=42, same_orbit=0, verbose=False, out_csv=None,
     sat, tgt, fuel = om.decode_obs(o)
     ep_meta = _meta(sat, tgt)
 
+    # Per-episode terminal-geometry accumulators. `best_vrel_inbox` is the
+    # quantity the actuator hypothesis is actually about: the closest the
+    # controller ever gets to satisfying the VELOCITY half of the success test
+    # while already satisfying the position half. `n_inbox_tau1` supports the
+    # cadence red-team -- if the expert were coasting through the box on long
+    # warps it would be disadvantaged relative to a tau=1 policy, and this
+    # counts how often that happens.
+    def _fresh():
+        return dict(best_vrel_inbox=float('inf'), best_vrel=float('inf'),
+                    best_d=float('inf'), n_inbox=0, n_inbox_tau1=0)
+    acc = _fresh()
+
     while ep < episodes:
         act = ctl.act(o)
+        st = env.get_state()[0]
+        d_now = float(np.linalg.norm(st[23:26] - st[8:11]))
+        v_now = float(np.linalg.norm(st[26:29] - st[11:14]))
+        acc['best_d'] = min(acc['best_d'], d_now)
+        acc['best_vrel'] = min(acc['best_vrel'], v_now)
+        if d_now < box_r:
+            acc['n_inbox'] += 1
+            acc['best_vrel_inbox'] = min(acc['best_vrel_inbox'], v_now)
+            if om.ACTION_TAU[act] == 1:
+                acc['n_inbox_tau1'] += 1
         fuel_before = float(o[6])
         obs, rew, term, trunc, _ = env.step(np.array([act], dtype=np.int32))
         o = obs[0]
@@ -466,6 +529,12 @@ def run(episodes=200, seed=42, same_orbit=0, verbose=False, out_csv=None,
             row.update(condition=tag, episode=ep, seed=seed,
                        success=int(cause == 1), cause=CAUSES[cause],
                        steps=int(sim_steps), decisions=ctl.decisions,
+                       best_vrel_inbox=(round(acc['best_vrel_inbox'], 4)
+                                        if acc['best_vrel_inbox'] < 1e29 else ''),
+                       best_vrel=round(acc['best_vrel'], 4),
+                       best_d_km=round(acc['best_d'] / 1e3, 3),
+                       n_inbox=acc['n_inbox'], n_inbox_tau1=acc['n_inbox_tau1'],
+                       n_fine_rad=ctl.acts[18] + ctl.acts[19],
                        dv_used=round(dv_used, 2), plan_dv=round(ctl.plan_dv, 2),
                        n_plans=ctl.n_plans, n_burns=nb, n_warps=nw,
                        n_coast=ctl.acts[0], min_d_km=round(ctl.min_d / 1e3, 2))
@@ -477,6 +546,7 @@ def run(episodes=200, seed=42, same_orbit=0, verbose=False, out_csv=None,
                       f"dec={ctl.decisions} min_d={row['min_d_km']:.1f}km")
             ep += 1
             ctl.reset()
+            acc = _fresh()
             sat, tgt, fuel = om.decode_obs(o)
             ep_meta = _meta(sat, tgt)
             if not verbose and ep % 25 == 0:
@@ -545,6 +615,18 @@ def main():
     p.add_argument('--t3', action='store_true',
                    help='run against the T3 recovery env config '
                         '(shaping_mode 1, phase_obs_mode 1, cap 3000, cap reward 0)')
+    p.add_argument('--box-r', type=float, default=30000.0,
+                   help='rendezvous position tolerance (m)')
+    p.add_argument('--box-v', type=float, default=50.0,
+                   help='relative-velocity tolerance (m/s)')
+    p.add_argument('--action-space', type=int, default=16,
+                   choices=[16, 20, 30], help='env legacy_action_space')
+    p.add_argument('--fine-radial', action='store_true',
+                   help='arm B: add rows 18/19 (+-1 m/s radial) to BURN_ACTIONS '
+                        '-- requires --action-space 20 or more')
+    p.add_argument('--scale-consts', action='store_true',
+                   help='arm C: scale A_DEADBAND and DA_FLOOR to the box at '
+                        'their 30 km design fractions (0.20 and 0.10 of box_r)')
     p.add_argument('--suite', action='store_true',
                    help='200 headline episodes + 100 same_orbit_init episodes')
     a = p.parse_args()
@@ -560,9 +642,14 @@ def main():
         summarize(r2, 'SAME_ORBIT_INIT (identical a,e,omega; only theta differs)')
         return
 
+    if a.fine_radial and a.action_space < 20:
+        p.error('--fine-radial needs --action-space 20 (rows 18/19 do not '
+                'exist in a 16-action env; the ctor would reject the emit)')
     rows = run(episodes=a.episodes, seed=a.seed, same_orbit=int(a.same_orbit),
                verbose=a.verbose, out_csv=a.csv, e_max=a.e_max,
-               gap_max=a.gap_max, tag=a.tag, trace=a.trace, t3_mode=int(a.t3))
+               gap_max=a.gap_max, tag=a.tag, trace=a.trace, t3_mode=int(a.t3),
+               box_r=a.box_r, box_v=a.box_v, action_space=a.action_space,
+               fine_radial=a.fine_radial, scale_consts=a.scale_consts)
     summarize(rows, a.tag)
 
 
