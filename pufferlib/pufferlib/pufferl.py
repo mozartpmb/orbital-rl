@@ -213,9 +213,126 @@ class PuffeRL:
         # R3d target-entropy controller: rolling entropy history (last N updates)
         self.entropy_history = []
 
+        # ── T13b: tight-cell-only anchor (CLEAR-style replay-BC) ────────────
+        # OFF unless anchor_lambda > 0. Everything below — including any RNG
+        # consumption — sits inside that guard, so an unset run is bit-identical
+        # to the pre-anchor trainer. See `_anchor_setup` for the design notes.
+        self.anchor_lambda = float(config.get('anchor_lambda', 0.0) or 0.0)
+        self.anchor = None
+        self.anchor_obs = None
+        if self.anchor_lambda > 0.0:
+            self._anchor_setup(config, policy)
+
         # Dashboard
         self.model_size = sum(p.numel() for p in policy.parameters() if p.requires_grad)
         self.print_dashboard(clear=True)
+
+    def _anchor_setup(self, config, policy):
+        """Load the frozen anchor policy and its fixed tight-cell state set.
+
+        T13 measured the SOFT seesaw repeating at LR 1e-3: tight 95 -> 80 -> 55
+        over e20/e40/e80 while the wides surged. The probe JSONs localise it —
+        tight failures are ~all safety_cap timeouts and successful-episode
+        median length stretches 1617 -> 2248 -> 2499 against a 3000 cap at
+        stable dv. The wide gradient is smearing the terminal fine-burn
+        endgame, not overwriting the transfer. And because T13's tight defense
+        is REWARD-MEDIATED ONLY, the defense weakens exactly as successes drop:
+        under sparse terminal reward the tight gradient exists only while tight
+        episodes still succeed. That is the anchor-free failure the research
+        synthesis predicted (§1, "tight-cell-only anchor").
+
+        The anchor is a dense supervised signal that survives reward silence.
+
+        WHY REPLAY-BC AND NOT CELL-MASKED KL. Cell-masked KL is more faithful
+        to on-policy states, but the cell id lives in the C env inside each
+        rollout WORKER, and nothing per-step-per-env crosses the multiprocessing
+        boundary today (`info` is aggregated into stats, not aligned to buffer
+        rows). Threading it would mean a new shared-memory channel plus a new
+        buffer tensor plus binding changes — three files across a process
+        boundary, in a project whose bug history is mostly silent plumbing
+        errors. Replay-BC needs none of it: a fixed tensor loaded at init.
+        Rejected on diff size and risk, as instructed.
+
+        WHY NO BURN-IN / STORED HIDDEN STATE — the part where a silent bug
+        would live. It is tempting to reach for R2D2 machinery here. It would
+        be WRONG. `train()` forwards its own minibatches with
+        `lstm_h=None, lstm_c=None`, and rows advance every `bptt_horizon` steps
+        regardless of episode boundaries, so the trainer already evaluates every
+        64-step window from a ZERO hidden state wherever it sits in an episode.
+        The anchor must match that convention exactly: anchoring under stored
+        states would anchor a DIFFERENT function than the one PPO's gradient
+        shapes. So the dataset is 64-step windows cut on the same cadence, both
+        networks are forwarded zero-init, and the comparison is apples to
+        apples. This is a fact about the code, not an assumption about LSTMs.
+        """
+        import copy
+        path = config.get('anchor_data', '') or ''
+        ckpt = config.get('anchor_ckpt', '') or ''
+        if not path or not os.path.exists(path):
+            raise pufferlib.APIUsageError(
+                f'anchor_lambda={self.anchor_lambda} but anchor_data={path!r} '
+                'is missing. Build it with scripts/orbital/extj2/build_tight_anchor.py')
+        if not ckpt or not os.path.exists(ckpt):
+            raise pufferlib.APIUsageError(
+                f'anchor_lambda={self.anchor_lambda} but anchor_ckpt={ckpt!r} '
+                'is missing. The anchor must be the ROOT the run warm-starts from.')
+
+        device = config['device']
+        blob = torch.load(path, map_location=device, weights_only=False)
+        obs = blob['obs'] if isinstance(blob, dict) else blob
+        obs = torch.as_tensor(obs).to(device)
+        horizon = config['bptt_horizon']
+        if obs.ndim != 3 or obs.shape[1] != horizon:
+            raise pufferlib.APIUsageError(
+                f'anchor_data has shape {tuple(obs.shape)}; expected '
+                f'(N, {horizon}, obs_dim) to match bptt_horizon. Rebuild it '
+                f'with --horizon {horizon}.')
+        self.anchor_obs = obs
+
+        # Frozen copy of the ROOT. Same class as the live policy so the forward
+        # signature matches; weights replaced, grads off, eval mode.
+        self.anchor = copy.deepcopy(policy)
+        state = torch.load(ckpt, map_location=device, weights_only=False)
+        if hasattr(state, 'state_dict'):
+            state = state.state_dict()
+        elif isinstance(state, dict) and 'state_dict' in state:
+            state = state['state_dict']
+        self.anchor.load_state_dict(state)
+        self.anchor.eval()
+        for p in self.anchor.parameters():
+            p.requires_grad_(False)
+
+        self.anchor_mb = int(config.get('anchor_minibatch', 4) or 4)
+        # Dedicated generator: the anchor draw must not perturb the main RNG
+        # stream, or an anchor-on run would differ from an anchor-off run for a
+        # reason that has nothing to do with the anchor.
+        self.anchor_gen = torch.Generator(device='cpu')
+        self.anchor_gen.manual_seed(int(config.get('seed', 0)) ^ 0x13B)
+
+    def _anchor_loss(self):
+        """Forward CE against the anchor's full 31-way softmax at tau=1.
+
+        Per the synthesis (Rusu Table 1: KL >= NLL >> MSE; Kickstarting uses
+        teacher probs unmodified): full distribution, not argmax labels, and no
+        temperature sharpening — that folklore is for unnormalised Q-value
+        teachers. Forward CE, i.e. E_{a~pi_anchor}[-log pi_theta(a)], which is
+        KL(anchor || theta) up to the anchor's own (constant) entropy.
+        """
+        n = self.anchor_obs.shape[0]
+        k = min(self.anchor_mb, n)
+        idx = torch.randint(0, n, (k,), generator=self.anchor_gen).to(
+            self.anchor_obs.device)
+        mb = self.anchor_obs[idx]
+        state_a = dict(action=None, lstm_h=None, lstm_c=None)
+        state_t = dict(action=None, lstm_h=None, lstm_c=None)
+        with torch.no_grad():
+            a_logits, _ = self.anchor(mb, state_a)
+        t_logits, _ = self.policy(mb, state_t)
+        if isinstance(a_logits, (list, tuple)):
+            a_logits, t_logits = a_logits[0], t_logits[0]
+        a_logp = torch.log_softmax(a_logits.float(), dim=-1)
+        t_logp = torch.log_softmax(t_logits.float(), dim=-1)
+        return (a_logp.exp() * (a_logp - t_logp)).sum(-1).mean()
 
     @property
     def uptime(self):
@@ -459,6 +576,14 @@ class PuffeRL:
 
             loss = pg_loss + config['vf_coef']*v_loss - ent_coef_eff*entropy_loss \
                  + l2_init_coef * l2_init
+
+            # T13b tight anchor. Guarded so an anchor-off run touches neither
+            # the graph nor any RNG. Constant lambda, no decay: the anchor IS
+            # the init (CLEAR), so there is no teacher to wean off.
+            if self.anchor is not None:
+                anchor_ce = self._anchor_loss()
+                loss = loss + self.anchor_lambda * anchor_ce
+                losses['anchor_kl'] += anchor_ce.item() / self.total_minibatches
             self.amp_context.__enter__() # TODO: AMP needs some debugging
 
             # This breaks vloss clipping?

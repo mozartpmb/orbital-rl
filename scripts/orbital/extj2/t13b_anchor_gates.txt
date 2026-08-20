@@ -1,0 +1,66 @@
+T13b ANCHOR — GATE + SMOKE RECORD (worktree ext-t13b, 2026-08-20)
+================================================================================
+
+VARIANT CHOSEN: (A) REPLAY-BC. (B) cell-masked KL rejected on diff size/risk:
+the cell id lives in the C env inside each rollout WORKER and nothing
+per-step-per-env crosses the multiprocessing boundary today (`info` is
+aggregated into stats, not aligned to buffer rows). Threading it = new shared
+memory channel + new buffer tensor + binding changes, three files across a
+process boundary. Replay-BC = one tensor loaded at init.
+
+GATES
+    A1a instrument determinism (pristine vs pristine) ......... PASS
+        f074d6e8c0e8895618a2b3b914f15e23 (x2)
+    A1b anchor_lambda=0 BIT-IDENTICAL to pre-anchor trainer ... PASS
+        pristine f074d6e8... vs anchor-off f074d6e8... (identical)
+    A2  CE(anchor||anchor) == 0 at warm start ................. PASS  CE = 0.000e+00
+    A3  windows are (N, bptt_horizon, obs_dim) ................ PASS
+        (1200, 64, 38); horizon 64 == ini bptt_horizon 64
+
+A1a EXISTS BECAUSE THE FIRST ATTEMPT AT A1 FAILED, AND THE FAILURE WAS MINE,
+not the anchor's: `pufferl.__init__` has random.seed / np.random.seed /
+torch.manual_seed ALL COMMENTED OUT, so training is nondeterministic run to run
+and a naive weight-hash comparison can never pass. The gate now injects a
+`sitecustomize.py` that seeds all three at interpreter start, and PROVES the
+instrument works (pristine == pristine) before claiming anything from
+pristine == anchor-off. Without the control, A1b would have been unfalsifiable.
+
+SMOKE — 2M each, same box, same live contention (T13 running on main), 8w x 256
+
+    arm            steps   wall    SPS    entropy   tight probe (20 eps)
+    root             --     --      --      --      18/20 = 90.0%
+    anchor OFF      2.0M   16m     2.0K    0.708    18/20 = 90.0%
+    anchor ON       2.0M   16m     1.9K    0.718    17/20 = 85.0%
+
+    SPS cost of the anchor: <= ~3% (both arms 2.0M in 16 min; the 1.9 vs 2.0
+    difference is dashboard rounding). Requirement was < 10%. PASS.
+    Entropy: unchanged-to-slightly-higher with the anchor on, which is the
+    expected direction — the anchor pulls toward the root's distribution rather
+    than sharpening. No collapse.
+
+    TIGHT PROBE — READ THIS HONESTLY. 85% vs 90% is one episode in twenty,
+    against a binomial sigma of ~6.7pp at n=20. It is not degradation. It is
+    also NOT evidence the anchor defends tight, and this smoke cannot be: T13's
+    decay first shows at ~2.6M (e20 = 95%) and only reaches 55% by ~10.5M (e80).
+    A 2M smoke ends before the phenomenon starts. What the smoke establishes is
+    narrower and still worth having: the anchor runs, costs ~3% throughput,
+    does not collapse entropy, and does not break tight out of the gate.
+
+WHAT THE ANCHOR IS
+    lambda * CE(pi_root || pi_theta) on a FIXED dataset of tight-cell states
+    (1200 windows x 64 steps = 76,800 states) rolled from the root on
+    TIGHT_5k1. Forward CE against the root's FULL 31-way softmax at tau=1 —
+    not argmax labels, not MSE (Rusu Table 1: KL >= NLL >> MSE), not sharpened
+    (tau=0.01 is folklore for unnormalised Q-value teachers). lambda CONSTANT,
+    no decay: the anchor IS the init (CLEAR), not a teacher to wean off.
+    Default lambda 0.02, the LOW end of the synthesis's 0.01-0.05.
+
+THE LSTM QUESTION, SETTLED BY READING THE TRAINER
+    `train()` forwards minibatches with lstm_h=None, lstm_c=None, and
+    `evaluate()` advances buffer rows every bptt_horizon steps REGARDLESS of
+    episode boundaries. The trainer therefore already evaluates every 64-step
+    window from a ZERO hidden state wherever it sits in an episode. The anchor
+    dataset is cut on that same cadence and both networks are forwarded
+    zero-init. R2D2 stored-state/burn-in machinery would have anchored a
+    DIFFERENT function than the one PPO's gradient shapes — silently, with
+    every number still looking plausible.
