@@ -266,6 +266,15 @@ class OrbitalNav(Orbital):
         if self._nav_j2 and not self._dim3:
             raise ValueError('nav_j2_mode=1 requires dim3_mode=1 '
                              '(the J2 filter is the 6-state MSC path).')
+        # T14: which implementation runs the J2 STM. 'py' is the default and
+        # is the untouched path; 'c' is the ported kernel. Set here (not in the
+        # filter) so a wrapper built for a run pins it once, and so an
+        # unavailable kernel raises at CONSTRUCTION rather than mid-rollout.
+        # POP, not get: `Orbital.__init__` REJECTS unknown kwargs, so a
+        # wrapper-only key left in the dict is a TypeError before
+        # construction — the identical trap MAJOR-17b hit with
+        # nav_max_ticks. Gate C1b caught it here.
+        n3.set_filter_impl(kwargs.pop('nav_filter_impl', 'py'))
         self._di_max = float(kwargs.get('di_max_rad', -1.0))
         # MAJOR-17: the blind OOP seed must span the SCENARIO distribution, not
         # the construction kwarg. Under the T11 mixture the C sampler redraws

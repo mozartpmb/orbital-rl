@@ -1260,6 +1260,38 @@ def propagate_cartesian_j2(X, dt):
     return Y, ok
 
 
+# ── filter implementation switch (T14 C port) ───────────────────────────────
+# 'py' is the DEFAULT and its arithmetic is untouched: the dispatch below is an
+# early return, so selecting 'py' executes exactly the bytes that ran before the
+# port existed. Every published lineage is therefore bit-identical by
+# construction, and gate C1 proves it against the pristine tree rather than
+# asserting it.
+_FILTER_IMPL = 'py'
+
+
+def set_filter_impl(impl):
+    """'py' | 'c'. Raises rather than silently falling back: a run that asked
+    for the C path and quietly got Python would report a speedup that never
+    happened, and a fuzz gate that passed against itself."""
+    global _FILTER_IMPL
+    impl = str(impl or 'py')
+    if impl not in ('py', 'c'):
+        raise ValueError(f"nav_filter_impl must be 'py' or 'c', got {impl!r}")
+    if impl == 'c':
+        from . import nav_c
+        if not nav_c.available():
+            raise RuntimeError(
+                f'nav_filter_impl="c" but the kernel is unavailable: '
+                f'{nav_c.why_unavailable()}. Build it with: gcc -O3 '
+                f'-ffp-contract=off -shared -fPIC -o nav_j2_kernel.so '
+                f'nav_j2_kernel.c -lm')
+    _FILTER_IMPL = impl
+
+
+def filter_impl():
+    return _FILTER_IMPL
+
+
 def stm_fd_j2(X, dt, h_pos=nm.H_POS, h_vel=nm.H_VEL):
     """Central-difference STM of `propagate_cartesian_j2`. 12 propagations.
 
@@ -1267,6 +1299,12 @@ def stm_fd_j2(X, dt, h_pos=nm.H_POS, h_vel=nm.H_VEL):
     and rejected: it removes only ~59% of the two-body STM's error and leaves
     NEES at 11.5.
     """
+    # C dispatch: only for the shipped FD steps. A caller that passes custom
+    # h_pos/h_vel gets Python, because the kernel compiles the steps in.
+    if _FILTER_IMPL == 'c' and h_pos == nm.H_POS and h_vel == nm.H_VEL:
+        from . import nav_c
+        Phi_c, ok_c, Y_c = nav_c.stm_fd_j2_c(X, dt)
+        return Phi_c, ok_c, Y_c
     n = X.shape[0]
     Y, ok = propagate_cartesian_j2(X, dt)
     F = np.empty((n, 6, 6))
