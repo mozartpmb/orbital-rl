@@ -1,0 +1,25 @@
+{
+  "label": "probe_e40_E1_j2",
+  "ckpt": "model_puffer_orbital_nav_000040.pt",
+  "cell": "E1_j2",
+  "nav_mode": "bearings_only",
+  "episodes": 20,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 20,
+  "n_valid": 20,
+  "gave_up": 0,
+  "rate": 1.0,
+  "causes": {
+    "success": 20
+  },
+  "md5": "7bb57ef794a43813d61c2395b6c85734",
+  "dv_used_med": 292.5990257669737,
+  "dv_ref_med": 208.590656910787,
+  "dv_budget_med": 491.08345827028467,
+  "efficiency_med": 1.3038935720121527,
+  "budget_used_med": 0.6187685118312787,
+  "ep_len_med": 963.0,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 33.9594669342041
+}

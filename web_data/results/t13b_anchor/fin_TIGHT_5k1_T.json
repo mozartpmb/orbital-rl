@@ -1,0 +1,27 @@
+{
+  "label": "fin_TIGHT_5k1_T",
+  "ckpt": "model_puffer_orbital_nav_000763.pt",
+  "cell": "TIGHT_5k1_T",
+  "nav_mode": "bearings_only",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 192,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.96,
+  "causes": {
+    "success": 192,
+    "collision": 1,
+    "safety_cap": 7
+  },
+  "md5": "eda8f482b9e4f95758a60b30fdd80849",
+  "dv_used_med": 325.2436867076451,
+  "dv_ref_med": 258.1686320882418,
+  "dv_budget_med": 536.1212141346384,
+  "efficiency_med": 1.2363791619041633,
+  "budget_used_med": 0.6195188280911462,
+  "ep_len_med": 1546.5,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 511.3872468471527
+}

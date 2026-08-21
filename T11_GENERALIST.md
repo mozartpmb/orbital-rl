@@ -241,3 +241,55 @@ the 6/7 single-policy generalist exists in one checkpoint.
 Checkpoints `models/t3/t13_consol_{mid50M,final}.pt`; JSON + probes
 `web_data/results/t11_consol/`; wandb `t11c-consol`; research packet
 `scripts/orbital/ext_recon/reports/t13_research_synthesis.md`.
+
+---
+
+# T13b — the anchor closes it: one policy holds all six skills (2026-08-21)
+
+**CONSOLIDATION HOLDS. T13 + a tight-cell-only replay anchor (CE to the
+root's 31-way softmax on 76,800 stored tight states, λ=0.02 constant,
+measured ≤3% SPS cost, bit-identical when off) holds every trained skill
+simultaneously for 100M steps: TIGHT 90.5% (root 92.5, statistically
+indistinguishable at n=200) with the five wide cells at 94.5–100% — and
+96.0% on the tight cell at its training fuel floor, ABOVE the root.** The
+interference seesaw is closed as an optimization problem: LR alone bought a
+compromise (T13: tight → 37.5%); LR + a dense supervised anchor on the
+minority skill buys the full hold. 128 hidden units were never out of room
+— the user's pushback on "structural at this capacity" is now a measured
+result. Single seed 42; **the pre-registered second-seed confirm (seed 7)
+is running** and no briefing claim changes until it lands. Mean-element
+claims under J2 throughout.
+
+## The four-recipe table (200 eps/cell, held-out seed 123, native BO)
+
+| cell | root (tight child) | remix @1e-2 | T13 consol @1e-3 | **T13b + anchor (mid 50M → fin 100M)** |
+|---|---|---|---|---|
+| E0_j2 | 97.0 | 93.5 | 95.0 | 99.5 → **99.0** |
+| E1_j2 | 96.5 | 95.5 | 98.0 | 100.0 → **99.5** |
+| E2_j2 | 29.0 | 98.5 | 99.5 | 98.5 → **98.5** @1.068× |
+| E3_j2 | 6.5 | 84.5 | 94.0 | 91.0 → **94.5** @1.121× |
+| LONGRANGE | 40.0 | 99.5 | 99.5 | 100.0 → **100.0** |
+| TIGHT_5k1 | 92.5 | 0.0 | 37.5 | 89.0 → **90.5** (96.0 @training floor) |
+| W1_driftwait | 0.0 | 0.0 | 0.0 | 0.0 (excluded by design, evaluated) |
+
+- **The anchor defended without taxing**: wide-cell trajectories and fuel
+  profiles match T13's within noise (the anchor never touches wide-cell
+  minibatches); probe record flat at 80–90 across all 94M (T13's: 95→15).
+- Budget-awareness intact in the held skill: lean 91.5 → floor 96.0 →
+  rich 97.5. Truth rows match native (tight 90.0, E3 95.0) — capability,
+  not navigation.
+- Mechanism read: T13 measured reward-mediated defense leaking ~50pp
+  before plateauing; the anchor's dense signal (independent of tight
+  successes) is the difference, exactly as the CLEAR/kickstarting
+  literature predicted (research packet §1).
+
+**Deployment**: if seed 7 confirms, the mode-table's generalist/tight-child
+split collapses into ONE checkpoint (`models/t3/t13b_anchor_final.pt`) for
+everything except drift-and-wait — whose validated-signal bootstrap is the
+running 7/7 arc (`ext-w1nav`: the day-warp "blind window" was a tick-cap
+artifact; surrogate exact at K=0).
+
+Checkpoints `models/t3/t13b_anchor_{mid50M,final}.pt`; JSON + probes
+`web_data/results/t13b_anchor/`; wandb `t13b-anchor`; anchor build
+`scripts/orbital/extj2/build_tight_anchor.py` + gates
+`t13b_anchor_gates.py`; campaign `t13b_anchor_campaign.sh`.

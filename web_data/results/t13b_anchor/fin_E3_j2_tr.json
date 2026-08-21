@@ -1,0 +1,26 @@
+{
+  "label": "fin_E3_j2_tr",
+  "ckpt": "model_puffer_orbital_nav_000763.pt",
+  "cell": "E3_j2",
+  "nav_mode": "truth",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 190,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.95,
+  "causes": {
+    "success": 190,
+    "safety_cap": 10
+  },
+  "md5": "3c31e55fbea1f9453402c38d48e6dfb0",
+  "dv_used_med": 277.71067811865555,
+  "dv_ref_med": 243.45567174187642,
+  "dv_budget_med": 485.41788057980995,
+  "efficiency_med": 1.159486572070287,
+  "budget_used_med": 0.5945325923905205,
+  "ep_len_med": 2474.5,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 1.1737959384918213
+}

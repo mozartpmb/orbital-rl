@@ -1,0 +1,139 @@
+[2026-08-20 15:11:39] =========== T13b-anchor campaign start (pid 17849) ===========
+[2026-08-20 15:11:39] QUESTION: optimization or capacity? Both seesaw swings ran at ACQUISITION
+[2026-08-20 15:11:39]           LR (1e-2); this is the same six skills at MAINTENANCE LR.
+[2026-08-20 15:11:39] root:     t11t_tight_child.pt  (tight intact; wides rebuild under majority gradient)
+[2026-08-20 15:11:39] mixture:  t11_mixture=2 — TIGHT .25 E3 .20 E2 .15 LONGRANGE .15 E0 .125 E1 .125 W1 0.0
+[2026-08-20 15:11:39] anchor:   lambda 0.02 on t11b_anchor_tight.pt (tight-cell states, CE to the root)
+[2026-08-20 15:11:39] LR:       1e-3 (annealed)   ent_coef 0.01, NO l2_init
+[2026-08-20 15:11:39] steps:    100000000, mid battery at ~50000000
+[2026-08-20 15:11:39] W1:       EXCLUDED from training (0.0 in all three seesaw states, 22000 cap);
+[2026-08-20 15:11:39]           still EVALUATED so the zero stays on the record.
+[2026-08-20 15:11:39] baseline: E0 97.0 E1 96.5 E2 29.0 E3 6.5 LONGRANGE 40.0 TIGHT 92.5 W1 0.0
+[2026-08-20 15:11:39] STATE:    tight rows are MEAN-ELEMENT claims (Brouwer radial 3.3 km > 5 km box)
+[2026-08-20 15:11:39] stages requested: 0,1,2,3   seed 42
+[2026-08-20 15:11:40] START stage 0 (anchors, both families, + the T11 gate battery)
+[2026-08-20 15:11:59]   RESULT anchors rc=0 25/25 checks pass
+[2026-08-20 15:12:07]   RESULT t11 gates rc=0 15/15 gates pass
+[2026-08-20 15:12:07]     [PASS] G9a realized consolidation mixture matches its table
+[2026-08-20 15:12:07]     [PASS] G9b the excluded cell is drawn exactly zero times
+[2026-08-20 15:12:07]     [PASS] G9c the shipped mixture is unchanged by the variant
+[2026-08-20 15:12:07] ---- stage 0 done ----
+[2026-08-20 15:12:07] START stage 1 (consolidation: 100000000 steps, LR 1e-3, t11_mixture=2)
+[2026-08-20 15:12:07]   trainer pid 17952
+[2026-08-20 17:47:20]   TRIPWIRE tight @~25M: 85% (root 92.5%, floor 46%, 20 eps)
+[2026-08-21 00:57:58]   final ckpt present; watchdog armed (900s)
+[2026-08-21 01:13:00]   WATCHDOG: killing 17952
+[2026-08-21 01:13:20]   final entropy 0.641 (this run starts ~0.70 and held 0.70-0.72 over the 2M smoke; acquisition-LR reference ~1.62, ln 31 = 3.43)
+[2026-08-21 01:13:20] ---- stage 1 done ----
+[2026-08-21 01:13:20] START stage 2 (MID battery at ~50000000: converging hold vs slower seesaw)
+[2026-08-21 01:13:20]   ckpt model_puffer_orbital_nav_000400.pt
+[2026-08-21 01:17:54] RESULT mid_E0_j2: mid_E0_j2                  success 199/200 =  99.5%   md5 053c329f8198   272s
+[2026-08-21 01:17:54]   mid_E0_j2 causes: success=199, safety_cap=1
+[2026-08-21 01:17:54]   mid_E0_j2 FUEL AUDIT (successes): dv used 290.5 m/s vs direct ref 257.8 (efficiency 1.078x), budget 499.3 (57.5% of tank)
+[2026-08-21 01:17:54]   mid_E0_j2 FUEL AUDIT (successes): dv used 290.5 m/s vs direct ref 257.8 (efficiency 1.078x), budget 499.3 (57.5% of tank)
+[2026-08-21 01:17:54]   ^ E0_j2 baseline (tight child) was 97.0%
+[2026-08-21 01:22:40] RESULT mid_E1_j2: mid_E1_j2                  success 200/200 = 100.0%   md5 12ede65d036f   286s
+[2026-08-21 01:22:40]   mid_E1_j2 causes: success=200
+[2026-08-21 01:22:40]   mid_E1_j2 FUEL AUDIT (successes): dv used 261.1 m/s vs direct ref 231.6 (efficiency 1.095x), budget 500.5 (52.7% of tank)
+[2026-08-21 01:22:40]   mid_E1_j2 FUEL AUDIT (successes): dv used 261.1 m/s vs direct ref 231.6 (efficiency 1.095x), budget 500.5 (52.7% of tank)
+[2026-08-21 01:22:40]   ^ E1_j2 baseline (tight child) was 96.5%
+[2026-08-21 01:29:21] RESULT mid_E2_j2: mid_E2_j2                  success 197/200 =  98.5%   md5 4c9e82deba2a   400s
+[2026-08-21 01:29:21]   mid_E2_j2 causes: success=197, safety_cap=3
+[2026-08-21 01:29:21]   mid_E2_j2 FUEL AUDIT (successes): dv used 270.4 m/s vs direct ref 242.7 (efficiency 1.051x), budget 505.3 (53.0% of tank)
+[2026-08-21 01:29:21]   mid_E2_j2 FUEL AUDIT (successes): dv used 270.4 m/s vs direct ref 242.7 (efficiency 1.051x), budget 505.3 (53.0% of tank)
+[2026-08-21 01:29:21]   ^ E2_j2 baseline (tight child) was 29.0%
+[2026-08-21 01:43:19] RESULT mid_E3_j2: mid_E3_j2                  success 182/200 =  91.0%   md5 653093aa549d   838s
+[2026-08-21 01:43:19]   mid_E3_j2 causes: success=182, safety_cap=18
+[2026-08-21 01:43:19]   mid_E3_j2 FUEL AUDIT (successes): dv used 283.9 m/s vs direct ref 248.4 (efficiency 1.117x), budget 490.0 (58.7% of tank)
+[2026-08-21 01:43:19]   mid_E3_j2 FUEL AUDIT (successes): dv used 283.9 m/s vs direct ref 248.4 (efficiency 1.117x), budget 490.0 (58.7% of tank)
+[2026-08-21 01:43:19]   ^ E3_j2 baseline (tight child) was 6.5%
+[2026-08-21 03:42:46] RESULT mid_W1_driftwait: mid_W1_driftwait           success 0/200 =   0.0%   md5 73bded85fe8e   7166s
+[2026-08-21 03:42:46]   mid_W1_driftwait causes: safety_cap=200
+[2026-08-21 03:42:46]   mid_W1_driftwait FUEL AUDIT (successes): dv used nan m/s vs direct ref nan (efficiency nanx), budget nan (nan% of tank)
+[2026-08-21 03:42:46]   mid_W1_driftwait FUEL AUDIT (successes): dv used nan m/s vs direct ref nan (efficiency nanx), budget nan (nan% of tank)
+[2026-08-21 03:42:46]   ^ W1_driftwait baseline (tight child) was 0.0%
+[2026-08-21 03:52:06] RESULT mid_TIGHT_5k1: mid_TIGHT_5k1              success 178/200 =  89.0%   md5 4a2bceded415   559s
+[2026-08-21 03:52:06]   mid_TIGHT_5k1 causes: success=178, safety_cap=22
+[2026-08-21 03:52:06]   mid_TIGHT_5k1 FUEL AUDIT (successes): dv used 311.3 m/s vs direct ref 255.3 (efficiency 1.216x), budget 508.2 (63.2% of tank)
+[2026-08-21 03:52:06]   mid_TIGHT_5k1 FUEL AUDIT (successes): dv used 311.3 m/s vs direct ref 255.3 (efficiency 1.216x), budget 508.2 (63.2% of tank)
+[2026-08-21 03:52:06]   ^ TIGHT_5k1 baseline (tight child) was 92.5%
+[2026-08-21 03:58:13] RESULT mid_LONGRANGE: mid_LONGRANGE              success 200/200 = 100.0%   md5 4b271548bae2   367s
+[2026-08-21 03:58:13]   mid_LONGRANGE causes: success=200
+[2026-08-21 03:58:13]   mid_LONGRANGE FUEL AUDIT (successes): dv used 265.7 m/s vs direct ref 252.5 (efficiency 1.040x), budget 499.5 (55.4% of tank)
+[2026-08-21 03:58:13]   mid_LONGRANGE FUEL AUDIT (successes): dv used 265.7 m/s vs direct ref 252.5 (efficiency 1.040x), budget 499.5 (55.4% of tank)
+[2026-08-21 03:58:13]   ^ LONGRANGE baseline (tight child) was 40.0%
+[2026-08-21 03:58:13] ---- stage 2 done ----
+[2026-08-21 03:58:13] START stage 3 (FINAL battery + tight fuel slices)
+[2026-08-21 03:58:13]   ckpt model_puffer_orbital_nav_000763.pt
+[2026-08-21 04:02:52] RESULT fin_E0_j2: fin_E0_j2                  success 198/200 =  99.0%   md5 88fad5f1da1d   278s
+[2026-08-21 04:02:52]   fin_E0_j2 causes: success=198, safety_cap=2
+[2026-08-21 04:02:52]   fin_E0_j2 FUEL AUDIT (successes): dv used 283.7 m/s vs direct ref 257.8 (efficiency 1.090x), budget 501.1 (58.9% of tank)
+[2026-08-21 04:02:52]   fin_E0_j2 FUEL AUDIT (successes): dv used 283.7 m/s vs direct ref 257.8 (efficiency 1.090x), budget 501.1 (58.9% of tank)
+[2026-08-21 04:02:52]   ^ E0_j2 baseline (tight child) was 97.0%
+[2026-08-21 04:07:34] RESULT fin_E1_j2: fin_E1_j2                  success 199/200 =  99.5%   md5 89906726d640   281s
+[2026-08-21 04:07:34]   fin_E1_j2 causes: success=199, safety_cap=1
+[2026-08-21 04:07:34]   fin_E1_j2 FUEL AUDIT (successes): dv used 256.4 m/s vs direct ref 231.1 (efficiency 1.073x), budget 501.1 (52.0% of tank)
+[2026-08-21 04:07:34]   fin_E1_j2 FUEL AUDIT (successes): dv used 256.4 m/s vs direct ref 231.1 (efficiency 1.073x), budget 501.1 (52.0% of tank)
+[2026-08-21 04:07:34]   ^ E1_j2 baseline (tight child) was 96.5%
+[2026-08-21 04:14:05] RESULT fin_E2_j2: fin_E2_j2                  success 197/200 =  98.5%   md5 dcce25d269e2   390s
+[2026-08-21 04:14:05]   fin_E2_j2 causes: success=197, safety_cap=3
+[2026-08-21 04:14:05]   fin_E2_j2 FUEL AUDIT (successes): dv used 266.4 m/s vs direct ref 242.7 (efficiency 1.068x), budget 503.8 (53.1% of tank)
+[2026-08-21 04:14:05]   fin_E2_j2 FUEL AUDIT (successes): dv used 266.4 m/s vs direct ref 242.7 (efficiency 1.068x), budget 503.8 (53.1% of tank)
+[2026-08-21 04:14:05]   ^ E2_j2 baseline (tight child) was 29.0%
+[2026-08-21 04:26:30] RESULT fin_E3_j2: fin_E3_j2                  success 189/200 =  94.5%   md5 3942a7adf283   745s
+[2026-08-21 04:26:30]   fin_E3_j2 causes: success=189, safety_cap=11
+[2026-08-21 04:26:30]   fin_E3_j2 FUEL AUDIT (successes): dv used 282.4 m/s vs direct ref 245.3 (efficiency 1.121x), budget 488.8 (58.1% of tank)
+[2026-08-21 04:26:30]   fin_E3_j2 FUEL AUDIT (successes): dv used 282.4 m/s vs direct ref 245.3 (efficiency 1.121x), budget 488.8 (58.1% of tank)
+[2026-08-21 04:26:30]   ^ E3_j2 baseline (tight child) was 6.5%
+[2026-08-21 06:24:35] RESULT fin_W1_driftwait: fin_W1_driftwait           success 0/200 =   0.0%   md5 9e77ae1403f9   7084s
+[2026-08-21 06:24:35]   fin_W1_driftwait causes: safety_cap=200
+[2026-08-21 06:24:35]   fin_W1_driftwait FUEL AUDIT (successes): dv used nan m/s vs direct ref nan (efficiency nanx), budget nan (nan% of tank)
+[2026-08-21 06:24:35]   fin_W1_driftwait FUEL AUDIT (successes): dv used nan m/s vs direct ref nan (efficiency nanx), budget nan (nan% of tank)
+[2026-08-21 06:24:35]   ^ W1_driftwait baseline (tight child) was 0.0%
+[2026-08-21 06:33:47] RESULT fin_TIGHT_5k1: fin_TIGHT_5k1              success 181/200 =  90.5%   md5 ef9694499343   551s
+[2026-08-21 06:33:47]   fin_TIGHT_5k1 causes: success=181, safety_cap=19
+[2026-08-21 06:33:47]   fin_TIGHT_5k1 FUEL AUDIT (successes): dv used 311.1 m/s vs direct ref 257.3 (efficiency 1.240x), budget 508.8 (65.2% of tank)
+[2026-08-21 06:33:47]   fin_TIGHT_5k1 FUEL AUDIT (successes): dv used 311.1 m/s vs direct ref 257.3 (efficiency 1.240x), budget 508.8 (65.2% of tank)
+[2026-08-21 06:33:47]   ^ TIGHT_5k1 baseline (tight child) was 92.5%
+[2026-08-21 06:39:58] RESULT fin_LONGRANGE: fin_LONGRANGE              success 200/200 = 100.0%   md5 56056337c5a9   370s
+[2026-08-21 06:39:58]   fin_LONGRANGE causes: success=200
+[2026-08-21 06:39:58]   fin_LONGRANGE FUEL AUDIT (successes): dv used 265.7 m/s vs direct ref 252.5 (efficiency 1.017x), budget 499.5 (54.9% of tank)
+[2026-08-21 06:39:58]   fin_LONGRANGE FUEL AUDIT (successes): dv used 265.7 m/s vs direct ref 252.5 (efficiency 1.017x), budget 499.5 (54.9% of tank)
+[2026-08-21 06:39:58]   ^ LONGRANGE baseline (tight child) was 40.0%
+[2026-08-21 06:48:30] RESULT fin_TIGHT_5k1_T: fin_TIGHT_5k1_T            success 192/200 =  96.0%   md5 eda8f482b9e4   511s
+[2026-08-21 06:48:30]   fin_TIGHT_5k1_T causes: success=192, collision=1, safety_cap=7
+[2026-08-21 06:48:30]   fin_TIGHT_5k1_T FUEL AUDIT (successes): dv used 325.2 m/s vs direct ref 258.2 (efficiency 1.236x), budget 536.1 (62.0% of tank)
+[2026-08-21 06:48:30]   fin_TIGHT_5k1_T FUEL AUDIT (successes): dv used 325.2 m/s vs direct ref 258.2 (efficiency 1.236x), budget 536.1 (62.0% of tank)
+[2026-08-21 06:57:34] RESULT fin_tight_lean: fin_tight_lean             success 183/200 =  91.5%   md5 6e9869c3dab7   543s
+[2026-08-21 06:57:34]   fin_tight_lean causes: success=183, safety_cap=17
+[2026-08-21 06:57:34]   fin_tight_lean FUEL AUDIT (successes): dv used 299.0 m/s vs direct ref 253.6 (efficiency 1.175x), budget 419.9 (71.2% of tank)
+[2026-08-21 06:57:34]   fin_tight_lean FUEL AUDIT (successes): dv used 299.0 m/s vs direct ref 253.6 (efficiency 1.175x), budget 419.9 (71.2% of tank)
+[2026-08-21 07:05:32] RESULT fin_tight_rich: fin_tight_rich             success 195/200 =  97.5%   md5 e3abd4e7d333   478s
+[2026-08-21 07:05:32]   fin_tight_rich causes: success=195, safety_cap=5
+[2026-08-21 07:05:32]   fin_tight_rich FUEL AUDIT (successes): dv used 362.8 m/s vs direct ref 259.5 (efficiency 1.401x), budget 656.5 (55.3% of tank)
+[2026-08-21 07:05:32]   fin_tight_rich FUEL AUDIT (successes): dv used 362.8 m/s vs direct ref 259.5 (efficiency 1.401x), budget 656.5 (55.3% of tank)
+[2026-08-21 07:05:34] RESULT fin_TIGHT_5k1_tr: fin_TIGHT_5k1_tr           success 180/200 =  90.0%   md5 66d54c6d08ff   1s
+[2026-08-21 07:05:34]   fin_TIGHT_5k1_tr causes: success=180, safety_cap=20
+[2026-08-21 07:05:34]   fin_TIGHT_5k1_tr FUEL AUDIT (successes): dv used 348.7 m/s vs direct ref 254.2 (efficiency 1.354x), budget 513.0 (69.1% of tank)
+[2026-08-21 07:05:34]   fin_TIGHT_5k1_tr FUEL AUDIT (successes): dv used 348.7 m/s vs direct ref 254.2 (efficiency 1.354x), budget 513.0 (69.1% of tank)
+[2026-08-21 07:05:36] RESULT fin_E3_j2_tr: fin_E3_j2_tr               success 190/200 =  95.0%   md5 3c31e55fbea1   1s
+[2026-08-21 07:05:36]   fin_E3_j2_tr causes: success=190, safety_cap=10
+[2026-08-21 07:05:36]   fin_E3_j2_tr FUEL AUDIT (successes): dv used 277.7 m/s vs direct ref 243.5 (efficiency 1.159x), budget 485.4 (59.5% of tank)
+[2026-08-21 07:05:36]   fin_E3_j2_tr FUEL AUDIT (successes): dv used 277.7 m/s vs direct ref 243.5 (efficiency 1.159x), budget 485.4 (59.5% of tank)
+[2026-08-21 07:05:36]   ── VERDICT (read mid -> fin against the baseline row) ──
+[2026-08-21 07:05:36]   tight  92.5 -> 89 (50M) -> 90 (100M)
+[2026-08-21 07:05:36]   E2_j2  29.0 -> 98 (50M) -> 98 (100M)
+[2026-08-21 07:05:36]   E3_j2   6.5 -> 91 (50M) -> 94 (100M)
+[2026-08-21 07:05:36]   READ:
+[2026-08-21 07:05:36]    - tight high at BOTH and wides climbing = CONSOLIDATION HOLDS; the
+[2026-08-21 07:05:36]      seesaw was optimization, not capacity, and the write-up changes.
+[2026-08-21 07:05:36]    - tight high at 50M, down at 100M = slower seesaw; LR bought time,
+[2026-08-21 07:05:36]      not a fix.
+[2026-08-21 07:05:36]    - wides FLAT at both (E3 still ~6.5) = LR too low to re-acquire;
+[2026-08-21 07:05:36]      this is red-team (a), NOT a capacity result. Fallback T13B_LR=2e-3,
+[2026-08-21 07:05:36]      then staged (T13B_LR2/T13B_LR_SWITCH).
+[2026-08-21 07:05:36]    - anything 'held' while entropy sat under 0.45 is suspect (c).
+[2026-08-21 07:05:36]    - W1 is expected 0.0: excluded from training BY DESIGN, evaluated
+[2026-08-21 07:05:36]      anyway. It is not evidence about consolidation either way.
+[2026-08-21 07:05:36] ---- stage 3 done ----
+[2026-08-21 07:05:36] =========== t13b-anchor campaign COMPLETE ===========
