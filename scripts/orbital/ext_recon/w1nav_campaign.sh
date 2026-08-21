@@ -84,9 +84,13 @@
 # the T11 seesaw says nothing about that until this root exists.
 set -uo pipefail
 
-MAIN=/Users/pete/space_training
+# MAIN/BRANCH_REQ are overridable ONLY so stage 0 can be dry-run from a
+# worktree before merge. The defaults are the real ones; a production launch
+# sets neither. Without this the stage-0 wiring would ship unexercised, which
+# is how a turnkey run stops being turnkey at 23:45.
+MAIN=${W1NAV_MAIN:-/Users/pete/space_training}
 PUF=$MAIN/pufferlib
-BRANCH_REQ=main
+BRANCH_REQ=${W1NAV_BRANCH:-main}
 EVAL=$MAIN/scripts/orbital/extj2/t11_eval.py
 GATES=$MAIN/scripts/orbital/extj2/t11_gates.py
 VERIFY=$MAIN/scripts/orbital/extj2/verify_extj2.py
@@ -103,6 +107,27 @@ WATCHDOG_S=1800
 # acquisition signal is measured to be real. Do not raise it to buy throughput
 # without re-running W1A at the value you pick.
 NAV_MAX_TICKS=${W1_NAV_MAX_TICKS:-0}
+
+# ── FILTER IMPLEMENTATION (T14 C port) ──────────────────────────────────────
+# 'c' is the default HERE and only here: W1 at K=0 is the configuration the
+# port exists for (up to 1440 filter ticks per day-warp decision), measured at
+# 4.35x end to end — a 50M rung goes ~35 h -> ~8 h. 'py' remains the global
+# default everywhere else and is bit-identical to the pre-port tree.
+# Stage 0 REBUILDS the kernel and re-runs the full differential fuzz +
+# mutation battery before anything trains, which is the condition the port was
+# merged under: a C path that has not been re-verified against this build of
+# numpy on this machine is not a validated path.
+FILTER_IMPL=${W1NAV_FILTER_IMPL:-c}
+KERNEL_DIR=$PUF/pufferlib/ocean/orbital_nav
+FUZZ=$MAIN/scripts/orbital/ext_recon/navc_fuzz.py
+PREFLIGHT=$MAIN/scripts/orbital/ext_recon/navc_preflight.py
+FUZZ_ROWS=${W1NAV_FUZZ_ROWS:-1000000}
+# The SOURCE hash is available before anything runs, so the header can be
+# attributable from line one. The .so hash only exists after 0a builds it and
+# is reported there (and restated below), because a header that says "pending"
+# is not attribution.
+SRCHASH=$(shasum -a256 "$PUF/pufferlib/ocean/orbital_nav/nav_j2_kernel.c" 2>/dev/null | cut -c1-12)
+KHASH=pending
 
 W1_SEED=${W1_SEED:-42}
 SEED_SFX=""
@@ -138,7 +163,7 @@ ckpt_at() {
 preflight() {
     local br; br=$(git -C "$MAIN" rev-parse --abbrev-ref HEAD)
     [ "$br" = "$BRANCH_REQ" ] || { say "ABORT: $MAIN on '$br', need '$BRANCH_REQ'"; return 1; }
-    for f in "$EVAL" "$GATES" "$VERIFY" "$W1GATES" "$ROOT"; do
+    for f in "$EVAL" "$GATES" "$VERIFY" "$W1GATES" "$ROOT" "$FUZZ" "$PREFLIGHT"; do
         [ -f "$f" ] || { say "ABORT: missing $f"; return 1; }
     done
     mkdir -p "$JSON_DIR"; return 0
@@ -146,8 +171,44 @@ preflight() {
 
 # ── stage 0: anchors + T11 battery + THE TWO W1 GATES ──────────────────────
 anchor() {
-    say "START stage 0 (anchors + T11 gates + W1A/W1B at the TRAINING cadence)"
+    say "START stage 0 (kernel build -> fuzz battery -> preflight -> anchors/gates)"
     cd "$MAIN" || return 1
+
+    # ── 0a. rebuild the kernel from source ──────────────────────────────
+    # Never trust a .so found on disk: it is gitignored precisely so a stale
+    # binary cannot silently run instead of the source being read.
+    if [ "$FILTER_IMPL" = "c" ]; then
+        bash "$KERNEL_DIR/build_nav_kernel.sh" > /tmp/w1nav_build.log 2>&1
+        local rb=$?
+        KHASH=$(shasum -a256 "$KERNEL_DIR/nav_j2_kernel.so" 2>/dev/null | cut -c1-12)
+        SRCHASH=$(shasum -a256 "$KERNEL_DIR/nav_j2_kernel.c" | cut -c1-12)
+        say "  RESULT kernel build rc=$rb  so=$KHASH  src=$SRCHASH"
+        say "  ATTRIBUTION: this run's numbers were produced by kernel so=$KHASH"
+        [ $rb -ne 0 ] && { say "ABORT: kernel build failed"; return 1; }
+
+        # ── 0b. the merge condition, enforced ───────────────────────────
+        # "Any campaign that sets nav_filter_impl='c' runs the fuzz battery in
+        # stage 0." Abort on ANY failure — the whole argument for the C path is
+        # that it is differentially verified against the Python oracle on THIS
+        # build, and an unverified C path is strictly worse than Python.
+        python3 "$FUZZ" --stage fuzz,perm,down,mut --rows "$FUZZ_ROWS" \
+            > /tmp/w1nav_fuzz.log 2>&1
+        local rf=$?
+        say "  RESULT C-port fuzz battery rc=$rf $(grep -oE '[0-9]+/[0-9]+ C-port gates pass' /tmp/w1nav_fuzz.log | tail -1)"
+        grep -E '^\s+\[FAIL\]' /tmp/w1nav_fuzz.log | while read -r l; do say "    $l"; done
+        [ $rf -ne 0 ] && { say "ABORT: the C path is not verified on this build"; return 1; }
+    else
+        KHASH="n/a"; SRCHASH="n/a"
+        say "  filter impl is 'py' — kernel build and fuzz battery SKIPPED"
+    fi
+
+    # ── 0c. preflight: the kwarg-leak lint + C-path reachability ────────
+    python3 "$PREFLIGHT" --impl "$FILTER_IMPL" > /tmp/w1nav_preflight.log 2>&1
+    local rp=$?
+    say "  RESULT preflight rc=$rp $(grep -oE '[0-9]+/[0-9]+ preflight checks pass' /tmp/w1nav_preflight.log | tail -1)"
+    grep -E '^\s+\[FAIL\]' /tmp/w1nav_preflight.log | while read -r l; do say "    $l"; done
+    [ $rp -ne 0 ] && { say "ABORT: preflight failed"; return 1; }
+
     python3 "$VERIFY" --stage a1,a2,a3,a4,a5 --eps 100 > /tmp/w1nav_anchor.log 2>&1
     local ra=$?
     say "  RESULT anchors rc=$ra $(grep -oE '[0-9]+/[0-9]+ checks pass' /tmp/w1nav_anchor.log | tail -1)"
@@ -176,6 +237,7 @@ one_eval() {
     local L=/tmp/w1nav_${tag}.log
     python3 "$EVAL" --ckpt "$ck" --cell "$cell" --nav-mode "$nav" \
         --episodes $EPS --seed $EVAL_SEED --label "$tag" \
+        --filter-impl "$FILTER_IMPL" \
         --out "$JSON_DIR/${tag}.json" "$@" > "$L" 2>&1
     say "RESULT $tag: $(grep -E 'success [0-9]+/' "$L" | head -1 | sed 's/^ *//')"
     local g
@@ -189,6 +251,10 @@ if want 0 || want 1 || want 2 || want 3; then :; fi
 say "=========== W1xnav campaign start (pid $$) ==========="
 say "root:      $(basename $ROOT) (truth-mode drift-and-wait specialist)"
 say "cadence:   nav_max_ticks=$NAV_MAX_TICKS  <- the load-bearing flag"
+say "filter:    nav_filter_impl=$FILTER_IMPL  kernel src=${SRCHASH:-none}"
+say "           'c' is the T14 port: 4.35x on this exact configuration. Stage 0"
+say "           rebuilds it and re-runs the 1e6-row differential fuzz + 5/5"
+say "           mutation battery against the Python oracle before training."
 say "           at K=120 the surrogate was measured 50-67% OPTIMISTIC on W1"
 say "           arcs; at K=0 it is 0.0% off at both 24 h and 48 h."
 say "steps:     $STEPS   seed $W1_SEED"
@@ -243,6 +309,7 @@ if want 2; then
         --env.nav-sensor-dt 60.0 --env.nav-noise-mult 1.0 \
         --env.nav-acq-min-sec 2700.0 --env.nav-acq-gate 0.20 \
         --env.nav-acq-mode crlb_online --env.nav-max-ticks "$NAV_MAX_TICKS" \
+        --env.nav-filter-impl "$FILTER_IMPL" \
         --env.t11-mixture 0 --env.cell-mixture-mode 0 \
         --wandb --wandb-project orbital-rl --wandb-group "w1nav${SEED_SFX}" \
         --tag "w1nav${SEED_SFX}" > "/tmp/w1nav${SEED_SFX}_train.log" 2>&1 &

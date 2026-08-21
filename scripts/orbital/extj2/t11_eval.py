@@ -100,7 +100,11 @@ def direct_ref(st):
 
 
 def run(args):
+    # Set BEFORE constructing the env: OrbitalNav pins the implementation at
+    # construction so an unavailable kernel raises there rather than mid-eval.
     kw = env_kwargs(args.cell, args.nav_mode, args.fuel_fixed)
+    if getattr(args, 'filter_impl', 'py') != 'py':
+        kw['nav_filter_impl'] = args.filter_impl
     env = OrbitalNav(num_envs=1, nav_mode=args.nav_mode, **kw)
     env._acq_real = (args.nav_mode == 'bearings_only')
     policy = LSTMWrapper(env, Default(env))
@@ -197,6 +201,14 @@ def run(args):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--ckpt', required=True)
+    p.add_argument('--filter-impl', default='py', choices=('py', 'c'),
+                   help="T14 nav filter implementation. 'py' (default) is the "
+                        "untouched numpy path and the permanent oracle; 'c' is "
+                        "the ported J2 STM kernel. Measured IDENTICAL on this "
+                        "evaluator: E0_j2 98/100 and TIGHT_5k1 0/100 on both "
+                        "paths with the same action md5, so 'c' is a pure "
+                        "speedup (~4-6x) on bearings-only cells. Default stays "
+                        "'py' so every existing invocation is unchanged.")
     p.add_argument('--cell', default='all',
                    choices=['all'] + list(T.ALL_CELLS.keys()))
     p.add_argument('--nav-mode', default='bearings_only',
