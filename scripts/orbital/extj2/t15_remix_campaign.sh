@@ -323,24 +323,32 @@ PY
 preflight() {
     local br; br=$(git -C "$MAIN" rev-parse --abbrev-ref HEAD)
     [ "$br" = "$BRANCH_REQ" ] || { say "ABORT: $MAIN on '$br', need '$BRANCH_REQ'"; return 1; }
-    for f in "$EVAL" "$GATES" "$VERIFY" "$ROOT" "$ANCHOR_DATA" "$ANCHOR_CKPT"; do
+    for f in "$EVAL" "$GATES" "$VERIFY" "$ROOT" "$ACQ_DATA" "$ACQ_CKPT" "$DEF_DATA" "$DEF_CKPT"; do
         [ -f "$f" ] || { say "ABORT: missing $f"; return 1; }
     done
-    # The anchor MUST be the root this run warm-starts from. Anchoring to
-    # anything else pins the policy to a third party's behaviour, and the
-    # synthesis is explicit that a GLOBAL anchor to a non-root checkpoint would
-    # pin the wide cells to their broken 29/6.5/40.
-    if [ "$(shasum -a256 "$ANCHOR_CKPT" | cut -d" " -f1)" != \
+    # T15 anchor semantics differ from T13b, and the guard must say so:
+    # the DEFENSE teacher must BE the warm-start root (the anchor is the init,
+    # CE=0 at step 0), while the ACQUISITION teacher must NOT be the root —
+    # it is w1nav_child, teaching a skill the root does not have. Both are
+    # cell-scoped datasets, so neither pins the other's cells.
+    if [ "$(shasum -a256 "$DEF_CKPT" | cut -d" " -f1)" != \
          "$(shasum -a256 "$ROOT" | cut -d" " -f1)" ]; then
-        say "ABORT: anchor_ckpt is not the warm-start root"; return 1
+        say "ABORT: defense-anchor teacher is not the warm-start root"; return 1
+    fi
+    if [ "$(shasum -a256 "$ACQ_CKPT" | cut -d" " -f1)" = \
+         "$(shasum -a256 "$ROOT" | cut -d" " -f1)" ]; then
+        say "ABORT: acquisition-anchor teacher IS the root — it cannot teach W1"; return 1
     fi
     python3 - <<'PY' || { say "ABORT: consolidation table not resolvable"; return 1; }
 import sys
 sys.path.insert(0, '/Users/pete/space_training/scripts/orbital/extj2')
 import t11_cells as T
-w = {n: c['weight'] for n, c in T.CONSOL_CELLS}
+w = {n: c['weight'] for n, c in T.T15_CELLS}
 assert abs(sum(w.values()) - 1.0) < 1e-12, w
-assert w['W1_driftwait'] == 0.0 and abs(w['TIGHT_5k1'] - 0.25) < 1e-12, w
+# weights are SAMPLING weights; the .614/.286 figures are the resulting
+# per-STEP shares (long-episode cells earn share through decision count)
+assert abs(w['W1_driftwait'] - 0.25) < 1e-12 and abs(w['TIGHT_5k1'] - 0.10) < 1e-12, w
+assert dict(T.T15_CELLS)['TIGHT_5k1']['fuel_min'] == 0.133
 # the shipped mixture must be untouched by the variant's existence
 s = {n: c['weight'] for n, c in T.CELLS}
 assert len(T.CELLS) == 7 and abs(s['TIGHT_5k1'] - 0.10) < 1e-12, s
@@ -405,17 +413,18 @@ battery() {      # battery <prefix> <ckpt>
 
 # ═══════════════════════════════════════════════════════════════════════════
 say "=========== T15 7/7 re-mix campaign start (pid $$) ==========="
-say "QUESTION: optimization or capacity? Both seesaw swings ran at ACQUISITION"
-say "          LR (1e-2); this is the same six skills at MAINTENANCE LR."
-say "root:     $(basename $ROOT)  (tight intact; wides rebuild under majority gradient)"
-say "mixture:  t11_mixture=2 — TIGHT .25 E3 .20 E2 .15 LONGRANGE .15 E0 .125 E1 .125 W1 0.0"
-say "anchor:   lambda $ANCHOR_LAMBDA on $(basename $ANCHOR_DATA) (tight-cell states, CE to the root)"
+say "QUESTION: can one 128-hidden policy hold ALL SEVEN skills — the six-pack"
+say "          plus drift-and-wait acquired IN-MIXTURE via a kickstart anchor?"
+say "root:     $(basename $ROOT)  (six skills intact; W1 is the one bootstrap)"
+say "mixture:  t11_mixture=3 — measured step-share weights: W1 .614 TIGHT .286 wides .10"
+say "anchors:  ACQ w1_acq lambda $ACQ_LAMBDA->$ACQ_LAMBDA_END over $ACQ_DECAY (teacher w1nav_child, W1 states)"
+say "          DEF tight_def lambda $DEF_LAMBDA constant (teacher = the root itself, TIGHT states)"
 say "LR:       $LR (annealed)${LR2:+  -> staged second leg $LR2 at $LR_SWITCH}   ent_coef 0.01, NO l2_init"
-say "steps:    $STEPS, mid battery at ~$MID_STEPS"
-say "W1:       EXCLUDED from training (0.0 in all three seesaw states, 22000 cap);"
-say "          still EVALUATED so the zero stays on the record."
-say "baseline: E0 97.0 E1 96.5 E2 29.0 E3 6.5 LONGRANGE 40.0 TIGHT 92.5 W1 0.0"
-say "STATE:    tight rows are MEAN-ELEMENT claims (Brouwer radial 3.3 km > 5 km box)"
+say "steps:    $STEPS, mid battery at ~$MID_STEPS   nav_max_ticks $NAV_MAX_TICKS  filter $FILTER_IMPL"
+say "W1:       IN TRAINING for the first time in this family — honest signal (K=0),"
+say "          full-eps eval rows (the 20-ep abbreviation applies only where excluded)"
+say "baseline: root battery E0 99.0 E1 99.5 E2 98.5 E3 94.5 LONGRANGE 100.0 TIGHT 90.5 W1 0.0"
+say "STATE:    all rows MEAN-ELEMENT claims under J2; rel slip 83 m / 0.094 m/s per orbit at 5 km"
 say "stages requested: $STAGES   seed $T15_SEED${SEED_SFX:+ (suffixed)}"
 preflight || exit 1
 if want 0; then anchor || exit 1; else say "---- stage 0 SKIPPED ----"; fi
@@ -426,7 +435,7 @@ if want 1; then
   if [ -n "$(final_ckpt "$ARM_DIR" "$WANT_EP")" ]; then
     say "SKIP train consol (final ckpt present)"
   else
-    say "START stage 1 (consolidation: $STEPS steps, LR $LR, t11_mixture=2)"
+    say "START stage 1 (7/7 re-mix: $STEPS steps, LR $LR, t11_mixture=3, two anchors)"
     cd "$PUF" || exit 1
     LR_ARGS="--train.learning-rate $LR"
     if [ -n "$LR2" ]; then
