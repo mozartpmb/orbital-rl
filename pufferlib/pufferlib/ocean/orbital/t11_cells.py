@@ -242,6 +242,51 @@ assert abs(sum(c['weight'] for c in T15_TABLE) - 1.0) < 1e-12
 assert all(c['weight'] > 0.0 for c in T15_TABLE), 'T15 trains all SEVEN cells'
 
 
+# ── the T15b DAgger-refresh mixture (t11_mixture=4) ─────────────────────────
+# Same seven cells; weights RE-SOLVED because the step-share arithmetic moved
+# under us. W1's decisions/episode collapsed 536 -> 177 once it became
+# competent (successful W1 episodes are 46 decisions, failed ones 359), so the
+# T15 weights that bought W1 61.4% of gradient now buy it 34.5%.
+#
+# THAT IS A BUILT-IN BRAKE, and it is a candidate explanation for the 31.5
+# plateau alongside the lambda wean: a fixed episode weight delivers a
+# DECREASING gradient share exactly as the skill starts working. Projected at
+# these weights, W1's share runs 65.6% (32% success) -> 47.7% (75%) -> 25.2%
+# (100%) — graceful, but it does mean acquisition pressure fades on success.
+#
+# Step share at the CURRENT root:
+#     W1 44.4%   TIGHT 34.8%   E3 6.1%   E2 5.2%   E0 4.2%   E1 3.1%   LR 2.2%
+#
+# TIGHT keeps 34.8% (up from 28.6% intended in T15) because its defense anchor
+# is MEASURED SATURATED — CE(teacher||policy) on TIGHT states is 0.035-0.042,
+# so per-step supervision has almost no headroom left and only reward share can
+# recover it from 85.5.
+_T15B_WEIGHTS = {
+    'W1_driftwait': 0.27,
+    'E2_j2':        0.16,
+    'E0_j2':        0.16,
+    'E3_j2':        0.15,
+    'E1_j2':        0.12,
+    'LONGRANGE':    0.08,
+    'TIGHT_5k1':    0.06,
+}
+T15B_CELLS = []
+for _n, _c in CELLS:
+    _d = dict(_c)
+    _d['weight'] = _T15B_WEIGHTS[_n]
+    if _n in _T15_FUEL_MIN:
+        _d['fuel_min'] = _T15_FUEL_MIN[_n]
+    T15B_CELLS.append((_n, _d))
+T15B_TABLE = [c for _, c in T15B_CELLS]
+assert abs(sum(c['weight'] for c in T15B_TABLE) - 1.0) < 1e-12
+assert all(c['weight'] > 0.0 for c in T15B_TABLE)
+
+
+def t15b_as_array():
+    import numpy as np
+    return np.array([[c[f] for f in FIELDS] for c in T15B_TABLE], dtype=np.float64)
+
+
 def t15_as_array():
     import numpy as np
     return np.array([[c[f] for f in FIELDS] for c in T15_TABLE], dtype=np.float64)

@@ -19,6 +19,7 @@ from pufferlib.ocean.orbital.t11_cells import (           # noqa: F401,E402
     OBS_ALT_SCALE, LVLH_SCALE, FUEL_MIN, FUEL_MAX, NAV_MAX_TICKS,
     TIGHT_CELLS, ALL_CELLS, CONSOL_CELLS, CONSOL_TABLE, consol_as_array,
     T15_CELLS, T15_TABLE, t15_as_array,
+    T15B_CELLS, T15B_TABLE, t15b_as_array,
 )
 
 if __name__ == '__main__':

@@ -238,3 +238,104 @@ an under-trained wide cell reads as a capacity failure when it is a budget one.
 | G10a/b/c T15 mixture weights, all seven drawn | (stage 0) |
 | C-port fuzz + mutation, navc_preflight | (stage 0, inherited) |
 | 2M smoke, both anchors | PASS (10.8K SPS, 0 tracebacks) |
+
+---
+
+# T15b — the pre-registered DAgger refresh: design and evidence
+
+## Is the refresh even well-posed?
+
+The escalation says "rebuild the W1 anchor from the student's distribution,
+labelled by the teacher". That is supervision only if **the teacher is competent
+where the student goes**. If the student has wandered somewhere the teacher is
+also lost, its softmax is noise with a confident shape — bug-#13 in a new
+costume. Measured before committing anything (600 windows, student =
+`t15_remix_final`, teacher = `w1nav_child`):
+
+| states | teacher entropy | max-prob | CE(teacher‖student) |
+|---|---|---|---|
+| teacher-visited (T15 set) | 0.476 | 0.875 | 0.703 |
+| student-visited (all) | 0.695 | 0.779 | **1.636** |
+| student-visited, SUCCESS eps | 0.714 | 0.779 | 1.289 |
+| student-visited, FAILED eps | 0.698 | 0.778 | 1.650 |
+
+**The teacher is not lost.** Entropy shifts +0.219 nats, nowhere near flat
+(ln 31 = 3.434), and it stays committed (max-prob 0.78). The refresh is
+well-posed, and it carries 2.3× more correction than the old set — which is the
+entire point of DAgger: the correction lives where the student actually goes.
+
+## Decisions taken
+
+**State mix: AGGREGATE, not substitute.** 900 teacher-visited + 900
+student-visited = 1800 windows. The D in DAgger is *aggregation* (Ross &
+Bagnell); substituting would bet the run on the student distribution being
+non-pathological, and aggregation costs nothing because the student already
+largely agrees on teacher states (CE 0.703).
+
+**λ_acq = 0.20, CONSTANT.** Aggregated-set CE ≈ 1.17, so λ×CE = 0.234 — matching
+T15's *working* contribution of 0.275 (λ 0.05 × CE 5.50) against a policy loss
+of 0.017. Constant, no wean: T15's W1 plateaued *post-wean*, so the wean is a
+suspect and there is no reason to repeat it while the skill is still climbing.
+
+## Red-team
+
+**(i) DAgger oscillation / failure-scoping — not needed, and measurably so.**
+The student-visited distribution is **already 96.7% failed-episode states**,
+because failures run 359 decisions against 46 for successes: an 8× length
+asymmetry that self-scopes. CE is also naturally *lower* on success states
+(1.289 vs 1.650), so the anchor already corrects least where the student is
+working. Explicit failure-scoping would move 96.7% → 100% while deleting exactly
+the 3.3% that represents working behaviour. Rejected on evidence.
+
+**(ii) Does the defense anchor need refreshing? NO — and the reason matters.**
+CE(defense teacher ‖ current policy) on old anchor states 0.035, on freshly
+collected states 0.042: ratio **1.19**, so the states are still representative
+and a refresh would buy nothing. But the same measurement found something
+sharper: **the TIGHT anchor is saturated.** Per-step agreement is already 0.04
+while closed-loop performance differs by ~10pp (85.5 vs the teacher's 95). That
+is the synthesis's "the tight skill partly lives in recurrent state that
+per-step KL does not supervise", measured — small per-step deviations compound
+over 278–623 decisions. **Raising λ_def has almost no headroom; only TIGHT's
+reward share can recover it**, which is why TIGHT keeps 34.8% of steps.
+
+**(iii) Re-mix vs W1-heavy interleave: re-mix, with weight compensation.**
+An interleave would give W1 undiluted gradient, but alternating phases is
+exactly the sequential-training seesaw this project has measured twice
+(Progress & Compress needed EWC for it). The real problem interleaving was
+meant to solve is better fixed directly: **W1's step share self-attenuates with
+competence.** Its decisions/episode fell 536 → 177 as it reached 31.5%, so the
+T15 weights that bought 61.4% of gradient now buy 34.5% — a fixed weight
+delivers *decreasing* acquisition pressure exactly as the skill starts working.
+That is a built-in brake and a candidate co-explanation for the 31.5 plateau.
+Fix: raise W1's sampling weight rather than change the training shape.
+
+## Mixture (t11_mixture=4), re-solved at the new root
+
+| cell | weight | step share |
+|---|---|---|
+| W1_driftwait | 0.27 | **44.4%** |
+| TIGHT_5k1 | 0.06 | **34.8%** |
+| E3_j2 | 0.15 | 6.1% |
+| E2_j2 | 0.16 | 5.2% |
+| E0_j2 | 0.16 | 4.2% |
+| E1_j2 | 0.12 | 3.1% |
+| LONGRANGE | 0.08 | 2.2% |
+
+Projected W1 share as it improves: 65.6% (32%) → 47.7% (75%) → 25.2% (100%).
+
+## Gates
+
+| gate | result |
+|---|---|
+| **dry-run `T15B_STAGES=none` under /bin/bash** | **rc=0** (caught 2 defects first) |
+| D1 teacher not lost on the anchor set | PASS (H 0.476 vs flat 3.434) |
+| D2 refresh adds correction | PASS (1.78× the old set) |
+| D3 aggregation not substitution | PASS (1800 = 900+900) |
+| T11 battery | 18/18 |
+| T15 multi-anchor (T2/T3) | 4/4 |
+| root_gate R1+R2 × 4 checkpoint/cell pairs | 2/2 each |
+
+## ETA
+
+75M at 10.8K SPS ≈ 1.9 h train + ~1.5–2 h batteries ≈ **4 h floor**; realistically
+5–6 h, because W1 (the expensive cell at K=0) holds 44.4% of steps.

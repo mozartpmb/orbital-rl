@@ -366,7 +366,11 @@ class Orbital(pufferlib.PufferEnv):
             # same seven cells and same physics, consolidation weights and the
             # tight cell's measured fuel floor. Bit-inert for 0 and 1 — a run
             # that never passes 2 loads exactly the table it always loaded.
-            if int(t11_mixture) == 3:
+            if int(t11_mixture) == 4:
+                # T15b: weights re-solved for the post-competence step share.
+                from pufferlib.ocean.orbital.t11_cells import (
+                    T15B_TABLE as _T11_TABLE)
+            elif int(t11_mixture) == 3:
                 # T15: all seven cells, weights on measured step share.
                 from pufferlib.ocean.orbital.t11_cells import (
                     T15_TABLE as _T11_TABLE)
