@@ -1,0 +1,28 @@
+{
+  "label": "mid_W1_driftwait",
+  "ckpt": "model_puffer_orbital_nav_000400.pt",
+  "cell": "W1_driftwait",
+  "nav_mode": "bearings_only",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 68,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.34,
+  "causes": {
+    "success": 68,
+    "collision": 1,
+    "safety_cap": 130,
+    "stranded": 1
+  },
+  "md5": "fc898104bc849302e221fcd8304593e7",
+  "dv_used_med": 437.66504294495644,
+  "dv_ref_med": 567.2800459219118,
+  "dv_budget_med": 532.7578758020296,
+  "efficiency_med": 0.7867340721671452,
+  "budget_used_med": 0.881292393298726,
+  "ep_len_med": 6071.0,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 3255.5363309383392
+}

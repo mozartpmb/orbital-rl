@@ -297,3 +297,49 @@ Checkpoints `models/t3/t13b_anchor_{mid50M,final}.pt`; JSON + probes
 `web_data/results/t13b_anchor/`; wandb `t13b-anchor`; anchor build
 `scripts/orbital/extj2/build_tight_anchor.py` + gates
 `t13b_anchor_gates.py`; campaign `t13b_anchor_campaign.sh`.
+
+---
+
+# T15 — the 7/7 attempt: all seven skills in one policy, the seventh at partial strength (2026-08-22)
+
+**One 128-hidden policy now carries every skill this project has built:
+E0 99.0, E1 99.5, E2 98.5, E3 95.5, LONGRANGE 99.5, TIGHT 85.5 (95.5 at
+its training fuel floor), and W1 drift-and-wait at a stable 31.5% — up
+from an unclimbable 0.** Warm from `t13b_anchor_final` with TWO anchors:
+a defense anchor on TIGHT (λ=0.02, as T13b) and a **kickstart anchor** on
+W1 (CE to `w1nav_child`, λ=0.05→0.01 over 30M) — the first measured use
+of an anchor for *acquisition* in this project. `t11_mixture=3` with
+sampling weights set by measured step share (W1 .25 / TIGHT .10 /
+wides .65 → step shares .614/.286/.10); K=0 global (the first
+honest-acquisition-signal run of this family — the K=120 surrogate was
+measured 50–67% optimistic even on E-cells); C filter kernel; 150M in
+~4.5 h. Single seed 42, mean-element claims under J2.
+
+## The read
+
+- **The kickstart worked as designed and stopped where predicted.** W1:
+  0 → ~30 by 40M (anchor-driven), then plateau 31.5–34.0 through 150M
+  after the anchor weaned — the covariate-shift boundary the design
+  pre-registered (the teacher's states stop covering the student's own
+  failure distribution). Mechanically: the bootstrap saddle f(0)=0 that
+  blocked every prior in-mixture attempt is permanently escaped;
+  `t15_remix_final` is itself a W1-competent root.
+- **The defense held under the heaviest gradient it has faced**: TIGHT
+  88.5 (mid) → 85.5 (fin) with W1 owning 61% of gradient steps — a few
+  points under T13b's 90.5, far above every unanchored outcome. At the
+  training floor: 95.5, matching both T13b seeds. Budget-awareness
+  graded (83.0 lean → 97.5 rich).
+- **The wides are untouched by the W1-heavy re-mix**: 95.5–99.5, E3's
+  best number in any mixture (95.5, truth 92.0).
+- Pre-registered next step (not a redesign): **DAgger refresh** — rebuild
+  the W1 anchor from the *student's* visited states labeled by the
+  teacher, warm from `t15_remix_final`, continue. The probe-level lesson
+  repeated: n=20 probes read TIGHT 75–85 while the n=200 batteries said
+  88.5/85.5 — probe direction only, never levels.
+
+Checkpoints `models/t3/t15_remix_{mid50M,final}.pt`; anchors
+`models/t15/anchor_{w1,tight}_k0.pt`; JSON + probes
+`web_data/results/t15_remix/`; campaign
+`scripts/orbital/extj2/t15_remix_campaign.sh` (its launch glue died on
+first run — four stale template references; the STAGES=none dry-run
+under /bin/bash before first launch is now a standing rule).

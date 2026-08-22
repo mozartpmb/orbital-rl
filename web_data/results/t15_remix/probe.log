@@ -1,0 +1,23 @@
+[2026-08-22 07:00:23] =========== probe sidecar start (pid 74189) ===========
+[2026-08-22 07:00:23] grid: epochs 20 40 80 160 240 320 400 480 560 640 720 (20 eps/cell, cells: TIGHT_5k1 W1_driftwait E0_j2 E3_j2)
+[2026-08-22 07:00:23] alarms: tight<65% x2 consecutive = PROBE ALARM; E3<=15% at ep>=305 = PROBE NOTE (red-team a)
+[2026-08-22 07:00:23] campaign over before epoch 20 — sidecar done
+[2026-08-22 07:03:56] =========== probe sidecar start (pid 74524) ===========
+[2026-08-22 07:03:56] grid: epochs 20 40 80 160 240 320 400 480 560 640 720 (20 eps/cell, cells: TIGHT_5k1 W1_driftwait E0_j2 E3_j2)
+[2026-08-22 07:03:56] alarms: tight<65% x2 consecutive = PROBE ALARM; E3<=15% at ep>=305 = PROBE NOTE (red-team a)
+[2026-08-22 07:09:56] campaign over before epoch 20 — sidecar done
+[2026-08-22 07:11:02] =========== probe sidecar start (pid 75344) ===========
+[2026-08-22 07:11:02] grid: epochs 20 40 80 160 240 320 400 480 560 640 720 (20 eps/cell, cells: TIGHT_5k1 W1_driftwait E0_j2 E3_j2)
+[2026-08-22 07:11:02] alarms: tight<65% x2 consecutive = PROBE ALARM; E3<=15% at ep>=305 = PROBE NOTE (red-team a)
+[2026-08-22 07:31:20] PROBE e20 (~2M): TIGHT=85 W1=10 E0=100 E3=100  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 07:45:55] PROBE e40 (~5M): TIGHT=80 W1=15 E0=95 E3=95  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 08:00:36] PROBE e80 (~10M): TIGHT=85 W1=15 E0=95 E3=90  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 08:15:19] PROBE e160 (~20M): TIGHT=75 W1=10 E0=95 E3=95  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 08:28:53] PROBE e240 (~31M): TIGHT=80 W1=20 E0=90 E3=80  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 08:38:09] PROBE e320 (~41M): TIGHT=80 W1=30 E0=90 E3=100  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 08:57:42] PROBE e400 (~52M): TIGHT=80 W1=30 E0=90 E3=100  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 09:16:31] PROBE e480 (~62M): TIGHT=85 W1=30 E0=95 E3=95  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 09:36:16] PROBE e560 (~73M): TIGHT=80 W1=20 E0=95 E3=95  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 09:56:22] PROBE e640 (~83M): TIGHT=75 W1=25 E0=95 E3=100  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 10:16:01] PROBE e720 (~94M): TIGHT=80 W1=35 E0=100 E3=95  (20 eps, root: TIGHT=92 E0=97 E1=96 E2=29 E3=6 LONG=40)
+[2026-08-22 10:16:01] =========== probe sidecar done (grid exhausted) ===========
