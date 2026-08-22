@@ -117,6 +117,20 @@ Classical scripted-GNC reference: 99.2% (500 eps) / 100 of 100 at T3 config
 
 ---
 
+## T13/T13b — the consolidation arc (2026-08-20 → 08-21)
+
+| checkpoint | what it is | battery (200 eps, seed 123, native BO) |
+|---|---|---|
+| `t13_consol_mid50M.pt` / `t13_consol_final.pt` | T13: consolidation at LR 1e-3, NO anchor | wides 94.0–99.5 held; TIGHT 42.5→37.5 (stable compromise) |
+| `t13b_anchor_mid50M.pt` / **`t13b_anchor_final.pt`** | **T13b: + tight replay anchor λ=0.02 — THE 6/7 GENERALIST** | TIGHT 90.5 (96.0 @training floor), E0 99.0, E1 99.5, E2 98.5, E3 94.5, LONG 100.0 |
+| `t13b_anchor_s7_final.pt` | seed-7 confirm of T13b | TIGHT 92.5 (= root), E1 100.0, E2 99.5, E3 93.5, LONG 100.0 |
+
+`t13b_anchor_final.pt` supersedes the generalist+tight-child mode-table pair
+for everything except drift-and-wait. Anchor dataset
+`models/t13b/t11b_anchor_tight.pt` (1200×64×38 root-rollout tight states);
+claims are mean-element under J2; W1 rows 0/200 by design (excluded from
+training, evaluated). Full record `T11_GENERALIST.md` §T13/T13b.
+
 ## T5–T11 — extensions, navigation, J2, and the generalist (2026-08-11 → 08-18)
 
 > Campaign narrative, the bug ledger and doc routing: **`CAMPAIGNS.md`**.

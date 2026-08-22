@@ -256,9 +256,13 @@ interference seesaw is closed as an optimization problem: LR alone bought a
 compromise (T13: tight → 37.5%); LR + a dense supervised anchor on the
 minority skill buys the full hold. 128 hidden units were never out of room
 — the user's pushback on "structural at this capacity" is now a measured
-result. Single seed 42; **the pre-registered second-seed confirm (seed 7)
-is running** and no briefing claim changes until it lands. Mean-element
-claims under J2 throughout.
+result. **SEED-CONFIRMED 2026-08-21: seed 7 reproduces the hold — final
+TIGHT 92.5% (exactly the root), E0 99.0, E1 100.0, E2 99.5, E3 93.5,
+LONGRANGE 100.0; tight fuel slices 91.5/95.5/97.5 lean/floor/rich (seed 42:
+91.5/96.0/97.5); probe record flat 80–90 throughout, same as seed 42.**
+Two-seed tight finals 90.5/92.5 vs root 92.5. Mean-element claims under J2
+throughout. Seed-7 JSONs `web_data/results/t13b_anchor/*_s7.json`, ckpt
+`models/t3/t13b_anchor_s7_final.pt`.
 
 ## The four-recipe table (200 eps/cell, held-out seed 123, native BO)
 
