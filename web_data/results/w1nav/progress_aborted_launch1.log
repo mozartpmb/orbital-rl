@@ -1,0 +1,26 @@
+[2026-08-21 23:08:17] =========== W1xnav campaign start (pid 33378) ===========
+[2026-08-21 23:08:17] root:      j2wait_W1_driftwait.pt (truth-mode drift-and-wait specialist)
+[2026-08-21 23:08:17] cadence:   nav_max_ticks=0  <- the load-bearing flag
+[2026-08-21 23:08:17] filter:    nav_filter_impl=c  kernel src=3c87212e4aa4
+[2026-08-21 23:08:17]            'c' is the T14 port: 4.35x on this exact configuration. Stage 0
+[2026-08-21 23:08:17]            rebuilds it and re-runs the 1e6-row differential fuzz + 5/5
+[2026-08-21 23:08:17]            mutation battery against the Python oracle before training.
+[2026-08-21 23:08:17]            at K=120 the surrogate was measured 50-67% OPTIMISTIC on W1
+[2026-08-21 23:08:17]            arcs; at K=0 it is 0.0% off at both 24 h and 48 h.
+[2026-08-21 23:08:17] steps:     50000000   seed 42
+[2026-08-21 23:08:17] STATE:     W1 rows are MEAN-ELEMENT claims under J2 (secular only).
+[2026-08-21 23:08:17] START stage 0 (kernel build -> fuzz battery -> preflight -> anchors/gates)
+[2026-08-21 23:08:17]   RESULT kernel build rc=0  so=bcd221713127  src=3c87212e4aa4
+[2026-08-21 23:08:17]   ATTRIBUTION: this run's numbers were produced by kernel so=bcd221713127
+[2026-08-21 23:08:32]   RESULT C-port fuzz battery rc=0 13/13 C-port gates pass
+[2026-08-21 23:08:33]   RESULT preflight rc=0 4/4 preflight checks pass
+[2026-08-21 23:08:52]   RESULT anchors rc=0 25/25 checks pass
+[2026-08-21 23:09:01]   RESULT t11 gates rc=0 15/15 gates pass
+[2026-08-21 23:13:29]   RESULT W1 gates rc=0 (nav_max_ticks=0) 2/2 W1xnav gates pass
+[2026-08-21 23:13:29]     [PASS] W1A surrogate/real disagreement <= 5.0% at nav_max_ticks=0
+[2026-08-21 23:13:29]     [PASS] W1B NEES median in band and out-of-band <= 35.0%
+[2026-08-21 23:13:29] ---- stage 0 done ----
+[2026-08-21 23:13:29] START stage 1 (floors: truth root zero-shot, truth and native BO)
+[2026-08-21 23:13:38] RESULT F_root_W1_truth: F_root_W1_truth            success 0/200 =   0.0%   md5 c8f5911a1722   9s
+[2026-08-21 23:13:38]   F_root_W1_truth causes: collision=5, safety_cap=174, stranded=21
+[2026-08-21 23:13:38]   F_root_W1_truth FUEL AUDIT (successes): dv used nan m/s vs direct ref nan (efficiency nanx), budget nan (nan% of tank)

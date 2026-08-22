@@ -1,0 +1,26 @@
+{
+  "label": "root_wide_verify",
+  "ckpt": "w1nav_root_wide.pt",
+  "cell": "W1_driftwait",
+  "nav_mode": "truth",
+  "episodes": 100,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 96,
+  "n_valid": 100,
+  "gave_up": 0,
+  "rate": 0.96,
+  "causes": {
+    "success": 96,
+    "safety_cap": 4
+  },
+  "md5": "7474a8448404566bebe21587203cd0d6",
+  "dv_used_med": 407.309703885629,
+  "dv_ref_med": 619.3830574758881,
+  "dv_budget_med": 525.603689612477,
+  "efficiency_med": 0.6775883515894019,
+  "budget_used_med": 0.8443650361610447,
+  "ep_len_med": 9284.5,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 1.0142979621887207
+}

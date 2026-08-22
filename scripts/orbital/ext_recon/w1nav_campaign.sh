@@ -95,7 +95,14 @@ EVAL=$MAIN/scripts/orbital/extj2/t11_eval.py
 GATES=$MAIN/scripts/orbital/extj2/t11_gates.py
 VERIFY=$MAIN/scripts/orbital/extj2/verify_extj2.py
 W1GATES=$MAIN/scripts/orbital/ext_recon/w1nav_gates.py
-ROOT=$MAIN/models/t3/j2wait_W1_driftwait.pt
+# TRANSPLANTED root: the specialist trained in the NARROW normalizer family
+# (obs-alt-scale 1.6e6) and this campaign runs WIDE (8.0e6) — flying the raw
+# checkpoint here scored 0/200 truth on its own 96.0% cell (first launch,
+# 2026-08-21 23:13). The 7-column encoder rescale converts it exactly
+# (verified 96/100 truth through THIS harness, eff 0.678x — the
+# drift-and-wait signature intact). Bug-#15 class: a campaign must specify
+# its root's FAMILY as completely as its cell.
+ROOT=${W1NAV_ROOT:-$MAIN/models/t3/w1nav_root_wide.pt}
 PROG=/tmp/w1nav_progress.log
 JSON_DIR=$MAIN/web_data/results/w1nav
 EPS=200
@@ -139,6 +146,13 @@ export PYTHONPATH=$PUF
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1
 export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 say() { echo "[$(date '+%F %T')] $*" >> "$PROG"; }
+json_rate() {
+    python3 - "$1" <<'PYX' 2>/dev/null
+import json,sys
+try: print(int(round(100*json.load(open(sys.argv[1]))['rate'])))
+except Exception: pass
+PYX
+}
 
 EPOCH_SLACK=${W1_EPOCH_SLACK:-3}
 ARM_DIR="$PUF/experiments_w1nav/w1nav${SEED_SFX}"
@@ -265,6 +279,16 @@ if want 0; then anchor || exit 1; else say "---- stage 0 SKIPPED ----"; fi
 if want 1; then
   say "START stage 1 (floors: truth root zero-shot, truth and native BO)"
   one_eval "F_root_W1_truth" "$ROOT" W1_driftwait truth
+  # LOAD-BEARING floor: the root is a 96.0% truth-mode specialist on this
+  # cell — a truth floor under 50% means the harness is mis-parameterized for
+  # this checkpoint (normalizer family, cell spec, head), and 50M of training
+  # from an effectively-scrambled root would manufacture a false bootstrap
+  # failure. Abort rather than stream past; that is what caught the
+  # normalizer mismatch on the first launch.
+  RT=$(json_rate "$JSON_DIR/F_root_W1_truth.json")
+  if [ -z "$RT" ] || [ "$RT" -lt 50 ]; then
+    say "ABORT: root truth floor ${RT:-?}% < 50% — root/harness mismatch (see comment)"; exit 1
+  fi
   one_eval "F_root_W1_bo"    "$ROOT" W1_driftwait bearings_only
   say "  READ: the truth row is the specialist's own capability; the BO row is"
   say "        what nav costs it cold. The gap is what stage 2 has to close,"
