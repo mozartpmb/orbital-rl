@@ -426,6 +426,44 @@ def gate_consol_weights(n_draws=2000):
           f'W1 {ship["W1_driftwait"]:.3f}, TIGHT {ship["TIGHT_5k1"]:.3f}')
 
 
+def gate_t15_weights(n_draws=2000):
+    """G10: the T15 mixture draws its own weights and trains ALL SEVEN cells.
+
+    G9 asserts the consolidation variant draws W1 exactly ZERO times. T15 is the
+    opposite claim and needs its own gate: every cell must be drawn, because a
+    silently-zero cell here would look exactly like the bootstrap failure the
+    run exists to disprove.
+    """
+    print('\n== G10  T15 mixture (t11_mixture=3): all seven cells live ==')
+    kw = T.base_env_kwargs()
+    env = Orbital(num_envs=250, **kw)
+    env.set_cells(T.T15_TABLE)
+    w = np.array([c['weight'] for c in T.T15_TABLE], float); w = w / w.sum()
+    seen = np.zeros(len(T.T15_TABLE))
+    rounds = max(1, n_draws // 250)
+    for k in range(rounds):
+        env.reset(seed=5100 + k)
+        for j in env.last_cell_indices():
+            seen[j] += 1
+    env.close()
+    tot = seen.sum(); frac = seen / tot
+    worst = float(np.max(np.abs(frac - w)))
+    for i, nm in enumerate(T.NAMES):
+        print(f'  {nm:14s} table {w[i]:6.3f}  realized {frac[i]:6.3f}  '
+              f'draws {int(seen[i]):5d}')
+    tol = 3.0 * math.sqrt(0.25 / tot)
+    check('G10a realized T15 mixture matches its table', worst <= tol,
+          f'{int(tot)} draws; worst |realized-table| {worst:.4f} vs tol {tol:.4f}')
+    check('G10b every one of the seven cells is drawn', bool(np.all(seen > 0)),
+          f'min draws {int(seen.min())} ({T.NAMES[int(seen.argmin())]}); a cell '
+          f'silently at zero would present as a bootstrap failure')
+    ship = {n: c['weight'] for n, c in T.CELLS}
+    check('G10c the shipped mixture is unchanged by the T15 variant',
+          len(T.CELLS) == 7 and abs(ship['W1_driftwait'] - 0.20) < 1e-12
+          and abs(ship['TIGHT_5k1'] - 0.10) < 1e-12,
+          f'shipped W1 {ship["W1_driftwait"]:.3f}, TIGHT {ship["TIGHT_5k1"]:.3f}')
+
+
 def gate_range_prior():
     """MAJOR-17b: the range prior must CONTAIN the true range under mixture.
 
@@ -476,6 +514,7 @@ def main():
     gate_oop_seed()
     gate_range_prior()
     gate_consol_weights()
+    gate_t15_weights()
     gate_inert()
     gate_weights()
     gate_clock()

@@ -194,6 +194,59 @@ assert abs(sum(c['weight'] for c in CONSOL_TABLE) - 1.0) < 1e-12
 assert len(CONSOL_TABLE) == len(TABLE)
 
 
+# ── the T15 7/7 mixture (t11_mixture=3) ─────────────────────────────────────
+# All seven cells, W1 back in, weights set on MEASURED STEP SHARE rather than
+# episode share — which turned out to matter in the opposite direction from the
+# usual warning. Decisions per episode, measured with the t13b root at K=0:
+#
+#     TIGHT_5k1 623   W1_driftwait 536   E3 44   E2 35   LONGRANGE 29   E0/E1 28
+#
+# The long-CAP cells (W1 22000, LONGRANGE 12000) are NOT the step-share
+# drivers: they cover their transfers with big warps and finish in ~30 decisions.
+# TIGHT is, because its terminal fine-burn train spends hundreds of small
+# actions. So the naive "22000-step cells outweigh everything" correction would
+# have been applied to the wrong cell.
+#
+# Resulting step share at the weights below:
+#     W1 61.4%   TIGHT 28.6%   E3 3.2%   E2 2.1%   LONGRANGE 1.6%   E0 1.5%   E1 1.5%
+#
+# W1 takes the majority because it is the ACQUISITION target and the only cell
+# at exactly 0.0 from this root. TIGHT keeps a large share because it is the
+# cell that has collapsed before, and it also carries a defense anchor. The
+# wides sit at 10.0% combined, which is the level T13b PROVED sufficient to
+# maintain them (~8% there, all six held 93.5-100).
+_T15_WEIGHTS = {
+    'W1_driftwait': 0.25,
+    'E3_j2':        0.16,
+    'E2_j2':        0.13,
+    'E0_j2':        0.12,
+    'E1_j2':        0.12,
+    'LONGRANGE':    0.12,
+    'TIGHT_5k1':    0.10,
+}
+# Per-cell fuel floors exactly as shipped: the tight cell carries its MEASURED
+# floor (0.133 = 419 m/s) because at 0.113 the terminal fine-burn train is
+# unaffordable in 15.8% of tight episodes, and training on unwinnable episodes
+# would read as interference while being infeasibility.
+_T15_FUEL_MIN = {'TIGHT_5k1': _TIGHT_FUEL_MIN}
+
+T15_CELLS = []
+for _n, _c in CELLS:
+    _d = dict(_c)
+    _d['weight'] = _T15_WEIGHTS[_n]
+    if _n in _T15_FUEL_MIN:
+        _d['fuel_min'] = _T15_FUEL_MIN[_n]
+    T15_CELLS.append((_n, _d))
+T15_TABLE = [c for _, c in T15_CELLS]
+assert abs(sum(c['weight'] for c in T15_TABLE) - 1.0) < 1e-12
+assert all(c['weight'] > 0.0 for c in T15_TABLE), 'T15 trains all SEVEN cells'
+
+
+def t15_as_array():
+    import numpy as np
+    return np.array([[c[f] for f in FIELDS] for c in T15_TABLE], dtype=np.float64)
+
+
 def consol_as_array():
     import numpy as np
     return np.array([[c[f] for f in FIELDS] for c in CONSOL_TABLE],

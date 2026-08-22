@@ -217,10 +217,20 @@ class PuffeRL:
         # OFF unless anchor_lambda > 0. Everything below — including any RNG
         # consumption — sits inside that guard, so an unset run is bit-identical
         # to the pre-anchor trainer. See `_anchor_setup` for the design notes.
+        # T15 extends this to N teachers. `anchor_specs` is a JSON list of
+        # {data, ckpt, lambda, lambda_end, decay_steps} — one entry per teacher,
+        # each with its OWN lambda, because acquisition and defense are
+        # different regimes at different weights (kickstarting ~0.5 decayed vs
+        # CLEAR 0.01-0.05 constant) and T15 needs both AT ONCE.
+        # The single-teacher kwargs still work unchanged, and BOTH off is
+        # bit-identical to the pre-anchor trainer — gate A1b/T15-A1b.
         self.anchor_lambda = float(config.get('anchor_lambda', 0.0) or 0.0)
         self.anchor = None
         self.anchor_obs = None
-        if self.anchor_lambda > 0.0:
+        self.anchors = []           # list of dicts, the T15 multi-teacher path
+        if config.get('anchor_specs'):
+            self._anchor_setup_multi(config, policy)
+        elif self.anchor_lambda > 0.0:
             self._anchor_setup(config, policy)
 
         # Dashboard
@@ -308,6 +318,85 @@ class PuffeRL:
         # reason that has nothing to do with the anchor.
         self.anchor_gen = torch.Generator(device='cpu')
         self.anchor_gen.manual_seed(int(config.get('seed', 0)) ^ 0x13B)
+
+    def _anchor_setup_multi(self, config, policy):
+        """N frozen teachers, each with its own state set and its own lambda.
+
+        WHY PER-TEACHER LAMBDA IS THE WHOLE POINT. T13b measured the DEFENSE
+        regime only: lambda=0.02 constant, holding a skill the root already
+        had, and it held (tight 92.5 -> 92.5 exactly). T15 needs a second,
+        different job from the same mechanism — teaching a skill the root
+        scores 0.0/25 on — and the literature runs that regime at a different
+        weight entirely (kickstarting ~0.5 with decay vs CLEAR 0.01-0.05
+        constant). One global lambda cannot serve both: at 0.02 the acquisition
+        teacher is too quiet to escape f_k(0)=0, and at 0.3 the defense teacher
+        would pin its cell to the root and forbid improvement.
+
+        Each spec is {data, ckpt, lambda, lambda_end, decay_steps, minibatch}.
+        `lambda_end`/`decay_steps` give the kickstarting weaning schedule; omit
+        them for the CLEAR-style constant. Decay is LINEAR in global_step and
+        clamped, so a resumed run lands on the same schedule.
+        """
+        import copy
+        import json
+        specs = config['anchor_specs']
+        if isinstance(specs, str):
+            specs = json.loads(specs)
+        device = config['device']
+        horizon = config['bptt_horizon']
+        for i, sp in enumerate(specs):
+            data, ckpt = sp['data'], sp['ckpt']
+            for pth, what in ((data, 'anchor_data'), (ckpt, 'anchor_ckpt')):
+                if not pth or not os.path.exists(pth):
+                    raise pufferlib.APIUsageError(
+                        f'anchor_specs[{i}].{what}={pth!r} is missing')
+            blob = torch.load(data, map_location=device, weights_only=False)
+            obs = torch.as_tensor(
+                blob['obs'] if isinstance(blob, dict) else blob).to(device)
+            if obs.ndim != 3 or obs.shape[1] != horizon:
+                raise pufferlib.APIUsageError(
+                    f'anchor_specs[{i}] data has shape {tuple(obs.shape)}; '
+                    f'expected (N, {horizon}, obs_dim)')
+            anc = copy.deepcopy(policy)
+            st = torch.load(ckpt, map_location=device, weights_only=False)
+            if hasattr(st, 'state_dict'):
+                st = st.state_dict()
+            elif isinstance(st, dict) and 'state_dict' in st:
+                st = st['state_dict']
+            anc.load_state_dict(st)
+            anc.eval()
+            for prm in anc.parameters():
+                prm.requires_grad_(False)
+            gen = torch.Generator(device='cpu')
+            gen.manual_seed((int(config.get('seed', 0)) ^ 0x15A) + 977 * i)
+            self.anchors.append(dict(
+                name=sp.get('name', os.path.basename(data)),
+                obs=obs, net=anc, gen=gen,
+                lam0=float(sp['lambda']),
+                lam1=float(sp.get('lambda_end', sp['lambda'])),
+                decay=float(sp.get('decay_steps', 0.0) or 0.0),
+                mb=int(sp.get('minibatch', config.get('anchor_minibatch', 4)))))
+
+    def _anchor_lambda_now(self, a):
+        """Linear weaning, clamped at both ends."""
+        if a['decay'] <= 0.0:
+            return a['lam0']
+        f = min(max(self.global_step / a['decay'], 0.0), 1.0)
+        return a['lam0'] + (a['lam1'] - a['lam0']) * f
+
+    def _anchor_loss_one(self, a):
+        n = a['obs'].shape[0]
+        k = min(a['mb'], n)
+        idx = torch.randint(0, n, (k,), generator=a['gen']).to(a['obs'].device)
+        mb = a['obs'][idx]
+        with torch.no_grad():
+            la, _ = a['net'](mb, dict(action=None, lstm_h=None, lstm_c=None))
+        lt, _ = self.policy(mb, dict(action=None, lstm_h=None, lstm_c=None))
+        if isinstance(la, (list, tuple)):
+            la, lt = la[0], lt[0]
+        alp = torch.log_softmax(la.float(), dim=-1)
+        tlp = torch.log_softmax(lt.float(), dim=-1)
+        return (alp.exp() * (alp - tlp)).sum(-1).mean()
 
     def _anchor_loss(self):
         """Forward CE against the anchor's full 31-way softmax at tau=1.
@@ -584,6 +673,12 @@ class PuffeRL:
                 anchor_ce = self._anchor_loss()
                 loss = loss + self.anchor_lambda * anchor_ce
                 losses['anchor_kl'] += anchor_ce.item() / self.total_minibatches
+            for _a in self.anchors:
+                _ce = self._anchor_loss_one(_a)
+                _lam = self._anchor_lambda_now(_a)
+                loss = loss + _lam * _ce
+                losses[f"anchor_{_a['name']}"] += _ce.item() / self.total_minibatches
+                losses[f"lam_{_a['name']}"] = _lam
             self.amp_context.__enter__() # TODO: AMP needs some debugging
 
             # This breaks vloss clipping?

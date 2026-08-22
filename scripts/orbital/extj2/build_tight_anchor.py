@@ -67,10 +67,21 @@ def main():
     p.add_argument('--envs', type=int, default=64)
     p.add_argument('--seed', type=int, default=17)
     p.add_argument('--device', default='cpu')
+    p.add_argument('--max-ticks', type=int, default=None,
+                   help='nav_max_ticks for collection. MUST match the training '
+                        'harness: the states are filter outputs, so a dataset '
+                        'collected at a different tick cadence is a dataset '
+                        'from a different observation distribution.')
+    p.add_argument('--filter-impl', default='py', choices=('py', 'c'))
     args = p.parse_args()
 
     torch.manual_seed(args.seed)
-    env = OrbitalNav(**cell_kwargs(args.cell, args.envs))
+    kw = cell_kwargs(args.cell, args.envs)
+    if args.max_ticks is not None:
+        kw['nav_max_ticks'] = args.max_ticks
+    if args.filter_impl != 'py':
+        kw['nav_filter_impl'] = args.filter_impl
+    env = OrbitalNav(**kw)
     obs, _ = env.reset(seed=args.seed)
 
     # Same construction the evaluator uses: the checkpoints are state_dicts,
