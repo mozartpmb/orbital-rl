@@ -119,3 +119,56 @@ answer that closes the over-determination rather than leaving it open.
 
 Both are pure measurement — no trainer or filter code changed, so every
 existing lineage is untouched by construction (self-red-team (iii)).
+
+## Addendum (2026-08-21): the gate this campaign did NOT have
+
+The first launch aborted at the floors stage — `F_root_W1_truth` read **0/200
+in 9 s**. The root `j2wait_W1_driftwait.pt` is a 96.0% specialist trained in the
+NARROW normalizer family (obs_alt_scale_m 1.6e6) and this campaign runs WIDE
+(8.0e6). The GEN_MATRIX normalizer barrier, straight through the middle of my
+own campaign. Fixed by transplant (`rescale_ckpt_normalizers.py`,
+1.6e6 -> 8.0e6), which reproduces 96/100 truth through this exact harness with
+the drift-and-wait fuel signature intact (0.678x vs direct ref); the campaign
+now roots at `models/t3/w1nav_root_wide.pt` and the truth floor is LOAD-BEARING
+(<50% aborts).
+
+**What I got wrong, precisely.** Stage 0 gated the filter (L2), the acquisition
+signal (W1A/W1B), the C kernel (fuzz + mutation battery) and the env anchors. It
+gated everything except the thing the whole campaign is built on. And the row
+that would have shown it — the root's own home-cell floor — was ADVISORY, so it
+printed the failure and streamed past. The campaign specified its CELL
+completely, field by field, per the bug-#15 discipline, and specified its ROOT
+as a file path.
+
+The irony is worth recording: I wrote the transplant tool, for this barrier,
+during T11. Knowing a failure mode is not the same as gating it.
+
+**Standing pattern, now implemented in `root_gate.py`:**
+
+- **R1, static, ~0.1 s.** The wide/narrow families differ by 5x on the
+  alt-scaled observation columns, so a net trained against 5x smaller inputs
+  carries ~5x larger weights there — directly measurable from the checkpoint
+  with no env and no eval:
+
+      j2wait_W1_driftwait.pt  (narrow)           0.5004
+      w1nav_root_wide.pt      (wide/transplant)  2.4235   <- 4.84x
+      t11_generalist_rungB.pt (wide)             2.1756
+      t11t_tight_child.pt     (wide)             2.0359
+
+  4.84 against a theoretical 5.00. **This mismatch was detectable from the file
+  alone, before any env was constructed.** Verified both ways: R1 rejects the
+  root that failed the launch and names the fix, and passes the transplanted
+  one.
+
+- **R2, authoritative, one short eval.** A root with a published home-cell score
+  must reproduce it *through the campaign's own harness*, as a HARD gate.
+  Measured on the shipped root: 25/25 against a published 96%. R2 generalises
+  past this instance — it catches normalizer family, head size, action-space
+  width, cell misparameterisation and plain checkpoint corruption without
+  needing to know which one went wrong, because it asks the only question that
+  matters: does this root still work where it is known to work.
+
+**The rule for future campaign templates: any warm-start campaign must specify
+its root's FAMILY — normalizers, head size, action space — as completely as it
+specifies its cell, and must run that root through its own harness as a gate,
+never as a floor row that prints and continues.**
