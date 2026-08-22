@@ -1,0 +1,28 @@
+{
+  "label": "F_root_W1_bo",
+  "ckpt": "w1nav_root_wide.pt",
+  "cell": "W1_driftwait",
+  "nav_mode": "bearings_only",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 40,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.2,
+  "causes": {
+    "success": 40,
+    "collision": 90,
+    "safety_cap": 52,
+    "stranded": 18
+  },
+  "md5": "2e26de71dfd41285cb2ee88d22c5d609",
+  "dv_used_med": 445.8757210636109,
+  "dv_ref_med": 585.2456884010287,
+  "dv_budget_med": 521.6974545433422,
+  "efficiency_med": 0.7148081293713848,
+  "budget_used_med": 0.9003812533540716,
+  "ep_len_med": 9708.0,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 288.07169699668884
+}

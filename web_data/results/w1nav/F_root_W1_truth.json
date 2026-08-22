@@ -1,27 +1,26 @@
 {
   "label": "F_root_W1_truth",
-  "ckpt": "j2wait_W1_driftwait.pt",
+  "ckpt": "w1nav_root_wide.pt",
   "cell": "W1_driftwait",
   "nav_mode": "truth",
   "episodes": 200,
   "seed": 123,
   "fuel_fixed": null,
-  "success": 0,
+  "success": 192,
   "n_valid": 200,
   "gave_up": 0,
-  "rate": 0.0,
+  "rate": 0.96,
   "causes": {
-    "collision": 5,
-    "safety_cap": 174,
-    "stranded": 21
+    "success": 192,
+    "safety_cap": 8
   },
-  "md5": "c8f5911a1722bdf3c0826476c7662c42",
-  "dv_used_med": NaN,
-  "dv_ref_med": NaN,
-  "dv_budget_med": NaN,
-  "efficiency_med": NaN,
-  "budget_used_med": NaN,
-  "ep_len_med": NaN,
+  "md5": "bdb437b9e865584d24365cbde4aa1e12",
+  "dv_used_med": 394.80970388562935,
+  "dv_ref_med": 621.5280893446068,
+  "dv_budget_med": 506.6499833171821,
+  "efficiency_med": 0.6356419090220314,
+  "budget_used_med": 0.8330640338408659,
+  "ep_len_med": 9765.0,
   "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
-  "wall_s": 8.71933889389038
+  "wall_s": 2.0674972534179688
 }

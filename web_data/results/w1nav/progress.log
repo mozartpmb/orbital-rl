@@ -1,0 +1,72 @@
+[2026-08-21 23:17:07] =========== W1xnav campaign start (pid 33978) ===========
+[2026-08-21 23:17:07] root:      w1nav_root_wide.pt (truth-mode drift-and-wait specialist)
+[2026-08-21 23:17:07] cadence:   nav_max_ticks=0  <- the load-bearing flag
+[2026-08-21 23:17:07] filter:    nav_filter_impl=c  kernel src=3c87212e4aa4
+[2026-08-21 23:17:07]            'c' is the T14 port: 4.35x on this exact configuration. Stage 0
+[2026-08-21 23:17:07]            rebuilds it and re-runs the 1e6-row differential fuzz + 5/5
+[2026-08-21 23:17:07]            mutation battery against the Python oracle before training.
+[2026-08-21 23:17:07]            at K=120 the surrogate was measured 50-67% OPTIMISTIC on W1
+[2026-08-21 23:17:07]            arcs; at K=0 it is 0.0% off at both 24 h and 48 h.
+[2026-08-21 23:17:07] steps:     50000000   seed 42
+[2026-08-21 23:17:07] STATE:     W1 rows are MEAN-ELEMENT claims under J2 (secular only).
+[2026-08-21 23:17:07] START stage 0 (kernel build -> fuzz battery -> preflight -> anchors/gates)
+[2026-08-21 23:17:07]   RESULT kernel build rc=0  so=bcd221713127  src=3c87212e4aa4
+[2026-08-21 23:17:07]   ATTRIBUTION: this run's numbers were produced by kernel so=bcd221713127
+[2026-08-21 23:17:22]   RESULT C-port fuzz battery rc=0 13/13 C-port gates pass
+[2026-08-21 23:17:23]   RESULT preflight rc=0 4/4 preflight checks pass
+[2026-08-21 23:17:41]   RESULT anchors rc=0 25/25 checks pass
+[2026-08-21 23:17:49]   RESULT t11 gates rc=0 15/15 gates pass
+[2026-08-21 23:22:08]   RESULT W1 gates rc=0 (nav_max_ticks=0) 2/2 W1xnav gates pass
+[2026-08-21 23:22:08]     [PASS] W1A surrogate/real disagreement <= 5.0% at nav_max_ticks=0
+[2026-08-21 23:22:08]     [PASS] W1B NEES median in band and out-of-band <= 35.0%
+[2026-08-21 23:22:08] ---- stage 0 done ----
+[2026-08-21 23:22:08] START stage 1 (floors: truth root zero-shot, truth and native BO)
+[2026-08-21 23:22:10] RESULT F_root_W1_truth: F_root_W1_truth            success 192/200 =  96.0%   md5 bdb437b9e865   2s
+[2026-08-21 23:22:10]   F_root_W1_truth causes: success=192, safety_cap=8
+[2026-08-21 23:22:10]   F_root_W1_truth FUEL AUDIT (successes): dv used 394.8 m/s vs direct ref 621.5 (efficiency 0.636x), budget 506.6 (83.3% of tank)
+[2026-08-21 23:26:59] RESULT F_root_W1_bo: F_root_W1_bo               success 40/200 =  20.0%   md5 2e26de71dfd4   288s
+[2026-08-21 23:26:59]   F_root_W1_bo causes: success=40, collision=90, safety_cap=52, stranded=18
+[2026-08-21 23:26:59]   F_root_W1_bo FUEL AUDIT (successes): dv used 445.9 m/s vs direct ref 585.2 (efficiency 0.715x), budget 521.7 (90.0% of tank)
+[2026-08-21 23:26:59]   READ: the truth row is the specialist's own capability; the BO row is
+[2026-08-21 23:26:59]         what nav costs it cold. The gap is what stage 2 has to close,
+[2026-08-21 23:26:59]         and it is the FIRST honest measurement of it — T11's W1xnav
+[2026-08-21 23:26:59]         number was taken against a fictional acquisition signal.
+[2026-08-21 23:26:59] ---- stage 1 done ----
+[2026-08-21 23:26:59] START stage 2 (W1xnav rung: 50000000 steps from the truth specialist)
+[2026-08-21 23:26:59]   trainer pid 34644
+[2026-08-22 05:13:06]   final ckpt present; watchdog armed (1800s)
+[2026-08-22 05:43:06]   WATCHDOG: killing 34644
+[2026-08-22 05:43:26] ---- stage 2 done ----
+[2026-08-22 05:43:26] START stage 3 (W1 home rung + retention across the generalist cells)
+[2026-08-22 05:43:26]   ckpt model_puffer_orbital_nav_000382.pt
+[2026-08-22 05:46:32] RESULT s3_W1_bo: s3_W1_bo                   success 182/200 =  91.0%   md5 05c88524c4e5   185s
+[2026-08-22 05:46:32]   s3_W1_bo causes: success=182, safety_cap=18
+[2026-08-22 05:46:32]   s3_W1_bo FUEL AUDIT (successes): dv used 398.3 m/s vs direct ref 617.8 (efficiency 0.655x), budget 509.7 (84.8% of tank)
+[2026-08-22 05:46:37] RESULT s3_W1_truth: s3_W1_truth                success 182/200 =  91.0%   md5 2085b93ebaee   4s
+[2026-08-22 05:46:37]   s3_W1_truth causes: success=182, safety_cap=18
+[2026-08-22 05:46:37]   s3_W1_truth FUEL AUDIT (successes): dv used 397.1 m/s vs direct ref 617.8 (efficiency 0.662x), budget 509.7 (85.9% of tank)
+[2026-08-22 05:49:34] RESULT s3_mid_W1_bo: s3_mid_W1_bo               success 184/200 =  92.0%   md5 1491be8ab0c9   177s
+[2026-08-22 05:49:34]   s3_mid_W1_bo causes: success=184, safety_cap=15, stranded=1
+[2026-08-22 05:49:34]   s3_mid_W1_bo FUEL AUDIT (successes): dv used 406.0 m/s vs direct ref 617.1 (efficiency 0.669x), budget 508.9 (86.3% of tank)
+[2026-08-22 05:50:55] RESULT s3_ret_E0_j2: s3_ret_E0_j2               success 78/200 =  39.0%   md5 fd765ba853d8   80s
+[2026-08-22 05:50:55]   s3_ret_E0_j2 causes: success=78, safety_cap=98, stranded=24
+[2026-08-22 05:50:55]   s3_ret_E0_j2 FUEL AUDIT (successes): dv used 441.1 m/s vs direct ref 241.9 (efficiency 1.873x), budget 485.8 (96.3% of tank)
+[2026-08-22 05:54:00] RESULT s3_ret_E3_j2: s3_ret_E3_j2               success 5/200 =   2.5%   md5 0048c2115477   184s
+[2026-08-22 05:54:00]   s3_ret_E3_j2 causes: success=5, safety_cap=182, stranded=13
+[2026-08-22 05:54:00]   s3_ret_E3_j2 FUEL AUDIT (successes): dv used 437.1 m/s vs direct ref 311.8 (efficiency 1.447x), budget 442.6 (97.1% of tank)
+[2026-08-22 05:55:45] RESULT s3_ret_TIGHT_5k1: s3_ret_TIGHT_5k1           success 0/200 =   0.0%   md5 5265c84b9cef   104s
+[2026-08-22 05:55:45]   s3_ret_TIGHT_5k1 causes: safety_cap=168, stranded=32
+[2026-08-22 05:55:45]   s3_ret_TIGHT_5k1 FUEL AUDIT (successes): dv used nan m/s vs direct ref nan (efficiency nanx), budget nan (nan% of tank)
+[2026-08-22 06:02:57] RESULT s3_ret_LONGRANGE: s3_ret_LONGRANGE           success 31/200 =  15.5%   md5 3886ae3949b7   431s
+[2026-08-22 06:02:57]   s3_ret_LONGRANGE causes: success=31, safety_cap=130, stranded=39
+[2026-08-22 06:02:57]   s3_ret_LONGRANGE FUEL AUDIT (successes): dv used 470.6 m/s vs direct ref 262.0 (efficiency 1.722x), budget 499.5 (96.5% of tank)
+[2026-08-22 06:02:57]   READ (the point of the campaign): s3_W1_bo vs F_root_W1_bo is the
+[2026-08-22 06:02:57]         first W1xnav number taken on a VALIDATED acquisition signal.
+[2026-08-22 06:02:57]         If it is still ~0, the root/bootstrap is the binding constraint
+[2026-08-22 06:02:57]         and the surrogate was a confound, not the cause — which is a
+[2026-08-22 06:02:57]         real answer and closes the over-determination in T11's writeup.
+[2026-08-22 06:02:57]   READ (retention): the truth specialist never saw E*/TIGHT/LONGRANGE,
+[2026-08-22 06:02:57]         so these rows are a BASELINE for a future re-mix, not a
+[2026-08-22 06:02:57]         regression. Do not read them as forgetting.
+[2026-08-22 06:02:57] ---- stage 3 done ----
+[2026-08-22 06:02:57] =========== w1nav campaign COMPLETE ===========

@@ -1,0 +1,27 @@
+{
+  "label": "s3_ret_LONGRANGE",
+  "ckpt": "model_puffer_orbital_nav_000382.pt",
+  "cell": "LONGRANGE",
+  "nav_mode": "bearings_only",
+  "episodes": 200,
+  "seed": 123,
+  "fuel_fixed": null,
+  "success": 31,
+  "n_valid": 200,
+  "gave_up": 0,
+  "rate": 0.155,
+  "causes": {
+    "success": 31,
+    "safety_cap": 130,
+    "stranded": 39
+  },
+  "md5": "3886ae3949b7f823fd2cbc610356dc53",
+  "dv_used_med": 470.55339059327514,
+  "dv_ref_med": 262.0352046786111,
+  "dv_budget_med": 499.4524247288078,
+  "efficiency_med": 1.7222511255500086,
+  "budget_used_med": 0.9653693957780696,
+  "ep_len_med": 2156.0,
+  "state": "MEAN ELEMENTS; W1 plane numbers are NODE-DOMINANT gaps",
+  "wall_s": 431.4400610923767
+}
