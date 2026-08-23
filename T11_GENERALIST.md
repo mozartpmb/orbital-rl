@@ -390,7 +390,8 @@ shape was PREDICTED, not discovered.**
 | T15 (kickstart) | 31.5 | — | 85.5 | 94.5–100 |
 | T15b (iter 1) | 45.0 | +13.5 | 86.0 | 94.0–99.0 |
 | T15c (iter 2) | 59.0 | +14.0 | 84.5 | 95.0–99.5 |
-| T15d (iter 3) | 70.0 | +11.0 | **87.0** | 96.0–99.5 |
+| T15d (iter 3) | 70.0 | +11.0 | 87.0 | 96.0–99.5 |
+| T15e (iter 4) | **74.0** | +4.0 | 86.0 (**92.5** @floor) | 96.0–99.5 |
 
 Mechanism findings, each measured before it was needed:
 - **CE does not forecast yield; novelty does.** Iteration 2's available
@@ -416,5 +417,33 @@ Mechanism findings, each measured before it was needed:
 - TIGHT held 84.5–87.0 across the whole era (defense anchor + 34–35%
   reward share), floor-slice 88.5–90.0; wides never moved.
 
+**THE ARC RETIRED BY ITS OWN RULE (2026-08-23 19:40).** Iteration 4
+closed 19.0% of the remaining gap (4.0 of 21.0) — under the pre-committed
+20% mechanism-health floor, with the original +7 absolute floor agreeing.
+The rule amendment (fraction-closed replaces absolute yield; cap-p90
+trigger struck as untriggerable after the teacher was measured flying
+inside the same cap) was recorded BEFORE iteration 4's number existed
+(`web_data/results/t15e_dagger/rule_amendment.log`). Iteration 4's other
+correction: there was never a cap wall — the 91.7% teacher works at
+cap-p90 0.682, so the residual was always teachable and the ceiling is
+the teacher itself; the constant-fractional-gap-closure model (22.7 →
+30.4 → 34.4 → 19.0%) called the landing within a point (predicted 76–77,
+mid 74.5, fin 74.0).
+
+**FINAL STATE — one 128-hidden policy, all seven skills** (T15e, 200
+eps/cell, seed 123, native BO, mean elements under J2): E0 97.0, E1 99.0,
+E2 99.5, E3 96.0 (truth 94.0), LONGRANGE 99.0, **TIGHT 86.0** (92.5 at
+its training fuel floor — the original specialist's exact number; lean
+83.0 / rich 97.0), **W1 drift-and-wait 74.0** against the specialist
+teacher's 91. TIGHT's era trend was gently rising (84.5 → 87.0 mid-era
+peak) on reward share alone — the dedicated-rung option retired itself.
+For W1-critical operations the mode table remains available
+(`w1nav_child` at 91); for everything else the single checkpoint is the
+deliverable: **`models/t3/t15e_dagger_final.pt`**.
+
 Single seed 42 throughout; mean-element claims under J2. Checkpoints
-`models/t3/t15{c,d}_dagger_final.pt`; JSON `web_data/results/t15{c,d}_dagger/`.
+`models/t3/t15{b,c,d,e}_dagger_final.pt`; JSON
+`web_data/results/t15{b,c,d,e}_dagger/`. Open: second-seed confirm of
+the T15 family before headline claims upgrade; structural-W1 (teaching
+the slow geometries the teacher itself fails) is a future arc, not an
+iteration.
