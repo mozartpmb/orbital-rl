@@ -125,8 +125,13 @@ Classical scripted-GNC reference: 99.2% (500 eps) / 100 of 100 at T3 config
 | `t13b_anchor_mid50M.pt` / **`t13b_anchor_final.pt`** | **T13b: + tight replay anchor λ=0.02 — THE 6/7 GENERALIST** | TIGHT 90.5 (96.0 @training floor), E0 99.0, E1 99.5, E2 98.5, E3 94.5, LONG 100.0 |
 | `t13b_anchor_s7_final.pt` | seed-7 confirm of T13b | TIGHT 92.5 (= root), E1 100.0, E2 99.5, E3 93.5, LONG 100.0 |
 
+| `w1nav_child.pt` | drift-and-wait × bearings-only specialist (K=0, C kernel) | W1 91.0 BO / 91.0 truth (floor 20.0) |
+| `t15_remix_final.pt` → `t15{b,c,d,e}_dagger_final.pt` | the 7/7 arc: kickstart + 4 DAgger iterations | W1 31.5 → 45.0 → 59.0 → 70.0 → **74.0**; TIGHT 85.5–87.0 era-flat (92.5 @floor at T15e); wides 94–99.5 |
+| **`t15e_dagger_final.pt`** | **THE SEVEN-SKILL POLICY** (arc-final) | E0 97.0 E1 99.0 E2 99.5 E3 96.0 LONG 99.0 TIGHT 86.0 W1 74.0 |
+
 `t13b_anchor_final.pt` supersedes the generalist+tight-child mode-table pair
-for everything except drift-and-wait. Anchor dataset
+for everything except drift-and-wait; `t15e_dagger_final.pt` supersedes it
+everywhere, with `w1nav_child.pt` retained for W1-critical operations. Anchor dataset
 `models/t13b/t11b_anchor_tight.pt` (1200×64×38 root-rollout tight states);
 claims are mean-element under J2; W1 rows 0/200 by design (excluded from
 training, evaluated). Full record `T11_GENERALIST.md` §T13/T13b.
