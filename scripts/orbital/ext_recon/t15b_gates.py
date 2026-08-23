@@ -32,11 +32,11 @@ from t15b_dagger_probe import cell_env, load                      # noqa: E402
 
 LN31 = float(np.log(31))
 G_PASS, G_FAIL = [], []
-AGG = f'{WT}/models/t15/anchor_w1_dagger.pt'
+AGG = os.environ.get('T15_AGG', f'{WT}/models/t15/anchor_w1_dagger.pt')
 TEACHER = f'{WT}/models/t3/w1nav_child.pt'
-STUDENT = f'{WT}/models/t3/t15_remix_final.pt'
+STUDENT = os.environ.get('T15_STUDENT', f'{WT}/models/t3/t15_remix_final.pt')
 TSET = f'{WT}/models/t15/anchor_w1_k0.pt'
-SSET = f'{WT}/models/t15/anchor_w1_student.pt'
+SSET = os.environ.get('T15_SSET', f'{WT}/models/t15/anchor_w1_student.pt')
 
 
 def check(name, ok, detail=''):

@@ -282,6 +282,36 @@ assert abs(sum(c['weight'] for c in T15B_TABLE) - 1.0) < 1e-12
 assert all(c['weight'] > 0.0 for c in T15B_TABLE)
 
 
+# ── T15c: iteration-2 weights (t11_mixture=5) ───────────────────────────────
+# Re-solved because W1's decisions/episode moved AGAIN, and non-monotonically:
+# 536 (@0%) -> 177 (@31.5%) -> 307 (@45%). It fell as successes appeared (they
+# are ~40 decisions) and then ROSE as the failures got longer (359 -> 622), so
+# the self-attenuation is not a simple decay — it tracks the success/failure
+# LENGTH MIX. At the T15b weights that drift had pushed TIGHT's share from an
+# intended 34.8% down to 26.2%, and TIGHT's recovery depends entirely on reward
+# share because its anchor is measured saturated (CE 0.035-0.042).
+# Restored: W1 45.9%, TIGHT 34.3%, wides 19.7%.
+_T15C_WEIGHTS = {
+    'E0_j2': 0.19, 'E2_j2': 0.19, 'W1_driftwait': 0.19, 'E3_j2': 0.18,
+    'E1_j2': 0.09, 'LONGRANGE': 0.09, 'TIGHT_5k1': 0.07,
+}
+T15C_CELLS = []
+for _n, _c in CELLS:
+    _d = dict(_c)
+    _d['weight'] = _T15C_WEIGHTS[_n]
+    if _n in _T15_FUEL_MIN:
+        _d['fuel_min'] = _T15_FUEL_MIN[_n]
+    T15C_CELLS.append((_n, _d))
+T15C_TABLE = [c for _, c in T15C_CELLS]
+assert abs(sum(c['weight'] for c in T15C_TABLE) - 1.0) < 1e-12
+assert all(c['weight'] > 0.0 for c in T15C_TABLE)
+
+
+def t15c_as_array():
+    import numpy as np
+    return np.array([[c[f] for f in FIELDS] for c in T15C_TABLE], dtype=np.float64)
+
+
 def t15b_as_array():
     import numpy as np
     return np.array([[c[f] for f in FIELDS] for c in T15B_TABLE], dtype=np.float64)

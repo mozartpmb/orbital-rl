@@ -339,3 +339,117 @@ Projected W1 share as it improves: 65.6% (32%) → 47.7% (75%) → 25.2% (100%).
 
 75M at 10.8K SPS ≈ 1.9 h train + ~1.5–2 h batteries ≈ **4 h floor**; realistically
 5–6 h, because W1 (the expensive cell at K=0) holds 44.4% of steps.
+
+---
+
+# T15c — DAgger iteration 2, and the question of whether to run it
+
+## The residual 55% is ONE mechanism, and it is the clock
+
+120 episodes on `t15b_dagger_final`, W1 cell, K=0:
+
+| | |
+|---|---|
+| success | 57/120 = 47.5% (battery ref 45.0) |
+| **safety_cap** | **63/120 — 100.0% of all failures** |
+| collision / escape / stranded / gave_up | **0** |
+
+And the two populations are cleanly bimodal:
+
+| | successes | failures |
+|---|---|---|
+| decisions | 44 | 649 |
+| cap consumed | 0.201 | **1.000** (p90 1.000) |
+| fuel left | 0.1631 | **0.1688** |
+| ever acquired | — | **100%** |
+
+Failures **acquire the target, keep their fuel, and run out of clock.** Nothing
+is being done wrong in the sense a controller can be blamed for; the policy has
+one strategy that works fast when the geometry cooperates (20% of the cap) and
+no fallback when it does not.
+
+## But the cap is NOT a free structural knob — measured
+
+The obvious reading is "raise the cap". It is wrong, and cheaply falsified —
+same checkpoint, cap swept at eval:
+
+| cap | W1 |
+|---|---|
+| 22000 | 43.3% |
+| 33000 | **8.3%** |
+| 44000 | **8.3%** |
+
+More time makes it *worse*, because obs[15] is `(cap − step)/cap`. Raising the
+cap rescales the clock the policy paces against, so a strategy welded to the old
+normalization mis-times itself. **Any cap change requires retraining, not
+re-evaluation** — which moves "raise the cap" from a cheap structural fix to a
+full campaign with an OOD warm start.
+
+## The iteration curve is bending, and here is the number
+
+The supervision available to each refresh is CE(teacher ‖ student) on freshly
+visited states:
+
+| iteration | CE on student states | yield |
+|---|---|---|
+| 1 (31.5 → 45.0) | 1.636 | **+13.5 pp** |
+| 2 (45.0 → ?) | **0.976** | +8 pp if yield tracks CE |
+
+The D2 gate — "does the refresh add correction the old set lacked?" — is itself
+converging on its own threshold: **1.78× at iteration 1, 1.47× at iteration 2,
+against a 1.3× floor.** At iteration 3 it plausibly refuses the run, which is
+the mechanism reporting its own exhaustion rather than a human deciding it.
+
+The teacher is still competent where the student goes (H 0.782 vs flat 3.434),
+so this is not label collapse. It is convergence: the student now agrees with
+the teacher on most of what the teacher can express per-step, and the residual
+lives in the part a per-step KL cannot reach — the same recurrent-state limit
+already measured on TIGHT (per-step CE 0.035 while closed-loop differs 10pp).
+
+## Decisions for iteration 2
+
+- **Two-way aggregate, not three.** Teacher-visited (900) + newest student
+  (900). Aggregation exists to prevent distribution collapse and the
+  teacher-visited half already provides that; the T15-era student half is two
+  generations old, shares the identical failure mode (100% safety_cap), and
+  would dilute an already-scarce fresh correction by a third for no benefit.
+- **λ_acq 0.20 constant** — unchanged; the contribution now runs lower simply
+  because CE is lower, which is the correct behaviour for a saturating anchor.
+- **Weights re-solved (t11_mixture=5).** W1's decisions/episode moved again and
+  NON-monotonically: 536 (@0%) → 177 (@31.5%) → **307 (@45%)** — it fell as
+  short successes appeared, then rose as failures lengthened (359 → 622). At
+  the T15b weights that had pushed TIGHT's share from an intended 34.8% down to
+  26.2%, and TIGHT's recovery depends entirely on reward share because its
+  anchor is saturated. Restored: W1 45.9%, TIGHT 34.3%, wides 19.7%.
+
+## Governance: the menu, with my reading
+
+**The curve is bending, and I would not run iteration 3 after this one.**
+
+1. **Run iteration 2** (this prep). Expected W1 ≈ 53%, six untouched, ~4–6 h.
+   Buys a real step and, more valuably, a third point on the yield curve that
+   turns "bending" from two points into a trend.
+2. **Accept the shelf + mode table.** Already the honest deployment shape, and
+   W1 has a 96% specialist. The generalist's W1 number is a *bonus*, not the
+   product.
+3. **Structural W1 change.** The failure mode says the cell, not the policy, is
+   the binding constraint — but the cap sweep says that costs a retrain, and the
+   fuel data says fuel is not the lever (0.169 left at failure). A structural
+   change means redesigning the W1 cell's time budget and re-deriving its
+   specialist, i.e. a new arc, not an iteration.
+
+My recommendation is **(1) then (2)**: run iteration 2 because it is prepped,
+cheap, and produces the decisive third data point; then stop iterating and
+ship the mode table, unless iteration 2 beats +8pp materially — which would
+falsify the bending read and justify continuing.
+
+## Gates
+
+| gate | result |
+|---|---|
+| **dry-run `T15C_STAGES=none` under /bin/bash** | **rc=0** |
+| D1 teacher not lost | PASS (H 0.476 agg; 0.709 student-visited) |
+| D2 refresh adds correction | PASS but **narrowing: 1.47× vs 1.30 floor** |
+| D3 aggregation not substitution | PASS (1800 = 900+900) |
+| T11 battery | 18/18 |
+| root_gate R1+R2 (W1, TIGHT) | 2/2 each |
