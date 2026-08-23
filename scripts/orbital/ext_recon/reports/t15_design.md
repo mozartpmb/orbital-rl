@@ -529,3 +529,75 @@ point, against a specialist ceiling of 91.
   at which the shipped weights give W1 44.5 / TIGHT 35.3 / wides 20.2 against
   targets 45.9 / 34.3 / 19.7. No re-solve needed.
 - Gates: dry-run **rc=0**, D1/D2/D3 3/3, T11 18/18, root_gate 2/2 on both cells.
+
+---
+
+# T15e — iteration 4, and my cap-exhaustion model refuted
+
+## The frontier model was wrong; the ceiling is the TEACHER, not the clock
+
+I read rising success cap-usage as approaching a cap wall, and predicted the
+frontier would exhaust after ~iteration 4. Measuring the teacher's own
+distribution — same harness, same script, 120 episodes — kills that:
+
+| | success p50 | p90 | p99 | max | success |
+|---|---|---|---|---|---|
+| student t15d | 0.358 | 0.659 | 0.815 | 0.846 | 65.8% |
+| **teacher w1nav_child** | 0.416 | 0.682 | 0.909 | **0.940** | **91.7%** |
+
+**The 91.7% teacher works comfortably inside the same cap** (max 0.940), and the
+student's profile already sits *below* it. So the residual failures are not
+geometries needing more clock than exists — they are geometries the teacher
+solves inside the clock and the student does not. **The residual is teachable,
+and the ceiling is the teacher's ~91, not a cap wall.**
+
+The teacher itself fails 7.5% (90% of those safety_cap), so ~8% is hard even for
+a specialist — that is the real floor under the ceiling.
+
+## The model that does fit: constant fractional gap-closure
+
+| iteration | gap to 91 before | yield | fraction of gap closed |
+|---|---|---|---|
+| 1 (31.5→45.0) | 59.5 | +13.5 | 22.7% |
+| 2 (45.0→59.0) | 46.0 | +14.0 | 30.4% |
+| 3 (59.0→70.0) | 32.0 | +11.0 | **34.4%** |
+
+Absolute yield softens because the *gap* shrinks, not because the mechanism is
+failing — the fraction closed has actually been rising. That reconciles "constant
+returns" (iterations 1–2) with "softening" (iteration 3) under one model.
+
+## Prediction for iteration 4
+
+Gap is now 21.0. At 30–35% closure: **+6.3 to +7.3, landing W1 at 76–77.**
+
+That **straddles the +7 stopping floor**, so iteration 4 is plausibly the last
+one the rule permits — not because the mechanism died, but because each step is
+now a smaller absolute slice of a shrinking gap. My record on these predictions
+is 2-for-3 (right on constant-returns, wrong on the CE model, right on the
+softening schedule), so treat it as a calibrated guess, not a forecast.
+
+**Retire trigger (c).** I proposed success-cap-p90 ≥ 0.95 as a leading indicator
+of a cap wall. There is no cap wall — the teacher's max is 0.940 and its p90 is
+0.682, so p90 ≥ 0.95 would never fire before the ceiling is reached by other
+means. It should be dropped rather than left in as a rule that cannot trigger.
+The remaining two ((a) yield < +7, (b) W1 ≥ 85) stand, and (a) is now the live
+one.
+
+## TIGHT: the menu item is retiring itself
+
+TIGHT's era trend is gently rising — 84.5 → 86.0 → 87.0 (best-of-era), floor
+slice 89.0 stable — while carrying only a saturated per-step anchor and ~35% of
+step share. The "TIGHT-specific rung" menu item was written when TIGHT looked
+like it was decaying under W1's opposing share. It is not decaying; it is
+recovering slowly on reward share alone, exactly as the saturation analysis
+predicted it would have to. **Recommend striking it from the menu** unless it
+reverses.
+
+## Mechanics
+
+Two-way aggregation retained (failure modes unchanged, 97.6% safety_cap).
+Mixture 5 reused: dec/ep MEAN moved 290 → 283, giving W1 43.9 / TIGHT 35.6 /
+wides 20.5 against targets 45.9 / 34.3 / 19.7 — no re-solve.
+
+Gates: dry-run **rc=0** (rc=1 first, correctly aborting on the not-yet-built
+dataset), D1/D2/D3 3/3, T11 18/18, root_gate 2/2 on both cells.
