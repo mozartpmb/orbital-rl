@@ -375,7 +375,46 @@ flat — slice-level noise or a real lean-shift; flagged, not resolved.
 
 Checkpoints `models/t3/t15b_dagger_final.pt`; dataset
 `models/t15/anchor_w1_dagger.pt`; JSON `web_data/results/t15b_dagger/`;
-campaign `t15b_dagger_campaign.sh`. T15c (iteration 2, from the new
-student's states) is the running continuation; the decision menu beyond
-it — iterate vs accept the shelf vs structural W1 changes — rides on its
-failure-mode analysis.
+campaign `t15b_dagger_campaign.sh`.
+
+---
+
+# T15c/T15d — the DAgger iteration curve (2026-08-23)
+
+**Three iterations of the same mechanical recipe carried W1 from 31.5% to
+70.0% while the six other skills stayed flat-to-improving — and the curve's
+shape was PREDICTED, not discovered.**
+
+| iteration | W1 fin | yield | TIGHT fin | wides |
+|---|---|---|---|---|
+| T15 (kickstart) | 31.5 | — | 85.5 | 94.5–100 |
+| T15b (iter 1) | 45.0 | +13.5 | 86.0 | 94.0–99.0 |
+| T15c (iter 2) | 59.0 | +14.0 | 84.5 | 95.0–99.5 |
+| T15d (iter 3) | 70.0 | +11.0 | **87.0** | 96.0–99.5 |
+
+Mechanism findings, each measured before it was needed:
+- **CE does not forecast yield; novelty does.** Iteration 2's available
+  correction halved while its yield held — the falsification that killed
+  the "curve is bending" read. Nearest-neighbor novelty of each fresh
+  state generation is flat (1.20/1.13/1.13): every refresh reaches a
+  roughly constant-size new region and converts a constant slice.
+- **The residual is a single mechanism throughout**: 100% of W1 failures
+  acquire, keep their fuel, and run out the clock. Each iteration converts
+  progressively slower geometries — success cap-usage p90 marched 0.51 →
+  0.70 across iterations, predicting frontier exhaustion ≈ iteration 4.
+  Cap-raising is falsified as a fix (obs[15] clock rescale = OOD, 43.3 →
+  8.3%).
+- **Stopping rule pre-committed before iteration 3's number existed**:
+  first of yield < +7, W1 ≥ 85, or success cap-p90 ≥ 0.95 (the leading
+  trigger — a 7-minute checkpoint measurement instead of a 6-hour run).
+- Gate discipline held under pressure: the D2 label-quality floor was
+  deliberately NOT retuned when the model behind it died (no observed
+  failures to calibrate against; sub-floor = warn, never retune-to-pass).
+  The agent also self-caught a median-vs-mean error on the bimodal
+  decisions/ep statistic (success ~42 vs fail ~470-600 decisions — step
+  share needs the mean).
+- TIGHT held 84.5–87.0 across the whole era (defense anchor + 34–35%
+  reward share), floor-slice 88.5–90.0; wides never moved.
+
+Single seed 42 throughout; mean-element claims under J2. Checkpoints
+`models/t3/t15{c,d}_dagger_final.pt`; JSON `web_data/results/t15{c,d}_dagger/`.
