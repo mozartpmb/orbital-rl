@@ -343,3 +343,39 @@ Checkpoints `models/t3/t15_remix_{mid50M,final}.pt`; anchors
 `scripts/orbital/extj2/t15_remix_campaign.sh` (its launch glue died on
 first run — four stale template references; the STAGES=none dry-run
 under /bin/bash before first launch is now a standing rule).
+
+---
+
+# T15b — DAgger iteration 1: W1 steps to 45, the six untouched (2026-08-22)
+
+**The pre-registered DAgger refresh broke T15's plateau: W1 31.5 → 45.0
+(mid 47.0) with the other six flat — TIGHT 86.0 (vs 85.5), wides
+94.0–99.0. The iterated-DAgger shape is now measured twice: each refresh
+converts the CURRENT failure distribution into supervision, buys a step
+(+13.5 this iteration), and saturates as the student's distribution
+shifts under it.** 75M from `t15_remix_final`, aggregated 900+900
+teacher/student anchor states (teacher label quality MEASURED first:
++0.219 nats entropy on student states, 2.3× more correction — nowhere
+near noise), λ_acq 0.20 constant by the λ×CE calculus, `t11_mixture=4`
+weights re-solved for the self-attenuation mechanism (W1 decisions/ep
+fell 536 → 177 on reaching competence, silently halving its gradient
+share at fixed weights — a trap for any long-episode curriculum).
+Single seed, mean elements under J2.
+
+Findings carried: (1) the defense anchor is **saturated** — per-step
+agreement 0.035 vs a ~10pp closed-loop gap to its teacher means part of
+the tight skill lives in recurrent state that per-step CE cannot
+supervise; TIGHT's remaining points need reward share or a dedicated
+rung, not more λ. (2) TIGHT's mid-run dip (80.5) annealed away by the
+final (86.0) — mid-battery dips at active LR are not verdicts. (3) The
+tight fuel-floor slice moved −7.0pp (95.5 → 88.5) while native TIGHT was
+flat — slice-level noise or a real lean-shift; flagged, not resolved.
+(4) Probe levels under-read batteries again (probe band 30–40 vs battery
+45–47) — direction only, every time.
+
+Checkpoints `models/t3/t15b_dagger_final.pt`; dataset
+`models/t15/anchor_w1_dagger.pt`; JSON `web_data/results/t15b_dagger/`;
+campaign `t15b_dagger_campaign.sh`. T15c (iteration 2, from the new
+student's states) is the running continuation; the decision menu beyond
+it — iterate vs accept the shelf vs structural W1 changes — rides on its
+failure-mode analysis.
