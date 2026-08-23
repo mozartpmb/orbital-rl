@@ -108,8 +108,14 @@ if __name__ == '__main__':
         print(f'    ever acquired {np.mean([r["acq"] for r in F]):.1%}')
         print(f'    decisions     median {np.median([r["dec"] for r in F]):.0f}')
     if S:
+        cf = np.array([r['cap_frac'] for r in S])
         print(f'\n  SUCCESS episodes (n={len(S)}):')
-        print(f'    cap consumed  median {np.median([r["cap_frac"] for r in S]):.3f}')
+        # THE HEADROOM INSTRUMENT. Each DAgger iteration converts progressively
+        # SLOWER geometries, so the success set's cap consumption creeps up. The
+        # arc ends when it reaches 1.0 — that is where no supervision can convert
+        # a failure, because the geometry needs more clock than the cell allows.
+        print(f'    cap consumed  p50 {np.median(cf):.3f}  p90 {np.percentile(cf,90):.3f}  '
+              f'p99 {np.percentile(cf,99):.3f}  max {cf.max():.3f}')
         print(f'    fuel left     median {np.median([r["fuel"] for r in S]):.4f}')
         print(f'    decisions     median {np.median([r["dec"] for r in S]):.0f}')
 

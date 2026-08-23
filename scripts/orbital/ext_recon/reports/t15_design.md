@@ -453,3 +453,79 @@ falsify the bending read and justify continuing.
 | D3 aggregation not substitution | PASS (1800 = 900+900) |
 | T11 battery | 18/18 |
 | root_gate R1+R2 (W1, TIGHT) | 2/2 each |
+
+---
+
+# T15d — iteration 3, and the arc's stopping rule
+
+## My CE-yield model was wrong, and the falsification is the useful part
+
+I predicted iteration 2 would buy ~+8pp because the available correction had
+halved. It bought **+14.0**, matching iteration 1's +13.5. **CE magnitude does
+not forecast yield.** Three generations:
+
+| generation | CE ratio | novelty (NN to teacher set) | yield |
+|---|---|---|---|
+| iter1 @31.5 | 1.75 | 1.1969 | +13.5 |
+| iter2 @45.0 | 1.34 | 1.1316 | **+14.0** |
+| iter3 @59.0 | 1.39 | 1.1288 | ? |
+
+**Novelty is flat where CE was not**, and flat novelty matches flat yield. The
+mechanism that fits: each refresh reaches a genuinely new region of roughly
+constant size and converts a roughly constant slice of it — constant returns,
+not diminishing ones, for as long as new region remains.
+
+## D2, re-derived from measurement — and NOT moved
+
+The gate's original justification (more correction ⇒ bigger buy) is falsified.
+What survives is the weak claim: ratio ≈ 1.0 means the refresh re-collected what
+the student already handles.
+
+**The floor stays at 1.30.** Observed working points are 1.75 → +13.5 and
+1.34 → +14.0; observed failures: **none**. With no failure to calibrate against,
+the data cannot justify a floor above the lowest ratio seen to work, and
+lowering it now would be convenience rather than measurement — this iteration
+measures **1.39 and passes as-is**. If a future iteration lands below 1.30 that
+is *not* evidence it will fail; the honest response is to run it with the gate
+downgraded to a warning, not to retune the number until it passes.
+
+## Failure modes at 59%: no fragmentation, but the bend is now predictable
+
+Still **100.0% safety_cap**, fuel intact (0.1745), acquisition 100%. What moved
+is the headroom:
+
+| root | W1 | success cap p50 | p90 | max |
+|---|---|---|---|---|
+| t15b @45 | 47.5% | 0.201 | 0.511 | 0.824 |
+| t15c @59 | 56.7% | 0.321 | **0.698** | **0.983** |
+
+Each iteration converts progressively **slower** geometries — successes now
+*touch* the cap. The conversion frontier advances ~0.19/iteration, so it reaches
+1.0 after roughly **iteration 4**. That is where the curve must bend, and it is
+a *leading* indicator: visible one iteration before the yield collapses.
+
+## Stopping rule — counter-proposal
+
+Accept the proposed rule and **add a leading trigger**:
+
+> Stop at the first of: (a) yield < +7pp, (b) W1 ≥ 85, or
+> **(c) success cap-usage p90 ≥ 0.95.**
+
+(a) and (b) are lagging — they cost a full 6-hour run to observe. (c) is
+measurable from the *current* checkpoint in ~7 minutes and predicts the bend
+before the run that would have hit it. Two independent estimates agree on where
+this lands: the headroom extrapolation exhausts after ~iteration 4, and the
+trajectory 31.5 → 45 → 59 → ~73 → ~85 reaches the (b) threshold at the same
+point, against a specialist ceiling of 91.
+
+## Mechanics
+
+- **Two-way aggregation retained** — the 59% failure modes did not fragment, so
+  the argument that decided it at iteration 2 is unchanged.
+- **Mixture 5 reused, weights unchanged** — and re-verified on the right
+  statistic. dec/ep median swung 307 → 63, which is an artifact: the episode
+  distribution is bimodal (success 42, fail 608) and the median flips mode as
+  success crosses 50%. Total steps depend on the **mean**, which moved 347 → 290,
+  at which the shipped weights give W1 44.5 / TIGHT 35.3 / wides 20.2 against
+  targets 45.9 / 34.3 / 19.7. No re-solve needed.
+- Gates: dry-run **rc=0**, D1/D2/D3 3/3, T11 18/18, root_gate 2/2 on both cells.

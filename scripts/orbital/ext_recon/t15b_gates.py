@@ -11,10 +11,30 @@ D1  TEACHER NOT LOST on the aggregated anchor set. Median teacher entropy must
     states, 0.695 on student-visited — a +0.219 nat shift, nowhere near flat,
     with max-prob still 0.78. Gate at 0.5*ln31 = 1.717.
 
-D2  THE REFRESH ACTUALLY ADDS CORRECTION. If CE(teacher||student) on the fresh
-    student-visited half were no larger than on the teacher-visited half, the
-    refresh would be collecting states the student already handles and the run
-    would be T15 with extra steps. Measured 1.636 vs 0.703 = 2.3x.
+D2  THE REFRESH REACHES SOMEWHERE NEW. Weak form only, and the rationale is
+    RE-DERIVED after its original premise was falsified.
+
+    The gate was first justified as a yield predictor: more correction on offer
+    => bigger buy. Iteration 2 killed that. CE fell 40% (ratio 1.75 -> 1.34) and
+    the yield HELD (+13.5 -> +14.0). So the ratio does not forecast the buy.
+
+    What survives is the weak claim: a ratio near 1.0 means the fresh states
+    carry no more disagreement than the teacher's own, i.e. the refresh
+    re-collected what the student already handles.
+
+    THE FLOOR IS NOT MOVED, and deliberately so. Observed working points are
+    ratio 1.75 -> +13.5 and 1.34 -> +14.0; observed FAILURES: none. With no
+    failure to calibrate against, the data cannot justify a floor above the
+    lowest ratio seen to work, and lowering it now would be convenience — the
+    current iteration measures 1.39 and passes as-is. If a future iteration
+    lands below 1.30, that is NOT evidence it will fail; the honest response is
+    to run it with this gate downgraded to a warning, not to quietly retune the
+    number to make it pass.
+
+    NOVELTY is the better-behaved companion and is reported alongside: median
+    nearest-neighbour distance from fresh states to the teacher set ran
+    1.1969 -> 1.1316 -> 1.1288 across the three generations — essentially FLAT,
+    which matches the flat yield far better than CE did.
 
 D3  AGGREGATION, NOT SUBSTITUTION. The shipped set must contain BOTH halves —
     the D in DAgger is aggregation (Ross & Bagnell), and replacing would bet
