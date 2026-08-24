@@ -1,0 +1,117 @@
+[2026-08-23 20:33:59] =========== T15 SEED CHECK (seed 7) start (pid 14157) ===========
+[2026-08-23 20:33:59] CLAIM UNDER TEST: 'kickstart anchor + one DAgger refresh teaches W1
+[2026-08-23 20:33:59]                   in-mixture from zero'. Currently single-seed (42).
+[2026-08-23 20:33:59] THIS IS A SHAPE-REPRODUCTION CHECK, NOT ENDPOINT REPLICATION.
+[2026-08-23 20:33:59]   pass = W1 off zero to ~25-35 on leg 1, a further ~+10-15 on leg 2,
+[2026-08-23 20:33:59]          with the six other cells holding. Exact numbers are NOT the claim.
+[2026-08-23 20:33:59] 
+[2026-08-23 20:33:59] *** REDUCED-PRECISION SIDE ROWS ***  The six non-W1 cells are evaluated at
+[2026-08-23 20:33:59]     50 episodes, not 200. That is a HOLD-vs-COLLAPSE spot check with a
+[2026-08-23 20:33:59]     ~+/-14pp CI. These numbers must never be quoted as capability claims;
+[2026-08-23 20:33:59]     the s42 arc's 200-ep batteries remain the citable rows. W1 runs at
+[2026-08-23 20:33:59]     200 eps because W1 IS the claim under test.
+[2026-08-23 20:33:59] 
+[2026-08-23 20:33:59] PRE-REGISTERED READINGS (all three are useful; none is a failure):
+[2026-08-23 20:33:59]   (a) both legs reproduce shape -> mechanism seed-robust, write-up goes to 2 seeds
+[2026-08-23 20:33:59]   (b) one leg reproduces, the other does not -> the mechanism SPLITS;
+[2026-08-23 20:33:59]       report WHICH half, which is more informative than either pure result
+[2026-08-23 20:33:59]   (c) W1 stays ~0 at seed 7 -> mechanism is seed-SENSITIVE and the
+[2026-08-23 20:33:59]       whole T15 arc inherits a seed-sensitivity caveat
+[2026-08-23 20:33:59] 
+[2026-08-23 20:33:59] leg 1:  T15 recipe — root t13b_anchor_final.pt, mixture 3, 150000000 steps,
+[2026-08-23 20:33:59]         ACQ lambda 0.05->0.01 over 30000000 (T15's own schedule)
+[2026-08-23 20:33:59] leg 2:  T15b refresh — root = leg-1 child, dataset REBUILT from the SEED-7
+[2026-08-23 20:33:59]         student's own visited states, ACQ lambda 0.20 constant, 75000000 steps
+[2026-08-23 20:33:59] seed:   7   suffix '_s7' on every artifact (no collision with s42)
+[2026-08-23 20:33:59] STATE:  all rows MEAN-ELEMENT claims under J2
+[2026-08-23 20:33:59] stages requested: 0,1,2,3
+[2026-08-23 20:33:59]   NOTE defense teacher == root (pure CLEAR semantics, CE=0 at step 0)
+[2026-08-23 20:33:59] START stage 0 (anchors, both families, + the T11 gate battery)
+[2026-08-23 20:34:17]   RESULT anchors rc=0 25/25 checks pass
+[2026-08-23 20:34:25]   RESULT t11 gates rc=0 18/18 gates pass
+[2026-08-23 20:34:25]     [PASS] G9a realized consolidation mixture matches its table
+[2026-08-23 20:34:25]     [PASS] G9b the excluded cell is drawn exactly zero times
+[2026-08-23 20:34:25]     [PASS] G9c the shipped mixture is unchanged by the variant
+[2026-08-23 20:34:25] ---- stage 0 done ----
+[2026-08-23 20:34:25] START train leg1: 150000000 steps, mixture=3, root t13b_anchor_final.pt
+[2026-08-23 20:34:25]   anchors: [{"name": "w1_acq", "data": "/Users/pete/space_training/models/t15/anchor_w1_k0.pt", "ckpt": "/Users/pete/space_training/models/t3/w1nav_child.pt", "lambda": 0.05, "lambda_end": 0.01, "decay_steps": 30000000, "minibatch": 4}, {"name": "tight_def", "data": "/Users/pete/space_training/models/t15/anchor_tight_k0.pt", "ckpt": "/Users/pete/space_training/models/t3/t13b_anchor_final.pt", "lambda": 0.02, "minibatch": 4}]
+[2026-08-23 20:34:25]   trainer pid 14272
+[2026-08-24 02:03:36]   final ckpt present; watchdog armed (900s)
+[2026-08-24 02:12:36]   leg-1 ckpt model_puffer_orbital_nav_001145.pt
+[2026-08-24 02:49:38] RESULT leg1_W1_driftwait_s7: leg1_W1_driftwait_s7       success 67/200 =  33.5%   md5 b0b8f01f0b72   2221s
+[2026-08-24 02:49:38]   leg1_W1_driftwait_s7 causes: success=67, safety_cap=131, stranded=2
+[2026-08-24 02:49:38]   leg1_W1_driftwait_s7 FUEL AUDIT (successes): dv used 433.5 m/s vs direct ref 565.0 (efficiency 0.774x), budget 536.4 (85.2% of tank)
+[2026-08-24 02:49:38]   leg1_W1_driftwait_s7 FUEL AUDIT (successes): dv used 433.5 m/s vs direct ref 565.0 (efficiency 0.774x), budget 536.4 (85.2% of tank)
+[2026-08-24 02:50:46] RESULT leg1_E0_j2_s7: leg1_E0_j2_s7              success 49/50 =  98.0%   md5 ed4149ee7544   67s
+[2026-08-24 02:50:46]   leg1_E0_j2_s7 causes: success=49, safety_cap=1
+[2026-08-24 02:50:46]   leg1_E0_j2_s7 FUEL AUDIT (successes): dv used 271.8 m/s vs direct ref 246.9 (efficiency 1.103x), budget 509.9 (54.3% of tank)
+[2026-08-24 02:50:46]   leg1_E0_j2_s7 FUEL AUDIT (successes): dv used 271.8 m/s vs direct ref 246.9 (efficiency 1.103x), budget 509.9 (54.3% of tank)
+[2026-08-24 02:52:00] RESULT leg1_E1_j2_s7: leg1_E1_j2_s7              success 50/50 = 100.0%   md5 7acc3cde8478   74s
+[2026-08-24 02:52:00]   leg1_E1_j2_s7 causes: success=50
+[2026-08-24 02:52:00]   leg1_E1_j2_s7 FUEL AUDIT (successes): dv used 263.7 m/s vs direct ref 221.4 (efficiency 1.140x), budget 517.9 (50.2% of tank)
+[2026-08-24 02:52:00]   leg1_E1_j2_s7 FUEL AUDIT (successes): dv used 263.7 m/s vs direct ref 221.4 (efficiency 1.140x), budget 517.9 (50.2% of tank)
+[2026-08-24 02:53:36] RESULT leg1_E2_j2_s7: leg1_E2_j2_s7              success 50/50 = 100.0%   md5 df8a8e42f568   95s
+[2026-08-24 02:53:36]   leg1_E2_j2_s7 causes: success=50
+[2026-08-24 02:53:36]   leg1_E2_j2_s7 FUEL AUDIT (successes): dv used 248.0 m/s vs direct ref 227.5 (efficiency 1.084x), budget 495.8 (50.7% of tank)
+[2026-08-24 02:53:36]   leg1_E2_j2_s7 FUEL AUDIT (successes): dv used 248.0 m/s vs direct ref 227.5 (efficiency 1.084x), budget 495.8 (50.7% of tank)
+[2026-08-24 02:56:41] RESULT leg1_E3_j2_s7: leg1_E3_j2_s7              success 49/50 =  98.0%   md5 6ce9ba7ca1b3   184s
+[2026-08-24 02:56:41]   leg1_E3_j2_s7 causes: success=49, safety_cap=1
+[2026-08-24 02:56:41]   leg1_E3_j2_s7 FUEL AUDIT (successes): dv used 285.4 m/s vs direct ref 219.9 (efficiency 1.128x), budget 470.7 (60.7% of tank)
+[2026-08-24 02:56:41]   leg1_E3_j2_s7 FUEL AUDIT (successes): dv used 285.4 m/s vs direct ref 219.9 (efficiency 1.128x), budget 470.7 (60.7% of tank)
+[2026-08-24 02:59:12] RESULT leg1_TIGHT_5k1_s7: leg1_TIGHT_5k1_s7          success 42/50 =  84.0%   md5 9a2c96f249a3   151s
+[2026-08-24 02:59:12]   leg1_TIGHT_5k1_s7 causes: success=42, safety_cap=8
+[2026-08-24 02:59:12]   leg1_TIGHT_5k1_s7 FUEL AUDIT (successes): dv used 316.7 m/s vs direct ref 238.3 (efficiency 1.258x), budget 520.1 (61.8% of tank)
+[2026-08-24 02:59:12]   leg1_TIGHT_5k1_s7 FUEL AUDIT (successes): dv used 316.7 m/s vs direct ref 238.3 (efficiency 1.258x), budget 520.1 (61.8% of tank)
+[2026-08-24 03:00:46] RESULT leg1_LONGRANGE_s7: leg1_LONGRANGE_s7          success 50/50 = 100.0%   md5 792b62bf80e1   93s
+[2026-08-24 03:00:46]   leg1_LONGRANGE_s7 causes: success=50
+[2026-08-24 03:00:46]   leg1_LONGRANGE_s7 FUEL AUDIT (successes): dv used 256.1 m/s vs direct ref 241.7 (efficiency 1.040x), budget 494.8 (51.1% of tank)
+[2026-08-24 03:00:46]   leg1_LONGRANGE_s7 FUEL AUDIT (successes): dv used 256.1 m/s vs direct ref 241.7 (efficiency 1.040x), budget 494.8 (51.1% of tank)
+[2026-08-24 03:00:46]   READ leg 1: W1 off zero to ~25-35 reproduces the KICKSTART half.
+[2026-08-24 03:00:46] ---- stage 1 done ----
+[2026-08-24 03:00:46] START stage 2 (rebuild the anchor from the SEED-7 student)
+[2026-08-24 03:07:45]   RESULT windows 900  shape (900, 64, 38)  (57600 states from 61440 env-steps)
+[2026-08-24 03:12:00]   RESULT seed-7 student W1 decisions/ep MEAN = 209
+[2026-08-24 03:12:00]   -> leg 2 uses mixture 5 (mean in the band it was solved for)
+[2026-08-24 03:12:01]   RESULT D-gates 3/3 T15b anchor gates pass
+[2026-08-24 03:12:01] ---- stage 2 done ----
+[2026-08-24 03:12:01] START train leg2: 75000000 steps, mixture=5, root model_puffer_orbital_nav_001145.pt
+[2026-08-24 03:12:01]   anchors: [{"name": "w1_acq", "data": "/Users/pete/space_training/models/t15/anchor_w1_dagger_s7.pt", "ckpt": "/Users/pete/space_training/models/t3/w1nav_child.pt", "lambda": 0.2, "lambda_end": 0.2, "decay_steps": 0, "minibatch": 4}, {"name": "tight_def", "data": "/Users/pete/space_training/models/t15/anchor_tight_k0.pt", "ckpt": "/Users/pete/space_training/models/t3/t13b_anchor_final.pt", "lambda": 0.02, "minibatch": 4}]
+[2026-08-24 03:12:01]   trainer pid 47308
+[2026-08-24 06:15:04]   final ckpt present; watchdog armed (900s)
+[2026-08-24 06:25:04]   leg-2 ckpt model_puffer_orbital_nav_000573.pt
+[2026-08-24 07:07:37] RESULT leg2_W1_driftwait_s7: leg2_W1_driftwait_s7       success 95/200 =  47.5%   md5 c15eac26fb58   2552s
+[2026-08-24 07:07:37]   leg2_W1_driftwait_s7 causes: success=95, collision=1, safety_cap=104
+[2026-08-24 07:07:37]   leg2_W1_driftwait_s7 FUEL AUDIT (successes): dv used 427.8 m/s vs direct ref 579.2 (efficiency 0.740x), budget 531.1 (87.6% of tank)
+[2026-08-24 07:07:37]   leg2_W1_driftwait_s7 FUEL AUDIT (successes): dv used 427.8 m/s vs direct ref 579.2 (efficiency 0.740x), budget 531.1 (87.6% of tank)
+[2026-08-24 07:08:50] RESULT leg2_E0_j2_s7: leg2_E0_j2_s7              success 50/50 = 100.0%   md5 ebf7b86acdca   72s
+[2026-08-24 07:08:50]   leg2_E0_j2_s7 causes: success=50
+[2026-08-24 07:08:50]   leg2_E0_j2_s7 FUEL AUDIT (successes): dv used 264.3 m/s vs direct ref 249.3 (efficiency 1.062x), budget 509.4 (52.0% of tank)
+[2026-08-24 07:08:50]   leg2_E0_j2_s7 FUEL AUDIT (successes): dv used 264.3 m/s vs direct ref 249.3 (efficiency 1.062x), budget 509.4 (52.0% of tank)
+[2026-08-24 07:10:02] RESULT leg2_E1_j2_s7: leg2_E1_j2_s7              success 50/50 = 100.0%   md5 2f638a13ce94   71s
+[2026-08-24 07:10:02]   leg2_E1_j2_s7 causes: success=50
+[2026-08-24 07:10:02]   leg2_E1_j2_s7 FUEL AUDIT (successes): dv used 261.2 m/s vs direct ref 221.4 (efficiency 1.111x), budget 517.9 (50.5% of tank)
+[2026-08-24 07:10:02]   leg2_E1_j2_s7 FUEL AUDIT (successes): dv used 261.2 m/s vs direct ref 221.4 (efficiency 1.111x), budget 517.9 (50.5% of tank)
+[2026-08-24 07:11:47] RESULT leg2_E2_j2_s7: leg2_E2_j2_s7              success 48/50 =  96.0%   md5 67b12f716791   104s
+[2026-08-24 07:11:47]   leg2_E2_j2_s7 causes: success=48, safety_cap=2
+[2026-08-24 07:11:47]   leg2_E2_j2_s7 FUEL AUDIT (successes): dv used 233.2 m/s vs direct ref 225.5 (efficiency 1.035x), budget 505.2 (47.6% of tank)
+[2026-08-24 07:11:47]   leg2_E2_j2_s7 FUEL AUDIT (successes): dv used 233.2 m/s vs direct ref 225.5 (efficiency 1.035x), budget 505.2 (47.6% of tank)
+[2026-08-24 07:14:53] RESULT leg2_E3_j2_s7: leg2_E3_j2_s7              success 50/50 = 100.0%   md5 1dfb6727ae94   185s
+[2026-08-24 07:14:53]   leg2_E3_j2_s7 causes: success=50
+[2026-08-24 07:14:53]   leg2_E3_j2_s7 FUEL AUDIT (successes): dv used 285.2 m/s vs direct ref 218.3 (efficiency 1.163x), budget 474.1 (61.2% of tank)
+[2026-08-24 07:14:53]   leg2_E3_j2_s7 FUEL AUDIT (successes): dv used 285.2 m/s vs direct ref 218.3 (efficiency 1.163x), budget 474.1 (61.2% of tank)
+[2026-08-24 07:17:32] RESULT leg2_TIGHT_5k1_s7: leg2_TIGHT_5k1_s7          success 42/50 =  84.0%   md5 5c664ed16009   158s
+[2026-08-24 07:17:32]   leg2_TIGHT_5k1_s7 causes: success=42, safety_cap=8
+[2026-08-24 07:17:32]   leg2_TIGHT_5k1_s7 FUEL AUDIT (successes): dv used 298.4 m/s vs direct ref 228.2 (efficiency 1.247x), budget 515.1 (61.4% of tank)
+[2026-08-24 07:17:32]   leg2_TIGHT_5k1_s7 FUEL AUDIT (successes): dv used 298.4 m/s vs direct ref 228.2 (efficiency 1.247x), budget 515.1 (61.4% of tank)
+[2026-08-24 07:19:06] RESULT leg2_LONGRANGE_s7: leg2_LONGRANGE_s7          success 50/50 = 100.0%   md5 075fae4cb133   93s
+[2026-08-24 07:19:06]   leg2_LONGRANGE_s7 causes: success=50
+[2026-08-24 07:19:06]   leg2_LONGRANGE_s7 FUEL AUDIT (successes): dv used 250.4 m/s vs direct ref 241.7 (efficiency 0.997x), budget 494.8 (51.2% of tank)
+[2026-08-24 07:19:06]   leg2_LONGRANGE_s7 FUEL AUDIT (successes): dv used 250.4 m/s vs direct ref 241.7 (efficiency 0.997x), budget 494.8 (51.2% of tank)
+[2026-08-24 07:19:06]   ── VERDICT (read against the PRE-REGISTERED readings) ──
+[2026-08-24 07:19:06]   s42 reference shape: W1 0.0 -> 31.5 (kickstart) -> 45.0 (one refresh)
+[2026-08-24 07:19:06]   (a) both legs in band  -> mechanism seed-robust, 2 seeds
+[2026-08-24 07:19:06]   (b) only one in band   -> the mechanism SPLITS; name the half
+[2026-08-24 07:19:06]   (c) W1 ~0 after leg 1  -> seed-SENSITIVE; the arc takes the caveat
+[2026-08-24 07:19:06]   The six side rows are 50-ep spot checks, NOT capability claims.
+[2026-08-24 07:19:06] ---- stage 3 done ----
+[2026-08-24 07:19:06] =========== t15seed-check COMPLETE ===========

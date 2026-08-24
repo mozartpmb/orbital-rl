@@ -441,9 +441,20 @@ For W1-critical operations the mode table remains available
 (`w1nav_child` at 91); for everything else the single checkpoint is the
 deliverable: **`models/t3/t15e_dagger_final.pt`**.
 
-Single seed 42 throughout; mean-element claims under J2. Checkpoints
+Mean-element claims under J2. Checkpoints
 `models/t3/t15{b,c,d,e}_dagger_final.pt`; JSON
-`web_data/results/t15{b,c,d,e}_dagger/`. Open: second-seed confirm of
-the T15 family before headline claims upgrade; structural-W1 (teaching
-the slow geometries the teacher itself fails) is a future arc, not an
-iteration.
+`web_data/results/t15{b,c,d,e}_dagger/`.
+
+**MECHANISM SEED CHECK (2026-08-24, `t15seed_check_campaign.sh`): the
+acquisition mechanism is TWO-SEED confirmed.** At seed 7, the kickstart
+took W1 0 → 33.5% (seed 42: 31.5) and one DAgger refresh stepped it
++14.0 to 47.5% (seed 42's iteration-2 step: +14.0 exactly), with the six
+other cells holding 84–100% at spot precision and the drift-and-wait
+fuel signature intact (0.74–0.77×). Shape-reproduction standard,
+pre-registered readings, leg-2 dataset built and D-gated at runtime from
+the seed-7 student. **The chain's ENDPOINT (74.0) remains single-seed by
+design** — replicating it would need the full path-dependent chain, and
+the user's own framing settled why that conflates method-reliability
+with endpoint reproduction. Open: structural-W1 (teaching the slow
+geometries the 91% teacher itself fails) is a future arc; envelope
+expansion (high-e, wider Δi) is the next one.
