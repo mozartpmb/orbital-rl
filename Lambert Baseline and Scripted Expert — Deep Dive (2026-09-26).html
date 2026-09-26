@@ -1,0 +1,457 @@
+<title>Lambert Baseline and Scripted Expert</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
+<style>
+:root{
+  --paper:#F2F4F6; --paper-2:#E8ECF0; --ink:#182130; --ink-2:#4A5568; --rule:#C9D1DA;
+  --burn:#D4561C; --burn-soft:#FBE8DD; --arc:#1E7686; --arc-soft:#DCEEF1;
+  --code-bg:#E9EDF1; --code-ink:#1F2A3A; --plain-bg:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F141B; --paper-2:#161D26; --ink:#E3E8EF; --ink-2:#9AA6B6; --rule:#2A3441;
+    --burn:#F07A3E; --burn-soft:#33201A; --arc:#4FB3C4; --arc-soft:#12303A;
+    --code-bg:#161D26; --code-ink:#DCE3EC; --plain-bg:#131A22;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F141B; --paper-2:#161D26; --ink:#E3E8EF; --ink-2:#9AA6B6; --rule:#2A3441;
+  --burn:#F07A3E; --burn-soft:#33201A; --arc:#4FB3C4; --arc-soft:#12303A;
+  --code-bg:#161D26; --code-ink:#DCE3EC; --plain-bg:#131A22;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;font-size:17px;line-height:1.55;margin:0}
+.wrap{display:grid;grid-template-columns:230px minmax(0,72ch);gap:48px;max-width:1120px;margin:0 auto;padding:40px 24px 96px}
+@media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr)}nav.toc{position:static;border:0;padding:0 0 24px}}
+nav.toc{position:sticky;top:24px;align-self:start;font-size:14px;border-right:1px solid var(--rule);padding-right:20px}
+nav.toc .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin-bottom:10px}
+nav.toc a{display:block;color:var(--ink-2);text-decoration:none;padding:3px 0}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);outline:none}
+nav.toc a.sub{padding-left:14px;font-size:13px}
+nav.toc .part{margin-top:14px;font-weight:600;color:var(--ink)}
+h1,h2,h3{font-family:"Newsreader",Georgia,serif;font-weight:500;line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:44px;margin-bottom:8px}
+h2{font-size:30px;margin:64px 0 16px;padding-top:24px;border-top:1px solid var(--rule)}
+h3{font-size:22px;margin:36px 0 10px}
+.kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+.lede{font-size:19px;color:var(--ink-2);margin:12px 0 0}
+p{margin:0 0 14px}
+code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.86em;background:var(--code-bg);color:var(--code-ink);padding:1px 5px;border-radius:3px}
+pre{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13.5px;line-height:1.5;background:var(--code-bg);color:var(--code-ink);padding:14px 16px;overflow-x:auto;margin:12px 0 18px;border-left:3px solid var(--rule)}
+pre code{background:none;padding:0;font-size:inherit}
+.plain{background:var(--plain-bg);border:1px solid var(--rule);padding:14px 18px;margin:16px 0 20px}
+.plain .t{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--arc);font-weight:600;margin-bottom:6px}
+.plain p:last-child{margin-bottom:0}
+.why{border-left:3px solid var(--burn);padding:4px 0 4px 16px;margin:16px 0 20px;color:var(--ink)}
+.why .t{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--burn);font-weight:600;margin-bottom:4px}
+.src{font-size:13px;color:var(--ink-2);font-family:"JetBrains Mono",monospace;margin:-6px 0 12px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:12px 0 20px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+.tbl{overflow-x:auto}
+ul,ol{padding-left:22px;margin:0 0 14px}
+li{margin-bottom:5px}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:14px 0 22px}
+.flow div{background:var(--paper-2);padding:10px 12px;font-size:14px;border-top:3px solid var(--arc)}
+.flow div b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-bottom:3px}
+.flow.burnside div{border-top-color:var(--burn)}
+mjx-container[display="true"]{margin:10px 0 14px!important;overflow-x:auto;overflow-y:hidden}
+.foot{margin-top:56px;padding-top:16px;border-top:1px solid var(--rule);font-size:14px;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+<nav class="toc">
+  <div class="lbl">Contents</div>
+  <a href="#intro">Why both exist</a>
+  <div class="part">Part I · Lambert</div>
+  <a class="sub" href="#l1">1. The problem</a>
+  <a class="sub" href="#l2">2. Geometry into λ</a>
+  <a class="sub" href="#l3">3. Time of flight T(x)</a>
+  <a class="sub" href="#l4">4. Root finding</a>
+  <a class="sub" href="#l5">5. Velocities out</a>
+  <a class="sub" href="#l6">6. Multi-rev</a>
+  <a class="sub" href="#l7">7. The porkchop search</a>
+  <a class="sub" href="#l8">8. Three comparators</a>
+  <a class="sub" href="#l9">9. Validation</a>
+  <a class="sub" href="#l10">10. Optimal? Honest limits</a>
+  <div class="part">Part II · Scripted expert</div>
+  <a class="sub" href="#e1">1. What it is</a>
+  <a class="sub" href="#e2">2. Reading the state</a>
+  <a class="sub" href="#e3">3. The error metric X, V</a>
+  <a class="sub" href="#e4">4. The burn law</a>
+  <a class="sub" href="#e5">5. The phasing law</a>
+  <a class="sub" href="#e6">6. PLAN once</a>
+  <a class="sub" href="#e7">7. HOLD and the scan</a>
+  <a class="sub" href="#e8">8. Warps and cadence</a>
+  <a class="sub" href="#e9">9. One decision, end to end</a>
+  <a class="sub" href="#e10">10. Constants and their reasons</a>
+  <a class="sub" href="#e11">11. What it proved</a>
+</nav>
+
+<main>
+<div class="kicker">Orbital rendezvous · reference baselines</div>
+<h1>Lambert Baseline and Scripted Expert</h1>
+<p class="lede">Two hand-built yardsticks the learned policy is measured against. One answers "what is the cheapest two-burn transfer," the other answers "can a textbook autopilot do this task at all." Every equation here is traced to the line of code that implements it.</p>
+
+<h2 id="intro" style="border:0;margin-top:32px;padding-top:0">Why both exist</h2>
+<p>A reinforcement-learning result is only meaningful next to something classical. The project keeps two such references, and they answer different questions.</p>
+<div class="tbl"><table>
+<tr><th></th><th>Lambert baseline</th><th>Scripted expert</th></tr>
+<tr><td>Question</td><td>What is the minimum two-impulse Δv for this exact episode?</td><td>Can the task be solved with these discrete actions and this observation?</td></tr>
+<tr><td>Runs</td><td>Offline, on logged trajectories</td><td>Online, in the live environment, action by action</td></tr>
+<tr><td>Knows</td><td>Initial states, continuous burns, free timing</td><td>Only the 38-number observation the policy sees</td></tr>
+<tr><td>Output</td><td>A Δv number and a ratio</td><td>A success rate, a Δv, a step count</td></tr>
+<tr><td>File</td><td><code>scripts/orbital/t1_lambert_baseline.py</code></td><td><code>scripts/orbital/t3/expert_controller.py</code></td></tr>
+</table></div>
+
+<!-- ═══════════════════════ PART I ═══════════════════════ -->
+<h2 id="l1">Part I · 1. The problem Lambert solves</h2>
+<p>Lambert's problem: given two position vectors \(\mathbf r_1\), \(\mathbf r_2\) and a time of flight \(t\), find the single two-body orbit that passes through both in exactly that time. Once you have that orbit, its velocity at \(\mathbf r_1\) is what you must be moving at when you leave, and its velocity at \(\mathbf r_2\) is what you arrive with.</p>
+<div class="plain"><div class="t">In plain words</div>
+<p>You are here now. The target will be over there in forty minutes. There is exactly one coasting path that gets you from here to there in forty minutes. Lambert finds it. The first burn is the difference between your current velocity and that path's departure velocity. The second burn, on arrival, is the difference between the path's arrival velocity and the target's velocity. Two burns, one number: their sum.</p></div>
+<p>For the rendezvous task the two burns are</p>
+\[\Delta v_{\text{total}} = \lVert \mathbf v_1^{\text{req}} - \mathbf v_{\text{chaser}}(t_0+w) \rVert + \lVert \mathbf v_{\text{target}}(t_0+w+t) - \mathbf v_2^{\text{req}} \rVert\]
+<p>where \(w\) is an optional wait before departing. In the code that is one line, <code>_dv_on_grid</code>:</p>
+<pre><code>v1, v2, ok = lambert_2d(rc, r2, tof, revs=revs, branch=branch)
+dv = np.linalg.norm(v1 - vc, axis=-1) + np.linalg.norm(v2t - v2, axis=-1)</code></pre>
+<div class="src">t1_lambert_baseline.py:550–563</div>
+<p>The solver is the Izzo / Lancaster-Blanchard formulation. It was chosen over the older Battin universal-variable solver in <code>p5e_e1_lambert.py</code> for one reason: universal-variable solvers have a singularity when the transfer angle is exactly 180°, which is precisely the Hohmann geometry the project most needs to validate against.</p>
+
+<h2 id="l2">2. Collapsing the geometry into one number, λ</h2>
+<p>The whole trick of the Lancaster form is that any Lambert problem, after non-dimensionalising, depends on the geometry through a single parameter \(\lambda\). The code builds it in <code>_geometry</code>:</p>
+<pre><code>r1n = |r1|;  r2n = |r2|
+dtheta = mod(atan2(r1 × r2, r1 · r2), 2π)        # prograde sweep angle
+c   = |r2 − r1|                                   # chord
+s   = (r1n + r2n + c) / 2                         # semi-perimeter
+lam = sqrt(1 − c/s) · (−1 if dtheta &gt; π else +1)</code></pre>
+<div class="src">t1_lambert_baseline.py:192–205</div>
+<p>Three quantities carry the geometry:</p>
+<ul>
+<li><b>Chord \(c\)</b>, the straight line between the two points.</li>
+<li><b>Semi-perimeter \(s = \tfrac12(r_1+r_2+c)\)</b> of the triangle Earth–\(\mathbf r_1\)–\(\mathbf r_2\). The minimum-energy transfer ellipse has semi-major axis \(a_{\min} = s/2\); this sets the natural scale for everything.</li>
+<li><b>\(\lambda = \pm\sqrt{1 - c/s}\)</b>, with the sign negative when the transfer angle exceeds 180°. It encodes how "bent" the transfer is. \(\lambda = 0\) is a 180° transfer, \(|\lambda| \to 1\) is a nearly straight-line transfer.</li>
+</ul>
+<div class="plain"><div class="t">In plain words</div>
+<p>Two points and Earth make a triangle. Lambert cares only about the triangle's shape, not its size or where it sits. One number, λ, captures the shape, and the direction of travel (short way vs long way around) is its sign. Everything after this is a one-dimensional problem.</p></div>
+<p>The transfer angle is taken as the counter-clockwise sweep, so the solver is always prograde. That matches the environment, where every orbit is counter-clockwise. The feasibility mask <code>ok</code> rejects degenerate cases where the two points coincide or lie on a line through Earth.</p>
+
+<h2 id="l3">3. Time of flight as a function of x</h2>
+<p>Time is non-dimensionalised against the minimum-energy ellipse:</p>
+\[T = \sqrt{\frac{2\mu}{s^3}}\; t_{\text{flight}}\]
+<p>and the unknown is \(x\), a variable that parameterises the family of conics through the two points. The Lancaster-Blanchard relation gives the time of flight for any \(x\):</p>
+\[y = \sqrt{1 - \lambda^2(1 - x^2)}, \qquad g = x\,y + \lambda(1 - x^2)\]
+\[\psi = \begin{cases}\arccos g &amp; x &lt; 1 \text{ (elliptic)}\\ \operatorname{arccosh} g &amp; x &gt; 1 \text{ (hyperbolic)}\end{cases}\]
+\[T(x) = \frac{\dfrac{\psi + N\pi}{\sqrt{|1-x^2|}} - x + \lambda y}{1 - x^2}\]
+<p>\(N\) is the number of complete revolutions. The code is a direct transcription:</p>
+<pre><code>w   = 1 − x²
+Y   = sqrt(1 − λ²·w)
+g   = x·Y + λ·w
+psi = arccos(g) if w &gt; 0 else arccosh(g)
+T   = ((psi + N·π)/sqrt(|w|) − x + λ·Y) / w</code></pre>
+<div class="src">t1_lambert_baseline.py:170–189, <code>_tof_from_x</code></div>
+<p>The meaning of \(x\):</p>
+<div class="tbl"><table>
+<tr><th>x</th><th>Transfer</th></tr>
+<tr><td>−1 → 0</td><td>Slow, high-energy ellipses (long way around the focus)</td></tr>
+<tr><td>0</td><td>Minimum-energy ellipse, \(a = s/2\)</td></tr>
+<tr><td>0 → 1</td><td>Faster ellipses</td></tr>
+<tr><td>1</td><td>Parabolic, \(T_{\text{par}} = \tfrac23(1 - \lambda^3)\)</td></tr>
+<tr><td>&gt; 1</td><td>Hyperbolic, faster still</td></tr>
+</table></div>
+<p>One numerical guard: near \(x = 1\) the numerator cancels catastrophically, so for \(|x - 1| &lt; 10^{-6}\) the code substitutes the closed-form parabolic limit. The comment notes this must not be applied at \(x \to -1\), where the divergence is real.</p>
+<div class="plain"><div class="t">In plain words</div>
+<p>Slide a dial called x. Each position of the dial is a different curved path through the same two points. Turn it one way and the path gets lazier and takes longer, turn it the other and it gets faster. T(x) is the stopwatch reading for each dial position. Solving Lambert means turning the dial until the stopwatch matches the time you were given.</p></div>
+
+<h2 id="l4">4. Root finding: bisection on x</h2>
+<p>For a zero-revolution transfer, \(T(x)\) decreases monotonically over the whole domain \((-1, \infty)\). That makes the root unique and bisection safe. The code, vectorised over a grid of problems at once:</p>
+<pre><code>T_par = (2/3)·(1 − λ³)
+ell   = T &gt;= T_par                     # elliptic if slower than parabolic
+lo = −1 + 1e−12 if ell else 1.0
+hi =  1.0       if ell else 2.0
+# hyperbolic: push hi outward until T(hi) &lt; T
+for _ in range(60):
+    need = (~ell) &amp; (T(hi) &gt; T);  hi = where(need, 1 + 2·(hi − 1), hi)
+# 70 bisections
+for _ in range(70):
+    mid = (lo + hi)/2
+    if T(mid) &gt; T: lo = mid  else: hi = mid
+x = (lo + hi)/2</code></pre>
+<div class="src">t1_lambert_baseline.py:236–258</div>
+<p>First it decides which side of parabolic the request is on by comparing the target \(T\) to \(T_{\text{par}}\). Elliptic solutions live in \(x \in (-1, 1)\). Hyperbolic ones live in \(x &gt; 1\), and since that interval is unbounded, the upper bracket is doubled outward until it overshoots. Then 70 halvings of the bracket. Seventy bisections on an interval of width 2 give a resolution of \(2 \cdot 2^{-70} \approx 10^{-21}\), far below double precision. Convergence is guaranteed rather than fast; there is no Newton step to diverge.</p>
+
+<h2 id="l5">5. From x back to velocity vectors</h2>
+<p>Once \(x\) is known, the terminal velocities come from closed-form radial and tangential components in the Lancaster form:</p>
+\[\gamma = \sqrt{\tfrac{\mu s}{2}}, \qquad \rho = \frac{r_1 - r_2}{c}, \qquad \sigma = \sqrt{1 - \rho^2}\]
+\[v_{r1} = \frac{\gamma\big[(\lambda y - x) - \rho(\lambda y + x)\big]}{r_1}, \qquad v_{r2} = -\frac{\gamma\big[(\lambda y - x) + \rho(\lambda y + x)\big]}{r_2}\]
+\[v_{t1} = \frac{\gamma\,\sigma\,(y + \lambda x)}{r_1}, \qquad v_{t2} = \frac{\gamma\,\sigma\,(y + \lambda x)}{r_2}\]
+<p>Then each is assembled onto its own radial unit vector \(\hat r_i\) and prograde tangential \(\hat t_i = \hat z \times \hat r_i\):</p>
+<pre><code>it1 = (−ir1.y, ir1.x)          # ẑ × r̂, counter-clockwise
+v1 = vr1·ir1 + vt1·it1
+v2 = vr2·ir2 + vt2·it2</code></pre>
+<div class="src">t1_lambert_baseline.py:207–225, <code>_velocities</code></div>
+<p>The tangential magnitudes at both ends share the factor \(y + \lambda x\) and differ only by the radius, which is angular momentum conservation written out. The radial components differ in sign structure because one end is departing the chord and the other is arriving.</p>
+
+<h2 id="l6">6. Multi-revolution transfers</h2>
+<p>For \(N \ge 1\) complete loops before arrival, \(T(x)\) is no longer monotone. On \(x \in (-1, 1)\) it is U-shaped: there is a minimum time \(T_{\min}\) below which no \(N\)-rev solution exists, and above it there are two solutions, one on each side of the minimum. The code calls these branch 0 (left, lower energy) and branch 1 (right).</p>
+<pre><code>xs = −cos(π·k/63)·(1 − 1e−9)   # 64 Chebyshev-clustered points on (−1, 1)
+Tg = T(xs, λ, N)                    # evaluate the curve
+above = Tg &gt; T_target
+branch 0: hit = above[i] &amp; ~above[i+1]     # first crossing going down
+branch 1: hit = ~above[i] &amp; above[i+1]     # crossing going back up
+lo, hi = xs[idx], xs[idx+1]  → 70 bisections as before
+ok &amp;= any_hit                       # no crossing → T &lt; T_min, infeasible</code></pre>
+<div class="src">t1_lambert_baseline.py:259–288</div>
+<p>Chebyshev spacing packs the sample points toward the ends of the interval where the curve is steepest, so the bracket is found reliably even close to the walls. If no crossing exists on the requested branch the solution is marked infeasible and the search skips it.</p>
+<div class="plain"><div class="t">In plain words</div>
+<p>If you are allowed to go around the Earth a few full times before arriving, there are more paths to choose from, and some are much cheaper because they let orbital drift do the phasing for you. But there is a minimum time you must spend for each extra loop. The solver checks each loop count separately and finds both paths when they exist.</p></div>
+
+<h2 id="l7">7. The porkchop search: turning one solve into a minimum</h2>
+<p>A single Lambert solve answers "cheapest transfer for <em>this</em> departure time and <em>this</em> flight time." It says nothing about whether a different schedule would be cheaper. So the baseline minimises over the schedule with a grid search. This is a porkchop plot, evaluated numerically.</p>
+<div class="flow">
+<div><b>Grid</b>waits × flight times, outer product</div>
+<div><b>Propagate</b>chaser to each wait, target to each wait + flight</div>
+<div><b>Solve</b>Lambert on every cell, per rev count and branch</div>
+<div><b>Sum</b>two burns per cell, ∞ where infeasible</div>
+<div><b>Refine</b>17 × 25 sub-grid around the minimum, 4 rounds</div>
+</div>
+<pre><code>waits = linspace(0, wait_max, n_wait)
+tofs  = geomspace(tof_min, tof_max, n_tof)         # log-spaced flight times
+rc, vc   = propagate_rv(rc0, vc0, W)               # chaser after waiting
+r2, v2t  = propagate_rv(rt0, vt0, W + F)           # target at arrival
+for revs in range(max_revs + 1):
+    for branch in ((0,) if revs == 0 else (0, 1)):
+        dv = _dv_on_grid(rc, vc, r2, v2t, F, revs, branch, mask)
+        best = min(best, argmin(dv))
+        # then 4 rounds of local refine, 17 waits × 25 TOFs, shrinking each round</code></pre>
+<div class="src">t1_lambert_baseline.py:572–621, <code>baseline_search</code></div>
+<p>Two details matter:</p>
+<ul>
+<li><b>Flight times are log-spaced.</b> The difference between 600 s and 1200 s is enormous for the transfer; the difference between 5 h and 5 h 10 min is not. Geometric spacing spends the samples where the Δv surface changes fastest.</li>
+<li><b>The states are computed once and reused.</b> The chaser and target propagations are done on the grid one time, then every rev count and branch reuses them. Only the Lambert solve repeats.</li>
+</ul>
+<p>The propagator that positions the two bodies on the grid is the same exact-Kepler machinery as the environment, re-implemented in NumPy with a safeguarded Newton solver that falls back to bisection if a step leaves the bracket \([M-1, M+1]\). It handles hyperbolic arcs too, because a very short flight time can demand one.</p>
+
+<h2 id="l8">8. Three comparators per episode</h2>
+<p>For every logged episode, <code>episode_row</code> runs the search three ways, each answering a different fairness question:</p>
+<div class="tbl"><table>
+<tr><th>Comparator</th><th>Wait allowed</th><th>Flight time range</th><th>Revs</th><th>Grid</th><th>Asks</th></tr>
+<tr><td>Immediate</td><td>0</td><td>600 s to 3 P<sub>tgt</sub></td><td>0–3</td><td>400 TOFs</td><td>"Burn now, phase by multi-rev drift"</td></tr>
+<tr><td>Free departure</td><td>0 to 1.2 P<sub>tgt</sub></td><td>600 s to 2 P<sub>tgt</sub></td><td>0–1</td><td>160 × 160</td><td>"You may coast first, then transfer"</td></tr>
+<tr><td>Time-matched</td><td>0 to T<sub>ep</sub></td><td>600 s to T<sub>ep</sub>, with wait + TOF ≤ T<sub>ep</sub></td><td>up to 20</td><td>120 × 150</td><td>"Same deadline the policy actually met"</td></tr>
+</table></div>
+<div class="src">t1_lambert_baseline.py:640–664</div>
+<p>\(T_{\text{ep}}\) is the episode's wall clock, steps × 60 s. Time-matched is the fair one. A policy that dawdled for ten orbits gets compared against the best two-burn plan that is also allowed ten orbits. The others are sanity anchors. The result row stores the policy's Δv (summed from the trajectory log), all three baselines, and the ratios <code>policy_dv / lambert_dv</code>.</p>
+<div class="why"><div class="t">Why the ratios can legitimately be below 1</div>
+<p>The policy makes many small burns. A drift-phasing strategy with three or four impulses can beat the best two-impulse plan under a deadline. So a time-matched ratio of 0.9 is not a bug. The old bug was different: 45% of episodes came in below the two-impulse optimum, and 13% below half of it, which is not physically reachable by any impulse count. That anomaly is what exposed the swapped square roots in the mean-anomaly conversion.</p></div>
+
+<h2 id="l9">9. How the solver is validated</h2>
+<p><code>validate()</code> runs before any baseline is computed and aborts the script on failure. Five checks:</p>
+<div class="tbl"><table>
+<tr><th>Check</th><th>What it proves</th><th>Result</th></tr>
+<tr><td>V1 Hohmann 6771 → 7171 km, Δν = π exactly, TOF = half the transfer period</td><td>Solver matches the analytic vis-viva Δv at the 180° singularity</td><td>217.02 vs 217.02 m/s, 0.00% error</td></tr>
+<tr><td>V2 same, LEO → GEO 42164 km</td><td>Large-ratio transfer</td><td>3856.7 m/s, 2.4e-14% error</td></tr>
+<tr><td>V3 fly the solved v₁ for TOF, measure miss at r₂ (400 random pairs)</td><td>Solution is self-consistent with the propagator</td><td>median 2.8e-8 m, max 3.9e-4 m</td></tr>
+<tr><td>V3b same for N = 1, both branches, 800 solves</td><td>Multi-rev bracketing is correct</td><td>max 1.4e-2 m</td></tr>
+<tr><td>V4 Kepler propagator vs independent RK4, 0.25 s steps over 6000 s</td><td>Propagator is right independently of Lambert</td><td>median 7e-7 m</td></tr>
+<tr><td>V5 propagator vs the environment's logged target track</td><td>Baseline and environment agree on the physics</td><td>7.2 m worst (float32 log floor)</td></tr>
+</table></div>
+<p>The Hohmann case is set up by hand: \(\mathbf r_1 = (r_1, 0)\), \(\mathbf r_2 = (-r_2, 0)\), circular prograde velocities at both, and the flight time \(\pi\sqrt{a_t^3/\mu}\) with \(a_t = \tfrac12(r_1 + r_2)\). Any universal-variable solver would divide by zero here.</p>
+
+<h2 id="l10">10. Is it optimal? The honest limits</h2>
+<p>The number is a rigorous minimum over a specific class, and the reports say so explicitly. What the class excludes:</p>
+<ul>
+<li><b>Two impulses only.</b> Three-impulse and bi-elliptic transfers beat two-impulse in some geometries. The baseline is therefore an upper bound on the true optimum, and every ratio is a lower bound on how much the policy overspends.</li>
+<li><b>Grid minimum with local refine, not a certified global optimum.</b> The refine rounds shrink around the best grid cell. A narrow valley between grid points could in principle be missed.</li>
+<li><b>Exact rendezvous vs a box.</b> Lambert must hit 0 m and 0 m/s. The policy only needs 30 km and 50 m/s. The later fuel audit credits the velocity tolerance on the arrival burn (\(\Delta v_2 \to \max(0, \Delta v_2 - v_{\text{box}})\)) but deliberately does not credit the position slack.</li>
+<li><b>Continuous vs quantised.</b> Lambert's burns have arbitrary magnitude and direction. The policy picks from fixed sizes along prograde, retrograde, and radial. Part of any gap is action-space granularity.</li>
+<li><b>Δv only.</b> No mass-flow, no finite-burn losses, no gravity losses. The comparison is impulsive on both sides.</li>
+<li><b>Successful episodes only,</b> so failure Δv is not counted.</li>
+</ul>
+<p>Current figures under corrected dynamics: time-matched median 1.14× (T3 recovery), 1.18× raw and 1.55× box-credited in the fuel audit. The older "2.49× Hohmann" is a different quantity: policy Δv over the circular-to-circular Hohmann formula using initial semi-major axes, ignoring phasing entirely, and it should not be quoted as an optimality ratio.</p>
+
+<!-- ═══════════════════════ PART II ═══════════════════════ -->
+<h2 id="e1">Part II · 1. What the scripted expert is</h2>
+<p>A non-learned controller that solves the same task as the policy, using only the environment's discrete actions and only the observation vector. No privileged state, no continuous burns. It scores 99.2% (496 of 500, four seeds pooled) on the headline configuration.</p>
+<p>Its structure is two nested classical loops plus a terminal mode:</p>
+<div class="flow burnside">
+<div><b>PLAN</b>Once at reset. Pick which way around to chase.</div>
+<div><b>TRACK</b>Every decision. Outer loop sets a goal orbit from the phase gap; inner loop picks a burn toward it or coasts.</div>
+<div><b>HOLD</b>Once a box entry is predicted. Stop burning, warp to the closest approach.</div>
+</div>
+<div class="plain"><div class="t">In plain words</div>
+<p>It is the textbook phasing manoeuvre made into a feedback loop. Behind the target? Drop into a slightly lower, faster orbit and let the gap close. Ahead? Go higher and slower. As the gap shrinks, the required offset shrinks too, so it spirals in smoothly. When it is close enough that coasting will carry it through the finish box, it stops touching the throttle and fast-forwards to that moment.</p></div>
+
+<h2 id="e2">2. Reading the state from the observation</h2>
+<p>The environment's observation encodes the chaser and target orbits. <code>decode_obs</code> inverts that encoding exactly:</p>
+<pre><code>sat.a     = obs[0]·1.6e6 + R_EARTH        # altitude scale undone
+sat.e     = obs[1]
+sat.theta = atan2(obs[2], obs[3])         # sin/cos pair → angle
+sat.omega = atan2(obs[9], obs[10])
+sat.M     = true_to_mean(sat.theta, sat.e)
+tgt.a, tgt.e, tgt.omega  likewise from obs[7], obs[8], obs[11:13]
+# T3 phase mode: obs[13,14] = sin/cos(λ_s − λ_t)
+dlam  = atan2(obs[13], obs[14])
+tgt.M = (sat.M + sat.omega − dlam) − tgt.omega
+fuel  = obs[6]                             # fuel mass fraction</code></pre>
+<div class="src">t3_expert_model.py:142–180</div>
+<p>Because the observation carries the elements at float32 precision, the expert effectively has truth state. It is never run on the bearings-only navigation variants. Remaining Δv comes from inverting the rocket equation on the observed fuel fraction:</p>
+\[\Delta v_{\text{left}} = v_e \ln\frac{1}{1 - f}, \qquad v_e = I_{sp}\, g_0 \approx 2942\ \text{m/s}\]
+<p>Time remaining is <em>not</em> read from the observation. The controller mirrors the environment's step counter itself, adding each action's duration (1 step for a burn or coast, 5, 30, or 60 for the warps), and subtracts from a cap it is told at construction. The T3 campaign found this clock is load-bearing: the same controller fails when clock-blind.</p>
+
+<h2 id="e3">3. The error metric: X and V</h2>
+<p>Everything in the inner loop is measured against a goal orbit \((a_g, \bar e_g)\), where \(\bar e_g\) is the target's eccentricity <em>vector</em> \((e\cos\omega, e\sin\omega)\). The error is expressed in Δv units:</p>
+\[\mathbf X = \Big( \underbrace{\tfrac{n_g}{2}(a - a_g)}_{A}, \;\; \underbrace{\tfrac{v_g}{2}(e_x - e_{g,x})}_{E_x}, \;\; \underbrace{\tfrac{v_g}{2}(e_y - e_{g,y})}_{E_y} \Big), \qquad n_g = \sqrt{\mu/a_g^3},\; v_g = \sqrt{\mu/a_g}\]
+\[V(\mathbf X) = \max\big(|A|,\; \sqrt{E_x^2 + E_y^2}\big)\]
+<pre><code>def _X(el, a_g, eg, n_ref, v_ref):
+    ex, ey = e·cos ω, e·sin ω
+    return (n_ref·(a − a_g)/2, v_ref·(ex − eg.x)/2, v_ref·(ey − eg.y)/2)
+def _V(...): return max(|A|, hypot(Ex, Ey))</code></pre>
+<div class="src">expert_controller.py:324–334</div>
+<p>Why these scalings. A small tangential impulse \(\delta v\) at position angle \(\phi\) changes the elements to first order by</p>
+\[\delta a = \frac{2\,\delta v}{n}, \qquad \delta e_x = \frac{2\,\delta v}{v}\cos\phi, \qquad \delta e_y = \frac{2\,\delta v}{v}\sin\phi\]
+<p>so in the scaled coordinates one burn of size \(\delta v\) moves \(\mathbf X\) by exactly \(\delta v \cdot (1, \cos\phi, \sin\phi)\). Two burns of \(\delta v_1, \delta v_2\) at opposite points on the orbit (\(\phi\) and \(\phi + \pi\)) move it by \((\delta v_1 + \delta v_2,\; (\delta v_1 - \delta v_2)\cos\phi,\; (\delta v_1 - \delta v_2)\sin\phi)\). Choosing the pair to null any \(\mathbf X\) and adding the magnitudes gives \(|\delta v_1| + |\delta v_2| = \max(|A|, |E|)\).</p>
+<div class="why"><div class="t">Why this is the right number</div>
+<p>V is not a tuned heuristic. It is exactly the minimum two-tangential-impulse Δv to reach the goal orbit. That is what makes the next section work without any thresholds: a burn is worth taking precisely when it reduces V by about as much as it costs.</p></div>
+<div class="plain"><div class="t">In plain words</div>
+<p>Instead of tracking "how far off in kilometres is my orbit," the expert tracks "how many metres per second of burning would it take to fix my orbit." That converts size error and shape error into the same currency, fuel, and the answer is a single number V.</p></div>
+
+<h2 id="e4">4. The burn law: one-step lookahead on V</h2>
+<pre><code>def _burn(self, sat, a_g, eg, dv_left):
+    V0 = V(sat)
+    if V0 &lt; 0.4: return None                    # deadzone, m/s
+    best_act, best_gain = None, 0.0
+    for act in BURN_ACTIONS:                    # 12 discrete burns (14 with fine radial)
+        dvp, dvr = ACTION_DV[act]; dvm = hypot(dvp, dvr)
+        if dvm &gt; dv_left: continue
+        el2 = apply_impulse(sat, dvp, dvr)      # exact replica of the env's burn
+        if el2.a &lt;= 0: continue                 # would escape
+        if el2.a·(1 − el2.e) &lt; PERIGEE_FLOOR: continue   # would dip under 200 km
+        V2 = V(el2)
+        gain = (V0 − V2) − dvm·(1 − BURN_SLACK)  # BURN_SLACK = 0.12
+        if gain &gt; best_gain: best_gain, best_act = gain, act
+    return best_act</code></pre>
+<div class="src">expert_controller.py:336–358</div>
+<p>Step by step, for every decision:</p>
+<ol>
+<li>Compute the current cost-to-go \(V_0\). Under 0.4 m/s, stop burning.</li>
+<li>For each of the burn actions the environment offers (±1, ±2, ±5, ±10, ±25 m/s prograde, ±10 m/s radial), simulate it with a Python copy of the environment's own impulse function. The copy was validated against the C environment to 0.5 m post-burn.</li>
+<li>Reject any burn that cannot be afforded, that produces an escape orbit, or that drops perigee below 200 km altitude.</li>
+<li>Score the survivors: how much \(V\) fell, minus 88% of what the burn cost.</li>
+<li>Take the best positive score, or none.</li>
+</ol>
+<p>The 12% slack exists because a burn at the exact wrong phase would reduce \(V\) by less than its cost and be skipped, while a burn at nearly the right phase reduces \(V\) by nearly its full cost and should be taken. Slack lets the controller act a few minutes early rather than wait for perfection.</p>
+<div class="why"><div class="t">Why it reproduces Hohmann without being told to</div>
+<p>Suppose the goal is a circular orbit higher up. At first |A| dominates, so any prograde burn reduces V one-for-one and gets taken. Each burn also raises the eccentricity error |E|. The moment |E| would exceed the remaining |A|, V stops falling and burns stop. That is exactly the Hohmann first burn: raise apogee until the transfer ellipse touches the goal. Then the controller coasts half an orbit until it reaches apogee, where a prograde burn reduces both |A| and |E| at once, and burns again. Two burns, correct apsides, no trigger logic.</p></div>
+<p>If no burn scores, <code>_t_to_window</code> estimates how long until the chaser is at an apsis of the error vector \(\bar e - \bar e_g\), because that is where the next useful burn will be. The warp budget is capped by that time so the controller does not sleep through the window.</p>
+
+<h2 id="e5">5. The phasing law: choosing the goal orbit</h2>
+<p>The inner loop needs a goal \(a_g\). The outer loop supplies it from the along-track gap. Define mean longitude \(\lambda = \omega + M\) and the gap \(\Delta\lambda = \lambda_s - \lambda_t\), wrapped to \((-\pi, \pi]\). Two orbits with slightly different semi-major axes drift apart in longitude at</p>
+\[\dot{\Delta\lambda} = n(a) - n(a_t) \approx -\frac{3}{2}\, n_t \frac{a - a_t}{a_t}\]
+<p>To close a gap \(\Delta\) in time \(T_{\text{ctrl}}\) you need a constant offset</p>
+\[\delta a_{\text{cmd}} = -\frac{\Delta\, a_t}{\tfrac32\, n_t\, T_{\text{ctrl}}}, \qquad T_{\text{ctrl}} = \max(5400\ \text{s},\; 0.65\, t_{\text{remaining}})\]
+<pre><code>dl    = wrap_pi(λ_s − λ_t)
+delta = −dl (short way)  or  ±(dl mod 2π)  (committed direction)
+T_ctrl = max(T_CTRL_MIN, TRACK_K · t_rem)
+for dc in [delta, delta ∓ 2π]:                        # score short way AND long way
+    da = −dc · a_t / (1.5 · n_t · T_ctrl)
+    da = clamp(|da|, DA_FLOOR=3 km, DA_MAX=340 km) with sign
+    a_c = max(a_t + da, a_lim)                        # a_lim keeps perigee ≥ floor
+    t_need = |dc| / (1.5 · n_t · |da_eff| / a_t)
+    cost = n_t · (|a_c − a_s| + |da_eff|) / 2          # get there + come back, Δv
+    score = cost + (0 if feasible and t_need &lt; 0.95·t_rem else 1e5) + 1e−3·t_need
+a_g = argmin score
+# affordability: shrink toward a_t by 0.85 until cost ≤ 0.75 · dv_left
+# deadband: keep the previous a_g unless the new one moved ≥ 6 km or 25%</code></pre>
+<div class="src">expert_controller.py:238–290, <code>_track_goal</code></div>
+<p>Three ideas layered on the basic formula:</p>
+<ul>
+<li><b>Receding horizon.</b> \(T_{\text{ctrl}}\) is a fraction of the time left, recomputed every step. Early on it is long and the commanded offset is gentle. As the deadline nears, or as \(\Delta\) shrinks, the offset adjusts. Because \(\delta a_{\text{cmd}}\) is proportional to \(\Delta\), the closure is a smooth spiral. The earlier build used a discrete "start the closing transfer now" trigger and scored 91.5%; the trigger could be skipped when the required apsis flipped and the closure time jumped by half a period. The smooth law removed that failure mode entirely.</li>
+<li><b>Both directions scored every step.</b> The short way may require an orbit below the perigee floor if the target itself is barely above 200 km. Then the long way round (\(\Delta \mp 2\pi\)) is the only option. The 1e5 penalty makes infeasible candidates lose without special-casing.</li>
+<li><b>Deadband.</b> Without it, the goal orbit slides continuously and the burn law chases it with a stream of small burns, paying spiral-transfer overhead. Holding the goal until it has moved by 6 km or 25% keeps the burns as discrete Hohmann pairs.</li>
+</ul>
+<p>The floor of 3 km on the commanded offset is deliberate: the expert never tries to zero the drift. It parks slightly off the target's orbit so the residual drift carries \(\Delta\lambda\) through zero and sweeps the chaser through the 30 km box. This is also why it cliffs on tight boxes. A 3 km offset at \(a = 7000\) km implies a relative speed of about \(\tfrac12 v\, \delta a / a \approx 1.6\) m/s, already above a 1 m/s tolerance before any guidance error.</p>
+<div class="plain"><div class="t">In plain words</div>
+<p>The gap between you and the target is an angle. Lower orbits go around faster, so being lower closes the angle from behind. The law computes how much lower you need to sit to close the angle in about two-thirds of the time you have left, and re-does that sum every minute. It also checks whether going the long way round would be cheaper or is the only legal option.</p></div>
+
+<h2 id="e6">6. PLAN: one decision at reset</h2>
+<p>The only thing decided once is the chase direction, \(d \in \{+1, -1\}\). For each direction the planner computes the full angle to sweep, the offset needed, the estimated time, and a cost:</p>
+\[\text{cost} = \max\!\big(\Delta v_{\bar e},\; \tfrac{n_t}{2}|a_p - a_s|\big) + \tfrac{n_t}{2}|a_p - a_t|\]
+<p>where \(\Delta v_{\bar e} = \tfrac{v_t}{2}\lVert \bar e_s - \bar e_t\rVert\) is the eccentricity-vector correction, folded in with the max because both can be done in the same burn pair. A 400 m/s penalty applies if the estimated time exceeds 85% of what is left, and a small tie-break favours the faster direction. The cheaper direction wins and is latched into <code>self.dirn</code>. Once the gap falls below 25° the latch is released and the controller takes the short way regardless.</p>
+<div class="src">expert_controller.py:293–321</div>
+
+<h2 id="e7">7. HOLD and the forward scan</h2>
+<p>When the gap is under about 5° (0.09 rad) and the shape error \(V\) is under 12 m/s, the controller asks a different question: if I stop burning now, will coasting carry me through the box?</p>
+<pre><code>def _scan(self, sat, tgt, t_rem):
+    horizon = min(t_rem − DT, 20 h)
+    drift   = |1.5 · n_t · (a_s − a_t)|                       # m/s of separation change
+    stride  = 1 if drift ≈ 0 else clamp(10 km / drift / DT, 1, 10)   # coarse steps
+    walk forward: propagate both bodies stride·DT at a time
+        d, dv = separation, relative speed
+        if d &lt; SAFE_R (26 km) and dv &lt; SAFE_V (42 m/s): return True, t
+        remember best_d, best_t
+    if stride &gt; 1: re-walk ±stride around best_t at 1-step resolution
+    return False, best_t</code></pre>
+<div class="src">expert_controller.py:373–401</div>
+<p>The stride adapts so each coarse step moves the separation by about 10 km, then the neighbourhood of the closest approach is re-checked at full resolution. The safe thresholds sit inside the real box (30 km, 50 m/s) so float error and small drift cannot push a predicted hit outside it.</p>
+<p>If a hit is found, mode becomes HOLD: the controller records the hit time, warps toward it, and re-scans every six decisions. If a re-scan ever fails to find a hit, it drops back to TRACK and resumes burning.</p>
+
+<h2 id="e8">8. Warps and cadence</h2>
+<pre><code>WARPS = ((11, 60), (10, 30), (9, 5))     # (action, minutes)
+def _warp(budget_s):
+    for act, tau in WARPS:
+        if tau·DT &lt;= budget_s: return act
+    return 0                              # plain 60 s coast</code></pre>
+<div class="src">expert_controller.py:404–409</div>
+<p>When no burn is taken, the controller picks the largest warp that fits a budget. The budget starts at 30 minutes, is capped at the time to the next burn window if \(V &gt; 0.6\) m/s, and capped at 5 minutes when the gap is under 0.25 rad so fine control near alignment is not lost. The 3 h and 6 h warps that exist in the larger action space are deliberately not used, so that actuator comparisons isolate burn granularity rather than cruise schedule.</p>
+
+<h2 id="e9">9. One decision, end to end</h2>
+<p>This is <code>_decide</code>, the function called once per action:</p>
+<ol>
+<li>If fewer than 60 s remain, coast.</li>
+<li>If still in PLAN mode, run the planner, switch to TRACK.</li>
+<li>If in HOLD: count down; on schedule, re-scan. Hit → warp toward it. Miss → back to TRACK.</li>
+<li><b>TRACK.</b> Ask the phasing law for the goal orbit \(a_g\). Set the goal eccentricity vector to the target's. Compute \(V\).</li>
+<li>Ask the burn law for the best burn. If it returns one, take it. Done.</li>
+<li>Otherwise, if close in phase and shape and the scan cooldown has expired, scan. Hit → enter HOLD and warp.</li>
+<li>Otherwise choose a warp under the budget rules and coast.</li>
+</ol>
+<div class="src">expert_controller.py:185–235</div>
+<div class="plain"><div class="t">In plain words, a typical episode</div>
+<p>Reset: 120° behind, 200 km below. PLAN says chase the short way, stay low. TRACK: the goal is a bit below the target orbit, so a few prograde burns raise the orbit toward it in a Hohmann pair, then long warps while drift closes the angle. As the angle shrinks the goal creeps toward the target orbit and small burns follow it. At 5° behind and nearly shape-matched, the scan finds a pass through the box in 40 minutes. HOLD: warp, warp, done.</p></div>
+
+<h2 id="e10">10. The constants and their reasons</h2>
+<div class="tbl"><table>
+<tr><th>Constant</th><th>Value</th><th>Reason</th></tr>
+<tr><td>PERIGEE_FLOOR</td><td>R<sub>E</sub> + 200 km</td><td>Operational drag floor. The environment only terminates at the surface, so this is stricter than the env.</td></tr>
+<tr><td>BURN_SLACK</td><td>0.12</td><td>Accept a burn recovering ≥ 88% of its cost in V, so near-optimal phases are used instead of waiting.</td></tr>
+<tr><td>DV_FLOOR</td><td>6 m/s</td><td>Never spent. Guards the stranded terminal.</td></tr>
+<tr><td>DA_FLOOR / DA_MAX</td><td>3 km / 340 km</td><td>Offset floor keeps Δλ moving through the box; ceiling bounds the round-trip Δv.</td></tr>
+<tr><td>TRACK_K</td><td>0.65</td><td>Fraction of remaining time the closure is planned over. Leaves margin for the final shape burns and the box pass.</td></tr>
+<tr><td>T_CTRL_MIN</td><td>5400 s</td><td>Do not plan a closure faster than one orbit; the drift law is first-order.</td></tr>
+<tr><td>DV_PLAN_FRAC</td><td>0.75</td><td>Commit at most three quarters of the tank to the current plan.</td></tr>
+<tr><td>SAFE_R / SAFE_V</td><td>26 km / 42 m/s</td><td>Aim inside the 30 km / 50 m/s box (0.87 and 0.84 of it).</td></tr>
+<tr><td>NEAR_LATCH</td><td>25°</td><td>Below this the direction latch releases; take the short way.</td></tr>
+<tr><td>A_DEADBAND</td><td>6 km or 25%</td><td>Hold the goal so burns stay discrete pairs.</td></tr>
+<tr><td>V deadzone</td><td>0.4 m/s</td><td>Below the smallest useful burn; stop trimming.</td></tr>
+<tr><td>Scan gate</td><td>Δλ &lt; 0.09 rad and V &lt; 12 m/s</td><td>Only scan when a coast-through is plausible; the scan costs up to 1200 propagations.</td></tr>
+</table></div>
+
+<h2 id="e11">11. What it proved, and what it is not</h2>
+<ul>
+<li><b>Feasibility gate.</b> 99.2% with only discrete actions and only the observation means every downstream RL failure is a learning problem, not a reachability problem. That is its primary purpose.</li>
+<li><b>Regression detector.</b> When the phase observation mode changed, the decoder silently broke and the expert went from 12/12 to 0/12 on a smoke set. That would have poisoned any imitation arm, and the expert caught it.</li>
+<li><b>Red-team reference.</b> Adversarial tests instantiate it as the known-good controller to compare degenerate policies against.</li>
+<li><b>Fuel and time comparator.</b> It spends about 1.30× the shape-only two-impulse bound versus the policy's 1.58×, and about 40% of the 478 m/s tank at median. The policy is about twice as fast, median 417–972 steps against roughly 1900.</li>
+<li><b>Not a teacher.</b> It was proposed as a kickstart or DAgger guide and never used as one. Every kickstart and DAgger anchor in the project is a learned checkpoint. Behaviour cloning from a script was twice refuted earlier in the project and is listed only as a contingency.</li>
+</ul>
+<p>Two different 99.2% figures exist in the project. The expert's is 496/500 across four seeds. A policy lineage, J2-A3b pooled over two seeds, also scores 595/600 = 99.2%. They are unrelated.</p>
+
+<div class="foot">
+Sources: <code>scripts/orbital/t1_lambert_baseline.py</code>, <code>scripts/orbital/t3/expert_controller.py</code>, <code>scripts/orbital/t3/t3_expert_model.py</code>, <code>T1_LAMBERT_BASELINE.md</code>, <code>T3_RECOVERY_CAMPAIGN.md</code>, <code>FUEL_AUDIT.md</code>, <code>scripts/orbital/t3/reports/recon_expert_baseline.md</code>. Lambert formulation after Lancaster &amp; Blanchard (1969) and Izzo (2015). Line numbers as of 2026-09-26.
+</div>
+</main>
+</div>
