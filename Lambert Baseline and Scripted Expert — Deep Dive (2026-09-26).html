@@ -91,6 +91,18 @@ mjx-container[display="true"]{margin:10px 0 14px!important;overflow-x:auto;overf
   <a class="sub" href="#e10">10. Constants and their reasons</a>
   <a class="sub" href="#e11">11. What it proved</a>
   <a class="sub" href="#e12">12. A traced episode</a>
+  <div class="part">Part III · Build it yourself</div>
+  <a class="sub" href="#p0">0. What we are building</a>
+  <a class="sub" href="#p1">1. An orbit as four numbers</a>
+  <a class="sub" href="#p2">2. Burns and distances</a>
+  <a class="sub" href="#p3">3. The fuel-cost metric</a>
+  <a class="sub" href="#p4">4. PLAN</a>
+  <a class="sub" href="#p5">5. The phasing law</a>
+  <a class="sub" href="#p6">6. The burn law</a>
+  <a class="sub" href="#p7">7. The scan</a>
+  <a class="sub" href="#p8">8. One decision</a>
+  <a class="sub" href="#p9">9. Run it</a>
+  <a class="sub" href="#p10">10. Things to try</a>
 </nav>
 
 <main>
@@ -474,8 +486,293 @@ def _warp(budget_s):
 <div class="plain"><div class="t">In plain words</div>
 <p>First it fixes the shape of its orbit with one up-burn and one down-burn half an orbit apart. Then it parks a bit above the target and lets the target catch up for a day and a half, nudging its parking height down a few times as the gap shrinks. When a quick simulation says coasting will carry it through the finish box, it stops touching the throttle and fast-forwards.</p></div>
 
+
+<!-- ═══════════════════════ PART III ═══════════════════════ -->
+<h2 id="p0">Part III · 0. What we are building</h2>
+<p>A working copy of the expert in about 200 lines of plain Python, no environment needed. Run it with <code>python3 scripts/orbital/t3/mini_expert.py</code>. It is the same six rules as the real controller with the red-team plumbing removed. Read each block, then the sentence under it that says what it is for. The full file is committed next to the real one.</p>
+<div class="plain"><div class="t">What is deliberately simpler than the real one</div>
+<p>It reads the true orbits directly instead of decoding the 38-number observation. It has no fuel-mass model. Only prograde and retrograde burns, no radial. Fewer guard rails. The structure and every constant are the same.</p></div>
+
+<h2 id="p1">1. An orbit as four numbers</h2>
+<p>Everything starts from a dictionary with four entries. <code>a</code> is the size (average distance from Earth's centre). <code>e</code> is the shape, zero for a circle. <code>omega</code> is which direction the oval points. <code>M</code> is a clock angle that ticks forward at a perfectly steady rate.</p>
+<pre><code>def make_orbit(a, e, omega, M):
+    return {&#x27;a&#x27;: a, &#x27;e&#x27;: e, &#x27;omega&#x27;: omega, &#x27;M&#x27;: M % TWO_PI}
+
+def mean_motion(a):
+    return math.sqrt(MU / a ** 3)
+
+def propagate(o, dt):
+    &quot;&quot;&quot;Coast for dt seconds. Only the clock angle changes.&quot;&quot;&quot;
+    return make_orbit(o[&#x27;a&#x27;], o[&#x27;e&#x27;], o[&#x27;omega&#x27;], o[&#x27;M&#x27;] + mean_motion(o[&#x27;a&#x27;]) * dt)</code></pre>
+<p>Coasting is one line: add rate × time to the clock. Nothing else about the orbit changes while you coast. That is the whole of two-body physics and the reason the real environment can fast-forward six hours exactly.</p>
+<pre><code>def solve_kepler(M, e):
+    &quot;&quot;&quot;Clock angle M -&gt; geometric angle E, by Newton&#x27;s method.&quot;&quot;&quot;
+    E = M
+    for _ in range(8):
+        E -= (E - e * math.sin(E) - M) / (1.0 - e * math.cos(E))
+    return E
+
+def to_cartesian(o):
+    &quot;&quot;&quot;Orbit -&gt; (x, y, vx, vy) in metres and m/s.&quot;&quot;&quot;
+    E = solve_kepler(o[&#x27;M&#x27;], o[&#x27;e&#x27;])
+    theta = 2.0 * math.atan2(math.sqrt(1 + o[&#x27;e&#x27;]) * math.sin(E / 2),
+                             math.sqrt(1 - o[&#x27;e&#x27;]) * math.cos(E / 2))
+    p = o[&#x27;a&#x27;] * (1 - o[&#x27;e&#x27;] ** 2)
+    r = p / (1 + o[&#x27;e&#x27;] * math.cos(theta))
+    h = math.sqrt(MU * p)
+    xp, yp = r * math.cos(theta), r * math.sin(theta)
+    vxp, vyp = -(MU / h) * math.sin(theta), (MU / h) * (o[&#x27;e&#x27;] + math.cos(theta))
+    c, s = math.cos(o[&#x27;omega&#x27;]), math.sin(o[&#x27;omega&#x27;])
+    return (c * xp - s * yp, s * xp + c * yp, c * vxp - s * vyp, s * vxp + c * vyp)</code></pre>
+<p>The clock angle M is not where you actually are, because a satellite moves faster near Earth and slower far away. Kepler's equation converts M to the real angle, and Newton's method is how it is solved. Then <code>to_cartesian</code> turns the orbit into a position and velocity so we can measure distances and apply burns.</p>
+
+<h2 id="p2">2. Burns and distances</h2>
+<pre><code>def from_cartesian(x, y, vx, vy):
+    &quot;&quot;&quot;(x, y, vx, vy) -&gt; orbit. The inverse of to_cartesian.&quot;&quot;&quot;
+    r = math.hypot(x, y); v2 = vx * vx + vy * vy; rv = x * vx + y * vy
+    a = 1.0 / (2.0 / r - v2 / MU)
+    ex = ((v2 - MU / r) * x - rv * vx) / MU
+    ey = ((v2 - MU / r) * y - rv * vy) / MU
+    e = math.hypot(ex, ey)
+    omega = math.atan2(ey, ex) if e &gt; 1e-12 else 0.0
+    theta = math.atan2(y, x) - omega
+    E = 2.0 * math.atan2(math.sqrt(1 - e) * math.sin(theta / 2),
+                         math.sqrt(1 + e) * math.cos(theta / 2))
+    return make_orbit(a, e, omega, E - e * math.sin(E))
+
+def apply_burn(o, dv_prograde):
+    &quot;&quot;&quot;Instant push along (+) or against (-) the direction of travel.&quot;&quot;&quot;
+    x, y, vx, vy = to_cartesian(o)
+    v = math.hypot(vx, vy)
+    return from_cartesian(x, y, vx + dv_prograde * vx / v, vy + dv_prograde * vy / v)</code></pre>
+<p>The inverse: given a position and velocity, recover the four orbit numbers. You need this because a burn is easy to express as "add to velocity" but the controller thinks in orbits.</p>
+<pre><code>def separation(sat, tgt):
+    &quot;&quot;&quot;Straight-line distance (m) and relative speed (m/s).&quot;&quot;&quot;
+    sx, sy, svx, svy = to_cartesian(sat); tx, ty, tvx, tvy = to_cartesian(tgt)
+    return math.hypot(sx - tx, sy - ty), math.hypot(svx - tvx, svy - tvy)
+
+def wrap_pi(x):
+    return (x + math.pi) % TWO_PI - math.pi
+
+def longitude(o):
+    &quot;&quot;&quot;Where you are around the Earth, as one angle: pointing + clock.&quot;&quot;&quot;
+    return o[&#x27;omega&#x27;] + o[&#x27;M&#x27;]</code></pre>
+<p>A burn is: convert to position and velocity, nudge the velocity along the direction of travel, convert back. <code>separation</code> is the finish-line check, straight-line distance and relative speed. <code>longitude</code> is the one angle that says where you are around the Earth: pointing angle plus clock angle. The gap between chaser and target is the difference of their longitudes.</p>
+<pre><code># ── 2. The action menu (a subset of the env&#x27;s) ──────────────────────────────
+BURNS = [1, 2, 5, 10, 25, -1, -2, -5, -10, -25]      # m/s prograde (+) / retro (-)
+WARPS = [60, 30, 5]                                  # minutes of fast-forward
+
+# ── 3. Tuning constants, same names as the real controller ─────────────────
+PERIGEE_FLOOR = R_E + 200e3    # never dip below 200 km altitude
+BURN_SLACK = 0.12              # a burn must recover &gt;= 88% of its cost
+TRACK_K = 0.65                 # plan the closure over 65% of time left
+T_CTRL_MIN = 5400.0            # ...but never faster than 90 minutes
+DA_FLOOR, DA_MAX = 3e3, 340e3  # commanded offset limits, m
+A_DEADBAND = 6e3               # ignore goal changes smaller than this, m
+SAFE_R, SAFE_V = 26e3, 42.0    # aim inside the 30 km / 50 m/s box
+BOX_R, BOX_V = 30e3, 50.0      # the actual success box</code></pre>
+<p>The menu of moves, and the tuning constants. Every constant here has the same name and value as the real controller, so the table in Part II §10 applies.</p>
+
+<h2 id="p3">3. The fuel-cost metric</h2>
+<pre><code>    # ── 4. The error metric: &quot;how much fuel to reach the goal orbit?&quot; ──────
+    @staticmethod
+    def cost_to_go(o, a_goal, e_goal):
+        &quot;&quot;&quot;V = max(size error, shape error), both in m/s.
+        A tangential burn dv changes a by 2dv/n and the e-vector by 2dv/v,
+        so dividing by those turns both errors into m/s. An antipodal burn
+        pair can null both at once for exactly max(|A|, |E|) of fuel.&quot;&quot;&quot;
+        n, v = mean_motion(a_goal), math.sqrt(MU / a_goal)
+        A = n * (o[&#x27;a&#x27;] - a_goal) / 2
+        ex, ey = o[&#x27;e&#x27;] * math.cos(o[&#x27;omega&#x27;]), o[&#x27;e&#x27;] * math.sin(o[&#x27;omega&#x27;])
+        E = v * math.hypot(ex - e_goal[0], ey - e_goal[1]) / 2
+        return max(abs(A), E)</code></pre>
+<div class="plain"><div class="t">In plain words</div>
+<p>This function answers one question: "if I wanted to get from my current orbit to the goal orbit as cheaply as possible, how many m/s of fuel would it take?" It has two parts. The size error, converted to fuel. The shape error, converted to fuel. The answer is the larger of the two, because a well-placed pair of burns can fix both at once and you only pay for the bigger one.</p></div>
+<p>Why the conversions work: a small forward burn of <code>dv</code> raises the size by <code>2·dv/n</code> and changes the shape vector by <code>2·dv/v</code>. Dividing the errors by those factors turns kilometres and dimensionless shape into m/s. This is the only piece of orbital mechanics in the controller that is not just bookkeeping, and it is why everything downstream is simple.</p>
+
+<h2 id="p4">4. PLAN: pick a direction, once</h2>
+<pre><code>    # ── 5. PLAN: pick the drift direction once ─────────────────────────────
+    def plan(self, sat, tgt, t_rem):
+        dl = wrap_pi(longitude(sat) - longitude(tgt))
+        n_t = mean_motion(tgt[&#x27;a&#x27;])
+        T_ctrl = max(T_CTRL_MIN, TRACK_K * t_rem)
+        best = None
+        for dirn in (+1, -1):
+            # angle still to sweep if we drive the gap up (+1) or down (-1)
+            psi = (-dl) % TWO_PI if dirn &gt; 0 else dl % TWO_PI
+            da = -math.copysign(psi, dirn) * tgt[&#x27;a&#x27;] / (1.5 * n_t * T_ctrl)
+            da = math.copysign(min(abs(da), DA_MAX), da)
+            a_park = max(tgt[&#x27;a&#x27;] + da, PERIGEE_FLOOR / (1 - tgt[&#x27;e&#x27;]))
+            eta = psi / (1.5 * n_t * abs(a_park - tgt[&#x27;a&#x27;]) / tgt[&#x27;a&#x27;])
+            cost = n_t * (abs(a_park - sat[&#x27;a&#x27;]) + abs(a_park - tgt[&#x27;a&#x27;])) / 2
+            score = cost + (400.0 if eta &gt; 0.85 * t_rem else 0.0)
+            if best is None or score &lt; best[0]:
+                best = (score, dirn)
+        self.dirn = best[1]</code></pre>
+<p>If you are ahead of the target, you can park higher and let it catch up (drive the gap down), or park lower and lap it (drive the gap up). For each option: how many degrees would I have to sweep, how far from the target's orbit would I have to park to sweep it in the time I have, how long would that take, and what would the round trip cost. Pick the cheaper, with a penalty if it would take more than 85% of the remaining time. The chosen sign is stored and used until the gap is small.</p>
+
+<h2 id="p5">5. The phasing law: which orbit should I be parked on?</h2>
+<pre><code>    # ── 6. PHASING LAW: which orbit should I be parked on right now? ───────
+    def track_goal(self, sat, tgt, t_rem):
+        dl = wrap_pi(longitude(sat) - longitude(tgt))
+        n_t = mean_motion(tgt[&#x27;a&#x27;])
+        if abs(dl) &lt; math.radians(25):
+            delta = -dl                                   # close: take the short way
+        else:
+            delta = (-dl) % TWO_PI if self.dirn &gt; 0 else -(dl % TWO_PI)
+        T_ctrl = max(T_CTRL_MIN, TRACK_K * t_rem)
+        # Two orbits drift apart at 1.5 * n_t * da / a_t rad/s. Solve for the
+        # da that closes `delta` in T_ctrl seconds.
+        da = -delta * tgt[&#x27;a&#x27;] / (1.5 * n_t * T_ctrl)
+        if abs(da) &lt; DA_FLOOR:                            # never park exactly on it
+            da = math.copysign(DA_FLOOR, da if da else -1.0)
+        da = math.copysign(min(abs(da), DA_MAX), da)
+        a_goal = max(tgt[&#x27;a&#x27;] + da, PERIGEE_FLOOR / (1 - tgt[&#x27;e&#x27;]))
+        # Deadband: keep the old goal unless the new one moved meaningfully.
+        if self.a_hold is None or abs(a_goal - self.a_hold) &gt; A_DEADBAND:
+            self.a_hold = a_goal
+        return self.a_hold</code></pre>
+<div class="plain"><div class="t">In plain words</div>
+<p>Two satellites at slightly different heights drift apart at a rate proportional to the height difference. Turn that around: given the angle I still need to close and the time I want to close it in, solve for the height difference. That is <code>da</code>. Recompute it every minute, so as the gap shrinks the parking height creeps toward the target's.</p></div>
+<p>Three guards on top of the formula. <code>DA_FLOOR</code>: never park exactly on the target's orbit, because then the gap stops moving and you never drift through the box. <code>DA_MAX</code> and the perigee floor: don't ask for absurd or dangerous parking orbits. The deadband: only update the goal if it moved more than 6 km, so the burn law below executes a few clean pairs instead of a dribble of tiny burns.</p>
+
+<h2 id="p6">6. The burn law: is any single burn worth it right now?</h2>
+<pre><code>    # ── 7. BURN LAW: is any single burn worth it right now? ────────────────
+    def choose_burn(self, sat, a_goal, e_goal):
+        V0 = self.cost_to_go(sat, a_goal, e_goal)
+        if V0 &lt; 0.4:
+            return None
+        best_act, best_gain = None, 0.0
+        for dv in BURNS:
+            after = apply_burn(sat, dv)                   # simulate it
+            if after[&#x27;a&#x27;] &lt;= 0 or after[&#x27;a&#x27;] * (1 - after[&#x27;e&#x27;]) &lt; PERIGEE_FLOOR:
+                continue                                  # escape or too low
+            V1 = self.cost_to_go(after, a_goal, e_goal)
+            gain = (V0 - V1) - abs(dv) * (1 - BURN_SLACK)  # saved minus 88% of cost
+            if gain &gt; best_gain:
+                best_gain, best_act = gain, dv
+        return best_act</code></pre>
+<div class="plain"><div class="t">In plain words</div>
+<p>Look at the fuel cost to reach the goal orbit from here. For each burn on the menu, pretend to do it and look at the fuel cost from the new orbit. If the cost dropped by more than the burn itself cost (with 12% slack), it was a good burn. Do the best one. If none qualifies, don't burn.</p></div>
+<p>This is the heart of the controller and it has no orbital-mechanics knowledge in it at all. The knowledge is all in <code>cost_to_go</code>. Because that cost is the true two-burn optimum, greedily reducing it reproduces the textbook two-burn transfer, at the right places on the orbit, without ever mentioning apsides. A burn at the wrong place reduces the cost by less than it spends and is rejected automatically.</p>
+
+<h2 id="p7">7. The scan: will coasting carry me through the box?</h2>
+<pre><code>    # ── 8. HOLD SCAN: will coasting carry me through the box? ──────────────
+    def scan(self, sat, tgt, t_rem):
+        s, t = sat, tgt
+        for k in range(int(min(t_rem, 20 * 3600) / DT)):
+            d, dv = separation(s, t)
+            if d &lt; SAFE_R and dv &lt; SAFE_V:
+                return True, k * DT
+            s, t = propagate(s, DT), propagate(t, DT)
+        return False, 0.0</code></pre>
+<p>Walk both orbits forward one minute at a time, up to 20 hours, checking the finish condition with a safety margin (26 km / 42 m/s instead of 30 / 50). Return the first time it would be satisfied. The real controller strides through coarse steps first and refines; this one just walks.</p>
+
+<h2 id="p8">8. One decision</h2>
+<pre><code>    # ── 9. Put it together: one decision ───────────────────────────────────
+    def act(self, sat, tgt):
+        &quot;&quot;&quot;Returns (&#x27;burn&#x27;, dv) | (&#x27;warp&#x27;, minutes) | (&#x27;coast&#x27;, 1).&quot;&quot;&quot;
+        t_rem = (self.cap_steps - self.steps) * DT
+        if self.mode == &#x27;PLAN&#x27;:
+            self.plan(sat, tgt, t_rem)
+            self.mode = &#x27;TRACK&#x27;
+
+        if self.mode == &#x27;HOLD&#x27;:
+            if self.hold_t &lt;= 0:
+                hit, t_hit = self.scan(sat, tgt, t_rem)
+                if not hit:
+                    self.mode = &#x27;TRACK&#x27;
+                self.hold_t = t_hit
+            if self.mode == &#x27;HOLD&#x27;:
+                return self.warp(self.hold_t)
+
+        a_goal = self.track_goal(sat, tgt, t_rem)
+        e_goal = (tgt[&#x27;e&#x27;] * math.cos(tgt[&#x27;omega&#x27;]), tgt[&#x27;e&#x27;] * math.sin(tgt[&#x27;omega&#x27;]))
+        dv = self.choose_burn(sat, a_goal, e_goal)
+        if dv is not None:
+            return (&#x27;burn&#x27;, dv)
+
+        gap = abs(wrap_pi(longitude(sat) - longitude(tgt)))
+        if gap &lt; 0.09 and self.cost_to_go(sat, a_goal, e_goal) &lt; 12.0:
+            hit, t_hit = self.scan(sat, tgt, t_rem)
+            if hit:
+                self.mode, self.hold_t = &#x27;HOLD&#x27;, t_hit
+                return self.warp(t_hit)
+        return self.warp(300.0 if gap &lt; 0.25 else 1800.0)
+
+    def warp(self, budget_s):
+        for minutes in WARPS:
+            if minutes * 60 &lt;= budget_s:
+                self.hold_t -= minutes * 60
+                return (&#x27;warp&#x27;, minutes)
+        self.hold_t -= DT
+        return (&#x27;coast&#x27;, 1)</code></pre>
+<p>Read <code>act</code> top to bottom and you have the whole controller. First time only: plan. If holding: re-scan when the countdown runs out, otherwise warp toward the hit. Otherwise: get the goal orbit from the phasing law, ask the burn law for a burn, take it if offered. If not, and we are close in angle and cheap in shape, scan; on a hit, switch to HOLD. Otherwise pick the biggest warp that fits: 30 minutes normally, 5 minutes when the gap is under 0.25 rad so fine control is not lost.</p>
+
+<h2 id="p9">9. Run it</h2>
+<pre><code># ── 10. Run one episode and narrate it ──────────────────────────────────────
+def run(sat, tgt, cap_steps=3000, verbose=True):
+    ctl = MiniExpert(cap_steps)
+    dv_total, step, last_mode = 0.0, 0, None
+    while step &lt; cap_steps:
+        mode = ctl.mode
+        kind, val = ctl.act(sat, tgt)
+        if kind == &#x27;burn&#x27;:
+            sat = apply_burn(sat, val); dv_total += abs(val); tau = 1
+        else:
+            tau = val if kind == &#x27;warp&#x27; else 1
+        for _ in range(tau):                    # sub-step so the box check is exact
+            sat, tgt = propagate(sat, DT), propagate(tgt, DT)
+            step += 1; ctl.steps = step
+            d, rv = separation(sat, tgt)
+            if d &lt; BOX_R and rv &lt; BOX_V:
+                if verbose:
+                    print(f&quot;  SUCCESS at step {step} ({step/60:.1f} h): d={d/1e3:.1f} km, &quot;
+                          f&quot;vrel={rv:.1f} m/s, total dv={dv_total:.0f} m/s&quot;)
+                return True, dv_total, step
+        if verbose and (kind == &#x27;burn&#x27; or mode != last_mode):
+            gap = math.degrees(wrap_pi(longitude(sat) - longitude(tgt)))
+            print(f&quot;  step {step:5d} {mode:&lt;5} alt={(sat[&#x27;a&#x27;]-R_E)/1e3:6.1f} km &quot;
+                  f&quot;e={sat[&#x27;e&#x27;]:.4f} gap={gap:+7.2f} deg  -&gt; {kind} {val}&quot;)
+        last_mode = mode
+    return False, dv_total, step
+
+
+if __name__ == &#x27;__main__&#x27;:
+    # Roughly the seed-42 episode: chaser 556 km, e=0.045, 91 deg ahead;
+    # target 429 km, e=0.005.
+    tgt = make_orbit(R_E + 428.6e3, 0.005, 0.3, 1.0)
+    sat = make_orbit(R_E + 556.2e3, 0.045, 1.1, 1.0 + 0.3 - 1.1 + math.radians(90.9))
+    print(&quot;chaser ahead by&quot;, round(math.degrees(wrap_pi(longitude(sat) - longitude(tgt))), 1), &quot;deg&quot;)
+    run(sat, tgt)</code></pre>
+<p>The runner propagates one minute at a time even during warps so the finish check is exact, and prints a line on every burn and every mode change. Output for the seed-42-like setup (chaser 556 km, e = 0.045, 91° ahead; target 429 km, e = 0.005):</p>
+<pre><code>chaser ahead by 90.9 deg
+  step   121 TRACK alt= 600.3 km e=0.0386 gap= +77.98 deg  -&gt; burn 25
+  step   122 TRACK alt= 645.1 km e=0.0324 gap= +77.81 deg  -&gt; burn 25
+  step   123 TRACK alt= 663.2 km e=0.0301 gap= +77.62 deg  -&gt; burn 10
+  step   154 TRACK alt= 644.1 km e=0.0280 gap= +71.68 deg  -&gt; burn -10
+  step   155 TRACK alt= 634.6 km e=0.0270 gap= +71.51 deg  -&gt; burn -5
+  ...  (retro burns every 30–90 min as the goal steps down)
+  step   462 TRACK alt= 543.1 km e=0.0179 gap= +24.14 deg  -&gt; burn -25
+  step   554 TRACK alt= 479.0 km e=0.0100 gap= +16.77 deg  -&gt; burn -25
+  step   739 TRACK alt= 441.2 km e=0.0052 gap= +11.15 deg  -&gt; burn -1
+  step  1222 TRACK alt= 435.9 km e=0.0049 gap=  +6.07 deg  -&gt; burn -1
+  step  1492 HOLD  alt= 435.9 km e=0.0049 gap=  +4.40 deg  -&gt; warp 60
+  SUCCESS at step 2165 (36.1 h): d=29.6 km, vrel=31.8 m/s, total dv=183 m/s</code></pre>
+<p>Same story as the real trace in Part II §12: burn up first to start fixing the shape, then step down through parking orbits while the gap closes, then HOLD and warp in. The mini version spreads the shape fix over more of the descent (it lacks the real controller's "wait for the next apsis" timing cap), which here happened to save fuel and time. That difference is itself a lesson: the timing of burns matters as much as their size.</p>
+
+<h2 id="p10">10. Things to try</h2>
+<ul>
+<li>Set <code>DA_FLOOR = 0</code> and watch it park exactly on the target orbit and never arrive.</li>
+<li>Set <code>A_DEADBAND = 0</code> and count the burns. Then compare total Δv.</li>
+<li>Set <code>TRACK_K = 0.3</code> (rush) and <code>0.9</code> (dawdle). Which fails, and how?</li>
+<li>Remove the <code>BURN_SLACK</code> and see how much longer it waits for a perfect burn spot.</li>
+<li>Start the chaser <em>behind</em> the target (negative gap) and confirm PLAN parks it lower.</li>
+<li>Set <code>BOX_R = 5e3, BOX_V = 1.0</code> and see the tight-box cliff from Part II §5 for yourself.</li>
+</ul>
+
 <div class="foot">
-Sources: <code>scripts/orbital/t1_lambert_baseline.py</code>, <code>scripts/orbital/t3/expert_controller.py</code>, <code>scripts/orbital/t3/t3_expert_model.py</code>, <code>T1_LAMBERT_BASELINE.md</code>, <code>T3_RECOVERY_CAMPAIGN.md</code>, <code>FUEL_AUDIT.md</code>, <code>scripts/orbital/t3/reports/recon_expert_baseline.md</code>. Lambert formulation after Lancaster &amp; Blanchard (1969) and Izzo (2015). Line numbers as of 2026-09-26.
+Sources: <code>scripts/orbital/t1_lambert_baseline.py</code>, <code>scripts/orbital/t3/expert_controller.py</code>, <code>scripts/orbital/t3/t3_expert_model.py</code>, <code>scripts/orbital/t3/mini_expert.py</code>, <code>T1_LAMBERT_BASELINE.md</code>, <code>T3_RECOVERY_CAMPAIGN.md</code>, <code>FUEL_AUDIT.md</code>, <code>scripts/orbital/t3/reports/recon_expert_baseline.md</code>. Lambert formulation after Lancaster &amp; Blanchard (1969) and Izzo (2015). Line numbers as of 2026-09-26.
 </div>
 </main>
 </div>
