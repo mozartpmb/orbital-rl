@@ -90,6 +90,7 @@ mjx-container[display="true"]{margin:10px 0 14px!important;overflow-x:auto;overf
   <a class="sub" href="#e9">9. One decision, end to end</a>
   <a class="sub" href="#e10">10. Constants and their reasons</a>
   <a class="sub" href="#e11">11. What it proved</a>
+  <a class="sub" href="#e12">12. A traced episode</a>
 </nav>
 
 <main>
@@ -449,6 +450,29 @@ def _warp(budget_s):
 <li><b>Not a teacher.</b> It was proposed as a kickstart or DAgger guide and never used as one. Every kickstart and DAgger anchor in the project is a learned checkpoint. Behaviour cloning from a script was twice refuted earlier in the project and is listed only as a contingency.</li>
 </ul>
 <p>Two different 99.2% figures exist in the project. The expert's is 496/500 across four seeds. A policy lineage, J2-A3b pooled over two seeds, also scores 595/600 = 99.2%. They are unrelated.</p>
+
+
+<h2 id="e12">12. A traced episode, decision by decision</h2>
+<p>Seed 42, episode 0, T3 configuration, cap 3000 steps (50 h). Chaser at 556 km on an eccentric orbit (e = 0.045), target at 429 km nearly circular (e = 0.005), chaser 91° <em>ahead</em>. Every decision was logged; the table keeps the ones where something changed.</p>
+<div class="tbl"><table>
+<tr><th>Hour</th><th>Mode</th><th>Chaser alt</th><th>Goal a<sub>g</sub> − a<sub>t</sub></th><th>Gap Δλ</th><th>V (m/s)</th><th>What happened</th></tr>
+<tr><td>0.0</td><td>PLAN</td><td>556</td><td>+54.6 km</td><td>+90.9°</td><td>186</td><td>Direction: go higher, let the target catch up (short way). Offset from the drift formula.</td></tr>
+<tr><td>0.3</td><td>TRACK</td><td>556 → 693</td><td>+54.6</td><td>+89°</td><td>186 → 117</td><td>Six prograde burns, +76 m/s, at an apsis of the error vector. First half of the pair that kills e = 0.045.</td></tr>
+<tr><td>1.2–1.5</td><td>TRACK</td><td>693 → 472</td><td>+54.6</td><td>+77°</td><td>117 → 6.5</td><td>Half an orbit later, 16 retrograde burns, −117 m/s. Second half of the pair. e now 0.0066.</td></tr>
+<tr><td>2.3–2.5</td><td>TRACK</td><td>472 → 482</td><td>+54.6</td><td>+74°</td><td>6.5 → 1.1</td><td>Six +1 m/s trims to sit on the goal orbit.</td></tr>
+<tr><td>2.5–9.4</td><td>TRACK</td><td>482</td><td>+54.6</td><td>+74° → +55°</td><td>1.1</td><td>Warp 30, warp 5, coast, repeat. Drift closes ~2.2° per hour.</td></tr>
+<tr><td>9.4</td><td>TRACK</td><td>482 → 470</td><td>+40.6</td><td>+55°</td><td>7.3 → 0.5</td><td>Deadband crossed; goal steps down. Five small retro burns.</td></tr>
+<tr><td>21.9</td><td>TRACK</td><td>470 → 459</td><td>+30.4</td><td>+28°</td><td>6.0 → 0.3</td><td>Second step down.</td></tr>
+<tr><td>30.8</td><td>TRACK</td><td>459 → 452</td><td>+22.6</td><td>+14°</td><td>4.4 → 0.6</td><td>Third step down.</td></tr>
+<tr><td>36.7</td><td>TRACK</td><td>452 → 446</td><td>+16.5</td><td>+7°</td><td>3.8 → 0.8</td><td>Fourth step down. Offset never driven to zero.</td></tr>
+<tr><td>40.0</td><td>TRACK → HOLD</td><td>446</td><td>+16.5</td><td>+5.1°</td><td>0.8</td><td>Gap &lt; 0.09 rad and V &lt; 12: scan runs, finds a box pass at ~44 h. Stop burning.</td></tr>
+<tr><td>41–44</td><td>HOLD</td><td>446</td><td>+16.5</td><td>+5° → +0.5°</td><td>0.8</td><td>Three 60-min warps, re-scan confirms. Success at step 2664, 44.4 h.</td></tr>
+</table></div>
+<p>Totals: 221 m/s commanded (the plan estimated 217), of which roughly 170 was the eccentricity correction; the altitude change alone would have cost 71 m/s by Hohmann. 331 decisions, 37 of them burns. 89% of the clock used, which is the K = 0.65 horizon doing what it was designed to do.</p>
+<div class="why"><div class="t">The moment that explains the whole design</div>
+<p>The target is 128 km below, and the first thing the expert does is burn <em>up</em>. That is not a mistake. It is the antipodal pair that nulls V = max(|A|, |E|): with |A| ≈ 40 and |E| ≈ 170 m/s the two burns are (−40 + 185)/2 = +72 and (−40 − 185)/2 = −113, and the trace shows +76 then −117. The greedy law found the Hohmann-style pair, at the correct apsides, because V is the true two-impulse cost and not a heuristic.</p></div>
+<div class="plain"><div class="t">In plain words</div>
+<p>First it fixes the shape of its orbit with one up-burn and one down-burn half an orbit apart. Then it parks a bit above the target and lets the target catch up for a day and a half, nudging its parking height down a few times as the gap shrinks. When a quick simulation says coasting will carry it through the finish box, it stops touching the throttle and fast-forwards.</p></div>
 
 <div class="foot">
 Sources: <code>scripts/orbital/t1_lambert_baseline.py</code>, <code>scripts/orbital/t3/expert_controller.py</code>, <code>scripts/orbital/t3/t3_expert_model.py</code>, <code>T1_LAMBERT_BASELINE.md</code>, <code>T3_RECOVERY_CAMPAIGN.md</code>, <code>FUEL_AUDIT.md</code>, <code>scripts/orbital/t3/reports/recon_expert_baseline.md</code>. Lambert formulation after Lancaster &amp; Blanchard (1969) and Izzo (2015). Line numbers as of 2026-09-26.
