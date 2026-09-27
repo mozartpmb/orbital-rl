@@ -1,0 +1,492 @@
+<title>Rebuild the Dynamics</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<script>window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] }, svg: { fontCache: 'global' } };</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
+<style>
+:root{--paper:#F2F4F6;--paper-2:#E8ECF0;--ink:#182130;--ink-2:#4A5568;--rule:#C9D1DA;--burn:#D4561C;--arc:#1E7686;--code-bg:#E9EDF1;--code-ink:#1F2A3A;--plain-bg:#FFFFFF;--c-bg:#EEE9DF;--c-ink:#3A3020}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#0F141B;--paper-2:#161D26;--ink:#E3E8EF;--ink-2:#9AA6B6;--rule:#2A3441;--burn:#F07A3E;--arc:#4FB3C4;--code-bg:#161D26;--code-ink:#DCE3EC;--plain-bg:#131A22;--c-bg:#221E17;--c-ink:#E6DCC8}}
+:root[data-theme="dark"]{--paper:#0F141B;--paper-2:#161D26;--ink:#E3E8EF;--ink-2:#9AA6B6;--rule:#2A3441;--burn:#F07A3E;--arc:#4FB3C4;--code-bg:#161D26;--code-ink:#DCE3EC;--plain-bg:#131A22;--c-bg:#221E17;--c-ink:#E6DCC8}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;font-size:17px;line-height:1.55;margin:0}
+.wrap{display:grid;grid-template-columns:230px minmax(0,72ch);gap:48px;max-width:1120px;margin:0 auto;padding:40px 24px 96px}
+@media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr)}nav.toc{position:static;border:0;padding:0 0 24px}}
+nav.toc{position:sticky;top:24px;align-self:start;font-size:14px;border-right:1px solid var(--rule);padding-right:20px}
+nav.toc .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin-bottom:10px}
+nav.toc a{display:block;color:var(--ink-2);text-decoration:none;padding:3px 0}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);outline:none}
+h1,h2,h3{font-family:"Newsreader",Georgia,serif;font-weight:500;line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:44px;margin-bottom:8px}
+h2{font-size:30px;margin:64px 0 16px;padding-top:24px;border-top:1px solid var(--rule)}
+.kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+.lede{font-size:19px;color:var(--ink-2);margin:12px 0 0}
+p{margin:0 0 14px}
+code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.86em;background:var(--code-bg);color:var(--code-ink);padding:1px 5px;border-radius:3px}
+pre{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13.5px;line-height:1.5;background:var(--code-bg);color:var(--code-ink);padding:14px 16px;overflow-x:auto;margin:12px 0 18px;border-left:3px solid var(--arc)}
+pre.c{background:var(--c-bg);color:var(--c-ink);border-left-color:var(--burn)}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+.lab{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin:14px 0 -8px}
+.plain{background:var(--plain-bg);border:1px solid var(--rule);padding:14px 18px;margin:16px 0 20px}
+.plain .t{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--arc);font-weight:600;margin-bottom:6px}
+.plain p:last-child{margin-bottom:0}
+.why{border-left:3px solid var(--burn);padding:4px 0 4px 16px;margin:16px 0 20px}
+.why .t{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--burn);font-weight:600;margin-bottom:4px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:12px 0 20px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+.tbl{overflow-x:auto}
+ul,ol{padding-left:22px;margin:0 0 14px} li{margin-bottom:5px}
+mjx-container[display="true"]{margin:10px 0 14px!important;overflow-x:auto;overflow-y:hidden}
+.foot{margin-top:56px;padding-top:16px;border-top:1px solid var(--rule);font-size:14px;color:var(--ink-2)}
+</style>
+<div class="wrap">
+<nav class="toc"><div class="lbl">Contents</div>
+<a href="#s0">0. What we are building</a>
+<a href="#s1">1. The state, in C and in Python</a>
+<a href="#s2">2. Constants and the action menu</a>
+<a href="#s3">3. Three angles and Kepler's equation</a>
+<a href="#s4">4. Coasting is one line</a>
+<a href="#s5">5. Elements to position and back</a>
+<a href="#s6">6. Burns and fuel</a>
+<a href="#s7">7. Reset: how an episode is drawn</a>
+<a href="#s8">8. Termination, in order</a>
+<a href="#s9">9. The shaping potential</a>
+<a href="#s10">10. The observation, slot by slot</a>
+<a href="#s11">11. One step, with warps</a>
+<a href="#s12">12. Checking it against the C</a>
+<a href="#s13">13. What the C has that this does not</a>
+<a href="#s14">14. Things to try</a>
+</nav>
+<main>
+<div class="kicker">Orbital rendezvous · the environment itself</div>
+<h1>Rebuild the Dynamics</h1>
+<p class="lede">The simulator the policy trains in, taken apart and reassembled in 300 lines of Python that match the C to eight decimal places. Every block names the C function it mirrors. Tan blocks are C; blue blocks are the Python you can run.</p>
+
+<h2 id="s0" style="border:0;margin-top:32px;padding-top:0">0. What we are building</h2>
+<p>The environment is a two-body orbital simulator with impulsive burns. There is no numerical integrator anywhere. Each orbit is stored as a handful of numbers describing an ellipse, coasting only advances one angle, and burns are the one place the ellipse changes. The Python file is <code>scripts/orbital/t3/mini_env.py</code>:</p>
+<pre><code>python3 scripts/orbital/t3/mini_env.py          # three random rollouts
+python3 scripts/orbital/t3/mini_env.py --check  # lockstep against the C env</code></pre>
+<p>The lockstep check feeds the same random actions to both and compares every observation and reward. Result: maximum difference 5.9e-8 over 418 decisions, three terminals identical in step, cause and reward.</p>
+<div class="plain"><div class="t">In plain words</div>
+<p>A satellite in orbit is on a fixed oval track. Nothing about the track changes while it coasts, only how far along the track it is. So the simulator stores the track and a clock, and coasting is "advance the clock." The one hard part is that the satellite does not move at constant speed along the track, so converting the clock to a position needs Kepler's equation. Burns change the track. Everything else is bookkeeping: fuel, finish-line checks, and packaging numbers for the policy.</p></div>
+
+<h2 id="s1">1. The state, in C and in Python</h2>
+<div class="lab">C · orbital.h lines 324–440</div>
+<pre class="c"><code>typedef struct {
+    double a;       /* semi-major axis (m)      */
+    double e;       /* eccentricity [0, 1)      */
+    double M;       /* mean anomaly (rad)       */
+    double theta;   /* true anomaly (rad)       */
+    double omega;   /* argument of periapsis    */
+    double inc;     /* ext-3d: inclination      */
+    double raan;    /* ext-3d: RAAN             */
+} Orbit;
+
+typedef struct {
+    Orbit  orbit;
+    double dry_mass;   /* kg, constant                           */
+    double fuel_mass;  /* kg, decreases with burns; 0 = stranded */
+} Satellite;
+
+typedef struct {
+    Orbit  orbit;
+    double hard_radius;     /* collision radius (m)     */
+    double keepout_radius;  /* exclusion zone (m)       */
+    int    is_static;       /* 1 = Earth at origin      */
+} Body;
+
+typedef struct {            /* the environment (excerpt) */
+    Satellite sat;
+    Orbit     target;
+    Body      bodies[MAX_BODIES];   /* bodies[0] = Earth */
+    int       num_bodies;
+    int       step;                 /* 60 s sub-steps so far */
+    int       episode_cap_steps;
+    double    phi_prev;             /* shaping cache */
+    float    *observations;         /* PufferLib buffers */
+    int      *actions;
+    float    *rewards;
+    unsigned char *terminals;
+    ...
+} Orbital;</code></pre>
+<p>Three nested structs. An <code>Orbit</code> is five numbers in 2D (seven with the 3D extension, which this rebuild leaves at zero). A <code>Satellite</code> is an orbit plus two masses. A <code>Body</code> is an orbit plus two radii, and Earth is <code>bodies[0]</code> with <code>is_static = 1</code>, sitting at the origin. The environment holds one satellite, one target orbit, the body array, a sub-step counter, and pointers into PufferLib's shared observation, action, reward and terminal buffers.</p>
+<div class="lab">Python</div>
+<pre><code>def orbit(a, e, M, omega):
+    o = {&#x27;a&#x27;: a, &#x27;e&#x27;: e, &#x27;M&#x27;: M % TWO_PI, &#x27;omega&#x27;: omega}
+    o[&#x27;theta&#x27;] = eccentric_to_true(solve_kepler(o[&#x27;M&#x27;], e), e)
+    return o</code></pre>
+<p>The five orbit numbers, and what each one is:</p>
+<div class="tbl"><table>
+<tr><th>Field</th><th>Meaning</th><th>Changes when</th></tr>
+<tr><td>a</td><td>Semi-major axis, the size. Half the long diameter of the ellipse.</td><td>Burns only</td></tr>
+<tr><td>e</td><td>Eccentricity, the shape. 0 is a circle, 0.05 is a slight oval.</td><td>Burns only</td></tr>
+<tr><td>omega</td><td>Argument of periapsis, which direction the low point of the oval faces.</td><td>Burns only</td></tr>
+<tr><td>M</td><td>Mean anomaly. A clock angle that advances at a constant rate.</td><td>Every sub-step</td></tr>
+<tr><td>theta</td><td>True anomaly. The real angle from the low point to the satellite.</td><td>Derived from M</td></tr>
+</table></div>
+<div class="why"><div class="t">Why store the clock angle and derive the real one</div>
+<p>M advances linearly with time, so propagation is exact for any time step and warps cost nothing in accuracy. theta does not advance linearly. The C stores both but always recomputes theta from M after any change. Treat theta as a cache.</p></div>
+
+<h2 id="s2">2. Constants and the action menu</h2>
+<pre><code># ── 1. Constants (orbital.h lines 20–61) ─────────────────────────────────────
+MU       = 3.986004418e14   # Earth GM, m^3/s^2
+R_EARTH  = 6.371e6          # m
+ALT_MIN  = 200e3            # survivable altitude floor
+DT       = 60.0             # one sub-step, s
+ISP, G0  = 300.0, 9.80665
+VE       = ISP * G0         # exhaust velocity ~2942 m/s
+FUEL_FRAC = 0.15            # fuel is 15% of initial total mass
+DRY_MASS  = 850.0           # kg
+EARTH_KEEPOUT = R_EARTH + ALT_MIN
+OBS_ALT_SCALE = 1.6e6       # obs altitude normaliser
+TWO_PI = 2.0 * math.pi
+
+# ── 2. The action table (orbital.h ACTION_DV / ACTION_TAU) ───────────────────
+# (dv_prograde, dv_radial) in m/s, and tau = how many 60 s sub-steps it takes.
+ACTION_DV  = [(0,0),(5,0),(10,0),(25,0),(-5,0),(-10,0),(-25,0),(0,10),(0,-10),
+              (0,0),(0,0),(0,0),(1,0),(-1,0),(2,0),(-2,0)]
+ACTION_TAU = [1,1,1,1,1,1,1,1,1, 5,30,60, 1,1,1,1]
+NUM_ACTIONS = 16</code></pre>
+<p>The action table is the contract between the policy and the physics: each row is a burn (prograde, radial) in m/s, and <code>tau</code> is how many 60-second sub-steps the action consumes. Warps (rows 9, 10, 11) carry zero burn and 5, 30 or 60 sub-steps. Row indices are frozen because trained checkpoints depend on them; the real table extends to 31 rows for 3D and long warps.</p>
+
+<h2 id="s3">3. Three angles and Kepler's equation</h2>
+<p>There are three ways to say where a satellite is on its ellipse, and the simulator needs all three.</p>
+<ul>
+<li><b>Mean anomaly M</b>: fraction of the period elapsed since periapsis, times 2π. Uniform in time. Easy to advance, meaningless geometrically.</li>
+<li><b>Eccentric anomaly E</b>: the angle you get by projecting the satellite onto the circle that circumscribes the ellipse. A geometric middleman.</li>
+<li><b>True anomaly θ</b>: the actual angle at Earth from periapsis to the satellite. What you need for position.</li>
+</ul>
+<p>Kepler's equation links M and E:</p>
+\[ M = E - e\sin E \]
+<p>It cannot be inverted algebraically, so given M the code refines a guess for E with Newton's method, five iterations, starting from E = M (or E = π for very eccentric orbits). Then E converts to θ by a half-angle identity, and the reverse map θ to M exists for use after burns.</p>
+<pre><code># ── 5. Kepler&#x27;s equation (orbital.h solve_kepler, eccentric_to_true, true_to_mean)
+def solve_kepler(M, e):
+    &quot;&quot;&quot;M = E - e sin E, solved for E. Newton, 5 iterations, exactly as the C.&quot;&quot;&quot;
+    M = M % TWO_PI
+    E = M if e &lt; 0.8 else math.pi
+    for _ in range(5):
+        dE = (M - E + e * math.sin(E)) / (1.0 - e * math.cos(E))
+        E += dE
+        if abs(dE) &lt; 1e-12:
+            break
+    return E
+
+def eccentric_to_true(E, e):
+    &quot;&quot;&quot;E -&gt; theta, half-angle form (no quadrant ambiguity).&quot;&quot;&quot;
+    return 2.0 * math.atan2(math.sqrt(1 + e) * math.sin(E / 2),
+                            math.sqrt(1 - e) * math.cos(E / 2))
+
+def true_to_mean(theta, e):
+    &quot;&quot;&quot;theta -&gt; E -&gt; M. The sqrt factors are SWAPPED relative to the forward
+    map; this is the function whose bug (2026-08-10) teleported phase on burns.&quot;&quot;&quot;
+    E = 2.0 * math.atan2(math.sqrt(1 - e) * math.sin(theta / 2),
+                         math.sqrt(1 + e) * math.cos(theta / 2))
+    return E - e * math.sin(E)</code></pre>
+<div class="why"><div class="t">The bug that lived here</div>
+<p>The two half-angle formulas differ only in which square root multiplies sine and which multiplies cosine. On 2026-08-10 it was found that the reverse map had them swapped, so it was applying the forward map twice. Since the reverse map runs only after burns, every burn corrupted M by about 2e·sin θ and teleported the satellite along its orbit. Every result before that date describes a different physics.</p></div>
+<div class="plain"><div class="t">In plain words</div>
+<p>The clock says "one third of the lap is done." Where is the satellite? Not one third of the way around, because it moves faster near Earth. Kepler's equation is the lookup from clock to place, and Newton's method is guess-and-correct until the equation balances.</p></div>
+
+<h2 id="s4">4. Coasting is one line</h2>
+<div class="lab">C · orbital.h line 740</div>
+<pre class="c"><code>static inline void propagate_orbit(Orbit* o, double dt) {
+    double n = sqrt(MU / (o-&gt;a * o-&gt;a * o-&gt;a));  /* mean motion (rad/s) */
+    o-&gt;M += n * dt;
+    o-&gt;M = fmod(o-&gt;M, 2.0 * M_PI);
+    if (o-&gt;M &lt; 0.0) o-&gt;M += 2.0 * M_PI;
+    double E = solve_kepler(o-&gt;M, o-&gt;e);
+    o-&gt;theta = eccentric_to_true(E, o-&gt;e);
+}</code></pre>
+<div class="lab">Python</div>
+<pre><code># ── 6. Coasting (orbital.h propagate_orbit) ──────────────────────────────────
+def propagate(o, dt):
+    &quot;&quot;&quot;Advance the clock angle by n*dt, then re-derive theta. Nothing else moves.&quot;&quot;&quot;
+    n = math.sqrt(MU / o[&#x27;a&#x27;] ** 3)
+    o[&#x27;M&#x27;] = (o[&#x27;M&#x27;] + n * dt) % TWO_PI
+    o[&#x27;theta&#x27;] = eccentric_to_true(solve_kepler(o[&#x27;M&#x27;], o[&#x27;e&#x27;]), o[&#x27;e&#x27;])</code></pre>
+<p>Mean motion \(n = \sqrt{\mu/a^3}\) is the clock rate in radians per second, fixed by the size of the orbit. Add n·dt to M, wrap to [0, 2π), and re-derive θ. Nothing else in the orbit is touched. Because this is exact, the C comment at the propagation call site notes that a warp of τ sub-steps is identical to one call with τ·dt, which is what makes the warp actions free of integration error.</p>
+
+<h2 id="s5">5. Elements to position and back</h2>
+<pre><code># ── 7. Elements &lt;-&gt; Cartesian (orbital.h orbit_to_cartesian / cartesian_to_elements)
+def to_cartesian(o):
+    &quot;&quot;&quot;Perifocal frame (periapsis on +x), then rotate by omega.&quot;&quot;&quot;
+    p = o[&#x27;a&#x27;] * (1 - o[&#x27;e&#x27;] ** 2)              # semi-latus rectum
+    r = p / (1 + o[&#x27;e&#x27;] * math.cos(o[&#x27;theta&#x27;]))
+    h = math.sqrt(MU * p)                       # angular momentum
+    xp, yp   = r * math.cos(o[&#x27;theta&#x27;]), r * math.sin(o[&#x27;theta&#x27;])
+    vxp, vyp = -(MU / h) * math.sin(o[&#x27;theta&#x27;]), (MU / h) * (o[&#x27;e&#x27;] + math.cos(o[&#x27;theta&#x27;]))
+    co, so = math.cos(o[&#x27;omega&#x27;]), math.sin(o[&#x27;omega&#x27;])
+    return (co*xp - so*yp, so*xp + co*yp, co*vxp - so*vyp, so*vxp + co*vyp)
+
+def from_cartesian(x, y, vx, vy):
+    &quot;&quot;&quot;Position+velocity -&gt; elements. Mirrors the C equatorial branch exactly.&quot;&quot;&quot;
+    r  = math.hypot(x, y)
+    v2 = vx*vx + vy*vy
+    vr = (x*vx + y*vy) / r                       # radial speed
+    a  = 1.0 / (2.0/r - v2/MU)                   # vis-viva
+    ex = ((v2 - MU/r)*x - vr*r*vx) / MU          # eccentricity vector
+    ey = ((v2 - MU/r)*y - vr*r*vy) / MU
+    e  = math.hypot(ex, ey)
+    if e &lt; 1e-10:
+        omega, theta = 0.0, math.atan2(y, x)
+    else:
+        omega = math.atan2(ey, ex)
+        c = max(-1.0, min(1.0, (ex*x + ey*y) / (e*r)))
+        theta = math.acos(c)
+        if vr &lt; 0.0:
+            theta = TWO_PI - theta
+    M = true_to_mean(theta, e)
+    if M &lt; 0.0:
+        M += TWO_PI
+    return {&#x27;a&#x27;: a, &#x27;e&#x27;: e, &#x27;M&#x27;: M, &#x27;theta&#x27;: theta, &#x27;omega&#x27;: omega}</code></pre>
+<p>Forward: in the perifocal frame (periapsis on the +x axis) the position and velocity are closed-form in θ, using the semi-latus rectum \(p = a(1-e^2)\), the radius \(r = p/(1+e\cos\theta)\) and the angular momentum \(h = \sqrt{\mu p}\):</p>
+\[ \mathbf r_p = r(\cos\theta, \sin\theta), \qquad \mathbf v_p = \frac{\mu}{h}\big(-\sin\theta,\; e + \cos\theta\big) \]
+<p>then rotate both by ω into the inertial frame. Reverse: from position and velocity, the size comes from the vis-viva energy equation, \(a = 1/(2/r - v^2/\mu)\); the shape and its direction come from the eccentricity vector</p>
+\[ \mathbf e = \frac{(v^2 - \mu/r)\,\mathbf r - (\mathbf r\cdot\mathbf v)\,\mathbf v}{\mu} \]
+<p>whose length is e and whose direction is ω; θ is the angle from that vector to the position, with the sign fixed by whether the satellite is moving outward or inward. The C keeps the equatorial branch verbatim from the 2D build because rewriting the eccentricity vector in an algebraically equal form changed results at the last bit in 5% of cases.</p>
+
+<h2 id="s6">6. Burns and fuel</h2>
+<pre><code># ── 8. Burns and fuel (orbital.h apply_impulse) ──────────────────────────────
+def apply_impulse(sat, dv_pro, dv_rad):
+    &quot;&quot;&quot;Returns |dv| actually applied. Mutates sat[&#x27;orbit&#x27;] and sat[&#x27;fuel_mass&#x27;].&quot;&quot;&quot;
+    x, y, vx, vy = to_cartesian(sat[&#x27;orbit&#x27;])
+    v, r = math.hypot(vx, vy), math.hypot(x, y)
+    # local frame: prograde = v-hat, radial = r-hat (not orthogonal when e &gt; 0)
+    dvx = dv_pro * vx / v + dv_rad * x / r
+    dvy = dv_pro * vy / v + dv_rad * y / r
+    dv  = math.hypot(dvx, dvy)
+    if dv &lt; 1e-10:
+        return 0.0
+    # Tsiolkovsky: fuel burned = m_total * (1 - exp(-dv / VE))
+    m_total = DRY_MASS + sat[&#x27;fuel_mass&#x27;]
+    need = m_total * (1.0 - math.exp(-dv / VE))
+    if need &gt; sat[&#x27;fuel_mass&#x27;]:                  # tank runs dry mid-burn
+        actual = -VE * math.log(1.0 - sat[&#x27;fuel_mass&#x27;] / m_total)
+        if actual &lt; 1e-6:
+            sat[&#x27;fuel_mass&#x27;] = 0.0
+            return 0.0
+        dvx *= actual / dv; dvy *= actual / dv; dv = actual
+        sat[&#x27;fuel_mass&#x27;] = 0.0
+    else:
+        sat[&#x27;fuel_mass&#x27;] -= need
+    sat[&#x27;orbit&#x27;] = from_cartesian(x, y, vx + dvx, vy + dvy)
+    return dv</code></pre>
+<p>A burn is impulsive: an instant change in velocity. The requested Δv is given in the satellite's own frame (prograde along the velocity, radial along the position vector), assembled into inertial components, and added to the velocity. Then the orbit is recomputed from the new position and velocity. Fuel follows the rocket equation:</p>
+\[ \Delta m = m_{\text{total}}\big(1 - e^{-\Delta v / v_e}\big), \qquad v_e = I_{sp}\, g_0 \approx 2942\ \text{m/s} \]
+<p>so a 50 m/s burn costs about five times a 10 m/s burn, not five times exactly: 1.69% versus 0.34% of current mass. With a 15% fuel fraction the total budget is \(v_e \ln(1/0.85) \approx 478\) m/s. If a burn would need more fuel than remains, the burn is scaled down to what the tank can deliver and the tank is emptied.</p>
+<div class="why"><div class="t">Why round-trip through Cartesian</div>
+<p>Adding a velocity vector is trivial in Cartesian and messy in elements. Converting to position and velocity, adding, and converting back is exact and reuses the two conversion functions, so the burn code contains no orbital mechanics of its own.</p></div>
+
+<h2 id="s7">7. Reset: how an episode is drawn</h2>
+<pre><code># ── 9. Reset: sample an episode (orbital.h c_reset, T3 defaults) ─────────────
+def reset(env, rng):
+    &quot;&quot;&quot;T3 headline config: LEO 300-800 km, e &lt;= 0.05 both, gap +-180 deg,
+    perigee validity, physical mean-longitude gap (phase_gap_mode 1).&quot;&quot;&quot;
+    e_max, gap_max, cap = env[&#x27;e_max&#x27;], env[&#x27;gap_max&#x27;], env[&#x27;cap&#x27;]
+    for _attempt in range(4096):
+        a_init   = R_EARTH + 300e3 + rng.random() * 500e3
+        while True:
+            a_target = R_EARTH + 300e3 + rng.random() * 500e3
+            if abs(a_target - a_init) &gt;= 50e3:      # meaningful transfer
+                break
+        e_t = rng.random() * e_max
+        w_t = rng.random() * TWO_PI if e_t &gt; 0 else 0.0
+        e_s = rng.random() * e_max
+        w_s = rng.random() * TWO_PI
+        M_s = rng.random() * TWO_PI
+        # reject inits whose perigee is below the keep-out altitude
+        if a_init*(1-e_s) &gt;= EARTH_KEEPOUT and a_target*(1-e_t) &gt;= EARTH_KEEPOUT:
+            break
+    env[&#x27;sat&#x27;] = {&#x27;orbit&#x27;: orbit(a_init, e_s, M_s, w_s),
+                  &#x27;dry_mass&#x27;: DRY_MASS,
+                  &#x27;fuel_mass&#x27;: DRY_MASS * FUEL_FRAC / (1 - FUEL_FRAC)}   # 150 kg
+    # Phase gap in MEAN LONGITUDE (lambda = M + omega), so it is physical:
+    gap = (2*rng.random() - 1) * gap_max
+    M_t = M_s + gap + (w_s - w_t)                 # lambda_t - lambda_s == gap
+    env[&#x27;target&#x27;] = orbit(a_target, e_t, M_t, w_t)
+    env[&#x27;step&#x27;] = 0
+    env[&#x27;phi_prev&#x27;] = compute_phi(env)
+    env[&#x27;cause&#x27;] = 0
+    return observe(env)</code></pre>
+<p>The C reset is a thousand lines because of curriculum knobs; this is the T3 headline path. Altitudes for chaser and target are uniform in 300 to 800 km with at least a 50 km difference. Eccentricities are uniform up to 0.05 with random orientation. The chaser's clock angle is random. Then rejection sampling: if either orbit's perigee, \(a(1-e)\), dips below 200 km altitude, redraw everything. Finally the target's clock angle is set so the mean-longitude gap \(\lambda_t - \lambda_s\), with \(\lambda = M + \omega\), equals a uniform draw in ±180°.</p>
+<div class="why"><div class="t">Why the gap is set in mean longitude</div>
+<p>An earlier version offset M alone. With independent ω on each orbit, that made the physical angular gap effectively uniform over ±180° no matter what the knob said, which silently unstaged every phase curriculum at e greater than zero. Setting the gap in λ makes the knob mean what it says.</p></div>
+<p>Fuel is initialised so the fuel fraction is exactly 0.15: \(m_{\text{fuel}} = m_{\text{dry}}\cdot 0.15/0.85 = 150\) kg on an 850 kg bus.</p>
+
+<h2 id="s8">8. Termination, in order</h2>
+<pre><code># ── 10. Termination (orbital.h check_termination) ────────────────────────────
+def check_termination(env):
+    &quot;&quot;&quot;Returns (terminal?, reward). Order matters: hyperbolic, collision,
+    escape, cap, stranded, success.&quot;&quot;&quot;
+    sat, tgt = env[&#x27;sat&#x27;], env[&#x27;target&#x27;]
+    if sat[&#x27;orbit&#x27;][&#x27;a&#x27;] &lt;= 0.0:
+        env[&#x27;cause&#x27;] = 6; return True, -10.0
+    sx, sy, svx, svy = to_cartesian(sat[&#x27;orbit&#x27;])
+    r = math.hypot(sx, sy)
+    if r &lt; R_EARTH:                                # Earth is bodies[0]
+        env[&#x27;cause&#x27;] = 2; return True, -10.0
+    if 0.5*(svx*svx + svy*svy) - MU/r &gt;= 0.0:      # specific energy &gt;= 0
+        env[&#x27;cause&#x27;] = 3; return True, -10.0
+    if env[&#x27;step&#x27;] &gt;= env[&#x27;cap&#x27;]:
+        env[&#x27;cause&#x27;] = 4; return True, env[&#x27;cap_reward&#x27;]
+    tx, ty, tvx, tvy = to_cartesian(tgt)
+    d  = math.hypot(sx - tx, sy - ty)
+    rv = math.hypot(svx - tvx, svy - tvy)
+    at_target = d &lt; env[&#x27;box_r&#x27;] and rv &lt; env[&#x27;box_v&#x27;]
+    if sat[&#x27;fuel_mass&#x27;] &lt;= 0.0 and not at_target:
+        env[&#x27;cause&#x27;] = 5; return True, -10.0
+    if at_target:
+        initial_fuel = DRY_MASS * FUEL_FRAC / (1 - FUEL_FRAC)
+        frac = max(0.0, min(1.0, sat[&#x27;fuel_mass&#x27;] / initial_fuel))
+        env[&#x27;cause&#x27;] = 1; return True, 10.0 * (0.5 + 0.5 * frac)
+    return False, 0.0</code></pre>
+<p>The order is the C order and it matters, because the first condition that fires wins:</p>
+<div class="tbl"><table>
+<tr><th>#</th><th>Condition</th><th>Reward</th><th>Meaning</th></tr>
+<tr><td>0</td><td>a ≤ 0</td><td>−10</td><td>A burn produced a hyperbola; no position can be computed</td></tr>
+<tr><td>1</td><td>r &lt; R_EARTH (any body's hard radius)</td><td>−10</td><td>Collision</td></tr>
+<tr><td>2</td><td>½v² − μ/r ≥ 0</td><td>−10</td><td>Escape: specific energy non-negative, never coming back</td></tr>
+<tr><td>3</td><td>step ≥ cap</td><td>0 (T3) or −10 (legacy)</td><td>Out of time</td></tr>
+<tr><td>4</td><td>fuel = 0 and not in box</td><td>−10</td><td>Stranded</td></tr>
+<tr><td>5</td><td>d &lt; 30 km and |v_rel| &lt; 50 m/s</td><td>+5 to +10</td><td>Success, scaled by fuel remaining</td></tr>
+</table></div>
+<p>Success is a Euclidean sphere around the propagated target, checked every sub-step, so a warp cannot skip through the box. The success reward is 10·(0.5 + 0.5·fuel_remaining), so arriving with a full tank pays 10 and arriving on fumes pays 5.</p>
+
+<h2 id="s9">9. The shaping potential</h2>
+<pre><code># ── 11. The shaping potential (orbital.h compute_phi, shaping_mode 1) ────────
+def wrap_pi(x):
+    return x - TWO_PI * math.floor((x + math.pi) / TWO_PI)
+
+def compute_phi(env):
+    &quot;&quot;&quot;Phi = -[ W_l * |dlambda|/pi + W_m * min(1, dv_match / DV_REF) ] &lt;= 0.&quot;&quot;&quot;
+    s, t = env[&#x27;sat&#x27;][&#x27;orbit&#x27;], env[&#x27;target&#x27;]
+    dlam = wrap_pi((s[&#x27;M&#x27;] + s[&#x27;omega&#x27;]) - (t[&#x27;M&#x27;] + t[&#x27;omega&#x27;]))
+    de = math.hypot(s[&#x27;e&#x27;]*math.cos(s[&#x27;omega&#x27;]) - t[&#x27;e&#x27;]*math.cos(t[&#x27;omega&#x27;]),
+                    s[&#x27;e&#x27;]*math.sin(s[&#x27;omega&#x27;]) - t[&#x27;e&#x27;]*math.sin(t[&#x27;omega&#x27;]))
+    da_rel = (s[&#x27;a&#x27;] - t[&#x27;a&#x27;]) / t[&#x27;a&#x27;]
+    v_t = math.sqrt(MU / t[&#x27;a&#x27;])
+    dv_match = 0.5 * v_t * math.hypot(da_rel, de)   # linearised 2-impulse cost
+    match = min(1.0, dv_match / env[&#x27;dv_ref&#x27;])
+    return -(env[&#x27;w_lambda&#x27;] * abs(dlam) / math.pi + env[&#x27;w_match&#x27;] * match)</code></pre>
+<p>Sparse terminal rewards are hard to learn from, so every non-terminal step also pays the change in a potential Φ. Two terms: the mean-longitude gap normalised to [0, 1], and a linearised two-impulse orbit-match cost (the same size-plus-shape Δv the scripted expert uses) capped at a reference. Φ is always ≤ 0 and equals 0 only at the goal.</p>
+<p>With \(\gamma_{\text{shape}} = 1\) the per-step shaping reward is \(\Phi(s_{t+1}) - \Phi(s_t)\), so summed over an episode it telescopes to \(\Phi_T - \Phi_0\). That is the potential-based shaping guarantee (Ng, Harada and Russell 1999): the optimal policy is unchanged, the agent just gets dense progress credit. The earlier γ = 0.995 form leaked a small do-nothing income each step; setting it to exactly 1 removed that.</p>
+
+<h2 id="s10">10. The observation, slot by slot</h2>
+<pre><code># ── 12. The observation (orbital.h fill_observations, slots 0-16) ────────────
+def observe(env):
+    s, t = env[&#x27;sat&#x27;][&#x27;orbit&#x27;], env[&#x27;target&#x27;]
+    sx, sy, svx, svy = to_cartesian(s)
+    r = math.hypot(sx, sy)
+    vr = (sx*svx + sy*svy) / r
+    vt = (sx*svy - sy*svx) / r
+    v_circ = math.sqrt(MU / r)
+    fuel_frac = env[&#x27;sat&#x27;][&#x27;fuel_mass&#x27;] / (DRY_MASS + env[&#x27;sat&#x27;][&#x27;fuel_mass&#x27;])
+    dlam = (s[&#x27;M&#x27;] + s[&#x27;omega&#x27;]) - (t[&#x27;M&#x27;] + t[&#x27;omega&#x27;])
+    t_frac = max(0.0, (env[&#x27;cap&#x27;] - env[&#x27;step&#x27;]) / env[&#x27;cap&#x27;])
+    obs = [0.0] * 17
+    obs[0] = (s[&#x27;a&#x27;] - R_EARTH) / OBS_ALT_SCALE        # chaser altitude, ~[0,1]
+    obs[1] = s[&#x27;e&#x27;]
+    obs[2], obs[3] = math.sin(s[&#x27;theta&#x27;]), math.cos(s[&#x27;theta&#x27;])
+    obs[4], obs[5] = vr / v_circ, vt / v_circ            # radial, tangential speed
+    obs[6] = fuel_frac
+    obs[7] = (t[&#x27;a&#x27;] - R_EARTH) / OBS_ALT_SCALE        # target altitude
+    obs[8] = t[&#x27;e&#x27;]
+    obs[9], obs[10]  = math.sin(s[&#x27;omega&#x27;]), math.cos(s[&#x27;omega&#x27;])
+    obs[11], obs[12] = math.sin(t[&#x27;omega&#x27;]), math.cos(t[&#x27;omega&#x27;])
+    obs[13], obs[14] = math.sin(dlam), math.cos(dlam)   # phase gap
+    obs[15] = t_frac                                    # episode clock
+    obs[16] = math.cos(s[&#x27;omega&#x27;] - t[&#x27;omega&#x27;])         # apsidal alignment
+    return obs</code></pre>
+<div class="tbl"><table>
+<tr><th>Slot</th><th>Value</th><th>Range</th><th>Why</th></tr>
+<tr><td>0</td><td>(a − R_E) / 1600 km</td><td>~0 to 1</td><td>Chaser altitude</td></tr>
+<tr><td>1</td><td>e</td><td>0 to 0.05</td><td>Chaser shape</td></tr>
+<tr><td>2, 3</td><td>sin θ, cos θ</td><td>−1 to 1</td><td>Position on orbit, no wrap discontinuity</td></tr>
+<tr><td>4, 5</td><td>v_r / v_circ, v_t / v_circ</td><td>~−0.05 to 1.05</td><td>Radial and tangential speed relative to circular</td></tr>
+<tr><td>6</td><td>fuel fraction</td><td>0 to 0.15</td><td>Budget remaining</td></tr>
+<tr><td>7, 8</td><td>target altitude, e</td><td></td><td>Target size and shape</td></tr>
+<tr><td>9–12</td><td>sin/cos ω for both</td><td>−1 to 1</td><td>Oval orientations</td></tr>
+<tr><td>13, 14</td><td>sin/cos Δλ</td><td>−1 to 1</td><td>The phase gap, in mean longitude</td></tr>
+<tr><td>15</td><td>(cap − step) / cap</td><td>1 to 0</td><td>The episode clock; measured load-bearing</td></tr>
+<tr><td>16</td><td>cos(ω_s − ω_t)</td><td>−1 to 1</td><td>Apsidal alignment; drives shape-burn timing</td></tr>
+<tr><td>17–32</td><td>nearest-body block</td><td></td><td>Zero with no debris; reused for 3D state</td></tr>
+<tr><td>33–37</td><td>LVLH relative state</td><td></td><td>Straight-line offset in the target's rotating frame (not rebuilt here)</td></tr>
+</table></div>
+<p>Every angle is sent as a sine and cosine pair so the network never sees a jump from 359° to 0°. Everything is scaled to roughly unit range because raw metres would swamp the network's inputs.</p>
+
+<h2 id="s11">11. One step, with warps</h2>
+<div class="lab">C · orbital.h c_step, the sub-step loop</div>
+<pre class="c"><code>for (int k = 0; k &lt; tau; k++) {
+    for (int i = 1; i &lt; env-&gt;num_bodies; i++)
+        propagate_orbit_j2(&amp;env-&gt;bodies[i].orbit, DT, env-&gt;j2_mode);
+    propagate_orbit_j2(&amp;env-&gt;target, DT, env-&gt;j2_mode);
+    propagate_orbit_j2(&amp;env-&gt;sat.orbit, DT, env-&gt;j2_mode);
+    env-&gt;step++;
+    fill_observations(env);
+    write_traj_record(env, 0.0f, (k == 0) ? dv_applied : 0.0f);
+    if (check_termination(env)) { warped_terminated = 1; break; }
+}</code></pre>
+<div class="lab">Python</div>
+<pre><code># ── 13. One step (orbital.h c_step) ──────────────────────────────────────────
+def step(env, action):
+    &quot;&quot;&quot;Returns (obs, reward, terminal, dv_applied).&quot;&quot;&quot;
+    reward, dv = 0.0, 0.0
+    tau = ACTION_TAU[action]
+    # 13a. burn (only tau == 1 non-coast actions burn; warps never do)
+    if action != 0 and tau == 1 and env[&#x27;sat&#x27;][&#x27;fuel_mass&#x27;] &gt; 0.0:
+        dv = apply_impulse(env[&#x27;sat&#x27;], *ACTION_DV[action])
+    if env[&#x27;sat&#x27;][&#x27;orbit&#x27;][&#x27;a&#x27;] &lt;= 0.0:              # burned onto a hyperbola
+        env[&#x27;cause&#x27;] = 6
+        return observe(env), -10.0, True, dv
+    # 13b. propagate tau sub-steps, checking termination after each
+    for _ in range(tau):
+        propagate(env[&#x27;target&#x27;], DT)
+        propagate(env[&#x27;sat&#x27;][&#x27;orbit&#x27;], DT)
+        env[&#x27;step&#x27;] += 1
+        term, r_term = check_termination(env)
+        if term:
+            return observe(env), r_term, True, dv
+    # 13c. non-terminal: potential-based shaping, gamma_shape = 1 (telescoping)
+    phi = compute_phi(env)
+    reward += phi - env[&#x27;phi_prev&#x27;]
+    env[&#x27;phi_prev&#x27;] = phi
+    return observe(env), reward, False, dv</code></pre>
+<p>A step has three parts. First, if the action is a burn and there is fuel, apply it. Second, propagate every body one sub-step at a time, τ times, checking termination after each sub-step so a warp can never jump over a collision or through the success box. Third, if nothing terminated, add the shaping delta. Only τ = 1 non-coast actions can burn; warps propagate only.</p>
+<div class="why"><div class="t">Why shaping runs after the termination check</div>
+<p>At a terminal, the reward is the terminal reward and nothing else. An earlier version added the shaping delta first and then let the terminal check overwrite it, which corrupted the potential bookkeeping. The order here is the fixed order.</p></div>
+
+<h2 id="s12">12. Checking it against the C</h2>
+<p>The <code>--check</code> mode copies the C environment's initial state into the Python one, then feeds both the same random action stream and compares all 17 observation slots and the reward at every non-terminal decision.</p>
+<pre><code>  ep0: terminated at decision 136: C=True py=True cause_py=stranded r_C=-10.00 r_py=-10.00
+  ep1: terminated at decision 156: C=True py=True cause_py=stranded r_C=-10.00 r_py=-10.00
+  ep2: terminated at decision 126: C=True py=True cause_py=stranded r_C=-10.00 r_py=-10.00
+max |obs_C - obs_py| (slots 0-16) and |r_C - r_py| over all non-terminal steps: 5.90e-08</code></pre>
+<p>The residual is float32 rounding in the C observation buffer. Terminal observations are excluded from the comparison because the C environment auto-resets on a terminal and returns the next episode's first observation.</p>
+
+<h2 id="s13">13. What the C has that this does not</h2>
+<ul>
+<li><b>3D.</b> Two more elements, inclination and RAAN, a 3-1-3 rotation in the conversions, and a target-plane gauge so the phase gap stays well-defined when planes differ. The 2D path is a value-gated fast path inside the same functions.</li>
+<li><b>J2.</b> Earth's oblateness, modelled as secular mean-element rates on top of the two-body clock:</li>
+</ul>
+<pre class="c"><code>n  = sqrt(MU/a^3)      p = a(1 - e^2)      k = 1.5 * n * J2 * (R_EQ/p)^2
+RAAN_dot  = -k * cos(i)
+omega_dot = +0.5 * k * (4 - 5 sin^2 i)
+M_dot     =  n + 0.5 * k * sqrt(1 - e^2) * (2 - 3 sin^2 i)
+a_dot = e_dot = i_dot = 0</code></pre>
+<p>a, e and i are constants under secular J2, so the rates are constants for the life of the element set and the map stays closed-form at any dt. The state is treated as mean elements throughout, with no conversion to osculating; the C comment quantifies that as an 83 m / 0.094 m/s per-orbit inconsistency at 5 km separation.</p>
+<ul>
+<li><b>Debris.</b> Extra <code>Body</code> entries on random LEO orbits, each with a 1 m hard radius and 5 km keep-out. The termination loop over bodies handles them with no special casing. Disabled for all current training.</li>
+<li><b>The LVLH block.</b> Slots 33 to 37: the straight-line inertial offset rotated into the target's radial/along-track frame, with a rotating-frame velocity correction. Rectilinear, per the coordinate discussion.</li>
+<li><b>Cell mixture, fuel sampling, trajectory logging.</b> Curriculum plumbing that draws per-episode configuration and records every sub-step for later analysis.</li>
+</ul>
+
+<h2 id="s14">14. Things to try</h2>
+<ul>
+<li>Change <code>solve_kepler</code> to one Newton iteration and rerun <code>--check</code>. How large does the error get, and at what eccentricity?</li>
+<li>Swap the square roots in <code>true_to_mean</code> back to the pre-fix form, take a 1 m/s burn near e = 0.05, and print M before and after. That is the 2026-08-10 bug.</li>
+<li>Replace the shaping delta with γ = 0.995 and coast for 3000 steps. Sum the rewards. That is the do-nothing income the fix removed.</li>
+<li>Set <code>ACTION_TAU[11] = 600</code> and confirm a 10-hour warp still lands within float noise of 600 single steps.</li>
+<li>Burn prograde 25 m/s repeatedly from 300 km and watch the specific energy in <code>check_termination</code> climb toward zero. About 3.2 km/s of Δv gets you to escape; the tank holds 478.</li>
+</ul>
+
+<div class="foot">Sources: <code>pufferlib/pufferlib/ocean/orbital/orbital.h</code> (structs 324–440, Kepler 696–748, conversions 865–1028, impulse 1086–1161, observations 1214–1545, potential 1579–1605, termination 1719–1860, reset 1976–2467, step 2468–2636, J2 758–830), <code>orbital.py</code> defaults, <code>scripts/orbital/t3/mini_env.py</code>. Line numbers as of 2026-09-27.</div>
+</main></div>
