@@ -8,20 +8,21 @@
 :root[data-theme="dark"]{--paper:#0F141B;--paper-2:#161D26;--ink:#E3E8EF;--ink-2:#9AA6B6;--rule:#2A3441;--burn:#F07A3E;--arc:#4FB3C4;--code-bg:#161D26;--code-ink:#DCE3EC;--plain-bg:#131A22;--c-bg:#221E17;--c-ink:#E6DCC8}
 *{box-sizing:border-box}
 body{background:var(--paper);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;font-size:17px;line-height:1.55;margin:0}
-.wrap{display:grid;grid-template-columns:230px minmax(0,72ch);gap:48px;max-width:1120px;margin:0 auto;padding:40px 24px 96px}
+.wrap{display:grid;grid-template-columns:240px minmax(0,72ch);gap:48px;max-width:1140px;margin:0 auto;padding:40px 24px 96px}
 @media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr)}nav.toc{position:static;border:0;padding:0 0 24px}}
-nav.toc{position:sticky;top:24px;align-self:start;font-size:14px;border-right:1px solid var(--rule);padding-right:20px}
+nav.toc{position:sticky;top:24px;align-self:start;font-size:13.5px;border-right:1px solid var(--rule);padding-right:20px;max-height:calc(100vh - 48px);overflow-y:auto}
 nav.toc .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin-bottom:10px}
 nav.toc a{display:block;color:var(--ink-2);text-decoration:none;padding:3px 0}
 nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);outline:none}
 h1,h2,h3{font-family:"Newsreader",Georgia,serif;font-weight:500;line-height:1.15;text-wrap:balance;margin:0}
 h1{font-size:44px;margin-bottom:8px}
 h2{font-size:30px;margin:64px 0 16px;padding-top:24px;border-top:1px solid var(--rule)}
+h3{font-size:21px;margin:30px 0 8px}
 .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
 .lede{font-size:19px;color:var(--ink-2);margin:12px 0 0}
 p{margin:0 0 14px}
 code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.86em;background:var(--code-bg);color:var(--code-ink);padding:1px 5px;border-radius:3px}
-pre{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13.5px;line-height:1.5;background:var(--code-bg);color:var(--code-ink);padding:14px 16px;overflow-x:auto;margin:12px 0 18px;border-left:3px solid var(--arc)}
+pre{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;line-height:1.5;background:var(--code-bg);color:var(--code-ink);padding:14px 16px;overflow-x:auto;margin:12px 0 18px;border-left:3px solid var(--arc)}
 pre.c{background:var(--c-bg);color:var(--c-ink);border-left-color:var(--burn)}
 pre code{background:none;padding:0;font-size:inherit;color:inherit}
 .lab{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin:14px 0 -8px}
@@ -30,7 +31,7 @@ pre code{background:none;padding:0;font-size:inherit;color:inherit}
 .plain p:last-child{margin-bottom:0}
 .why{border-left:3px solid var(--burn);padding:4px 0 4px 16px;margin:16px 0 20px}
 .why .t{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--burn);font-weight:600;margin-bottom:4px}
-table{border-collapse:collapse;width:100%;font-size:15px;margin:12px 0 20px;font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:12px 0 20px;font-variant-numeric:tabular-nums}
 th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
 th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
 .tbl{overflow-x:auto}
@@ -41,126 +42,126 @@ mjx-container[display="true"]{margin:10px 0 14px!important;overflow-x:auto;overf
 <div class="wrap">
 <nav class="toc"><div class="lbl">Contents</div>
 <a href="#s0">0. What we are building</a>
-<a href="#s1">1. The state, in C and in Python</a>
-<a href="#s2">2. Constants and the action menu</a>
+<a href="#s1">1. The state: seven numbers per orbit</a>
+<a href="#s2">2. Constants and the 31-row action menu</a>
 <a href="#s3">3. Three angles and Kepler's equation</a>
-<a href="#s4">4. Coasting is one line</a>
-<a href="#s5">5. Elements to position and back</a>
-<a href="#s6">6. Burns and fuel</a>
-<a href="#s7">7. Reset: how an episode is drawn</a>
-<a href="#s8">8. Termination, in order</a>
-<a href="#s9">9. The shaping potential</a>
-<a href="#s10">10. The observation, slot by slot</a>
-<a href="#s11">11. One step, with warps</a>
-<a href="#s12">12. Checking it against the C</a>
-<a href="#s13">13. What the C has that this does not</a>
-<a href="#s14">14. Things to try</a>
+<a href="#s4">4. Coasting: two-body, then J2</a>
+<a href="#s5">5. The orbit plane: ĥ, ē and the 3-1-3 rotation</a>
+<a href="#s6">6. Cartesian back to elements</a>
+<a href="#s7">7. The target-plane gauge</a>
+<a href="#s8">8. Burns in three axes, and fuel</a>
+<a href="#s9">9. Bodies: Earth and debris</a>
+<a href="#s10">10. Reset: drawing an episode, planes included</a>
+<a href="#s11">11. Termination, in order</a>
+<a href="#s12">12. The shaping potential, modes 1 and 2</a>
+<a href="#s13">13. The observation, all 38 slots</a>
+<a href="#s14">14. One step, with warps</a>
+<a href="#s15">15. Verification against the C</a>
+<a href="#s16">16. What is left out</a>
+<a href="#s17">17. Things to try</a>
 </nav>
 <main>
 <div class="kicker">Orbital rendezvous · the environment itself</div>
 <h1>Rebuild the Dynamics</h1>
-<p class="lede">The simulator the policy trains in, taken apart and reassembled in 300 lines of Python that match the C to eight decimal places. Every block names the C function it mirrors. Tan blocks are C; blue blocks are the Python you can run.</p>
+<p class="lede">The simulator the policy trains in, taken apart and reassembled in Python that matches the C to seven decimal places in 2D and in 3D with J2. Every block names the C function it mirrors. Tan blocks are C; blue blocks are the Python you can run.</p>
 
 <h2 id="s0" style="border:0;margin-top:32px;padding-top:0">0. What we are building</h2>
-<p>The environment is a two-body orbital simulator with impulsive burns. There is no numerical integrator anywhere. Each orbit is stored as a handful of numbers describing an ellipse, coasting only advances one angle, and burns are the one place the ellipse changes. The Python file is <code>scripts/orbital/t3/mini_env.py</code>:</p>
-<pre><code>python3 scripts/orbital/t3/mini_env.py          # three random rollouts
-python3 scripts/orbital/t3/mini_env.py --check  # lockstep against the C env</code></pre>
-<p>The lockstep check feeds the same random actions to both and compares every observation and reward. Result: maximum difference 5.9e-8 over 418 decisions, three terminals identical in step, cause and reward.</p>
+<p>The environment is a three-dimensional two-body orbital simulator with impulsive burns, optional secular J2, and optional debris bodies. There is no numerical integrator anywhere. Each orbit is stored as seven numbers describing an ellipse and its plane, coasting only advances angles at constant rates, and burns are the one place the ellipse or plane changes. The rebuild is <code>scripts/orbital/t3/mini_env.py</code>:</p>
+<pre><code>python3 scripts/orbital/t3/mini_env.py          # random rollouts: 2D, 3D+J2, debris
+python3 scripts/orbital/t3/mini_env.py --check  # lockstep against the C env, both configs</code></pre>
+<p>The lockstep check copies the C environment's state, feeds both the same actions, and compares every observation slot and reward. In 2D the worst difference is 5.9e-8 over 17 slots; in 3D with J2 it is 1.15e-7 over all 38 slots. Terminals agree in step, cause and reward.</p>
 <div class="plain"><div class="t">In plain words</div>
-<p>A satellite in orbit is on a fixed oval track. Nothing about the track changes while it coasts, only how far along the track it is. So the simulator stores the track and a clock, and coasting is "advance the clock." The one hard part is that the satellite does not move at constant speed along the track, so converting the clock to a position needs Kepler's equation. Burns change the track. Everything else is bookkeeping: fuel, finish-line checks, and packaging numbers for the policy.</p></div>
+<p>A satellite coasts on a fixed oval track tilted at some angle to the equator. While it coasts, only its position along the track changes, and under Earth's oblateness the track itself slowly swivels. So the simulator stores the track, its tilt, and a clock, and coasting is "advance the clock, and maybe swivel the track a little." Burns change the track or the tilt. Everything else is bookkeeping: fuel, finish-line checks, and packaging numbers for the policy.</p></div>
 
-<h2 id="s1">1. The state, in C and in Python</h2>
+<h2 id="s1">1. The state: seven numbers per orbit</h2>
 <div class="lab">C · orbital.h lines 324–440</div>
 <pre class="c"><code>typedef struct {
-    double a;       /* semi-major axis (m)      */
-    double e;       /* eccentricity [0, 1)      */
-    double M;       /* mean anomaly (rad)       */
-    double theta;   /* true anomaly (rad)       */
-    double omega;   /* argument of periapsis    */
-    double inc;     /* ext-3d: inclination      */
-    double raan;    /* ext-3d: RAAN             */
+    double a;       /* semi-major axis (m)                          */
+    double e;       /* eccentricity [0, 1)                          */
+    double M;       /* mean anomaly (rad)                           */
+    double theta;   /* true anomaly (rad), derived from M           */
+    double omega;   /* argument of periapsis, FROM THE ASCENDING NODE */
+    double inc;     /* inclination (rad); 0 = equatorial prograde   */
+    double raan;    /* right ascension of ascending node (rad)      */
 } Orbit;
 
-typedef struct {
-    Orbit  orbit;
-    double dry_mass;   /* kg, constant                           */
-    double fuel_mass;  /* kg, decreases with burns; 0 = stranded */
-} Satellite;
+typedef struct { Orbit orbit; double dry_mass, fuel_mass; } Satellite;
 
 typedef struct {
     Orbit  orbit;
-    double hard_radius;     /* collision radius (m)     */
-    double keepout_radius;  /* exclusion zone (m)       */
-    int    is_static;       /* 1 = Earth at origin      */
+    double hard_radius;     /* collision radius (m)   */
+    double keepout_radius;  /* exclusion zone (m)     */
+    int    is_static;       /* 1 = Earth at origin    */
 } Body;
 
-typedef struct {            /* the environment (excerpt) */
+typedef struct {                       /* the environment, excerpt */
     Satellite sat;
     Orbit     target;
-    Body      bodies[MAX_BODIES];   /* bodies[0] = Earth */
-    int       num_bodies;
-    int       step;                 /* 60 s sub-steps so far */
-    int       episode_cap_steps;
-    double    phi_prev;             /* shaping cache */
-    float    *observations;         /* PufferLib buffers */
-    int      *actions;
-    float    *rewards;
-    unsigned char *terminals;
-    ...
+    Body      bodies[MAX_BODIES];      /* bodies[0] = Earth        */
+    int       num_bodies, step, episode_cap_steps;
+    int       dim3_mode, j2_mode, lvlh_frame_mode, shaping_mode;
+    double    phi_prev;
+    float *observations; int *actions; float *rewards; unsigned char *terminals;
 } Orbital;</code></pre>
-<p>Three nested structs. An <code>Orbit</code> is five numbers in 2D (seven with the 3D extension, which this rebuild leaves at zero). A <code>Satellite</code> is an orbit plus two masses. A <code>Body</code> is an orbit plus two radii, and Earth is <code>bodies[0]</code> with <code>is_static = 1</code>, sitting at the origin. The environment holds one satellite, one target orbit, the body array, a sub-step counter, and pointers into PufferLib's shared observation, action, reward and terminal buffers.</p>
 <div class="lab">Python</div>
-<pre><code>def orbit(a, e, M, omega):
-    o = {&#x27;a&#x27;: a, &#x27;e&#x27;: e, &#x27;M&#x27;: M % TWO_PI, &#x27;omega&#x27;: omega}
+<pre><code>def orbit(a, e, M, omega, inc=0.0, raan=0.0):
+    o = {&#x27;a&#x27;: a, &#x27;e&#x27;: e, &#x27;M&#x27;: M % TWO_PI, &#x27;omega&#x27;: omega, &#x27;inc&#x27;: inc, &#x27;raan&#x27;: raan}
     o[&#x27;theta&#x27;] = eccentric_to_true(solve_kepler(o[&#x27;M&#x27;], e), e)
     return o</code></pre>
-<p>The five orbit numbers, and what each one is:</p>
 <div class="tbl"><table>
 <tr><th>Field</th><th>Meaning</th><th>Changes when</th></tr>
-<tr><td>a</td><td>Semi-major axis, the size. Half the long diameter of the ellipse.</td><td>Burns only</td></tr>
-<tr><td>e</td><td>Eccentricity, the shape. 0 is a circle, 0.05 is a slight oval.</td><td>Burns only</td></tr>
-<tr><td>omega</td><td>Argument of periapsis, which direction the low point of the oval faces.</td><td>Burns only</td></tr>
-<tr><td>M</td><td>Mean anomaly. A clock angle that advances at a constant rate.</td><td>Every sub-step</td></tr>
-<tr><td>theta</td><td>True anomaly. The real angle from the low point to the satellite.</td><td>Derived from M</td></tr>
+<tr><td>a</td><td>Semi-major axis, the size of the ellipse</td><td>Burns</td></tr>
+<tr><td>e</td><td>Eccentricity, the shape. 0 is a circle</td><td>Burns</td></tr>
+<tr><td>inc</td><td>Inclination, the tilt of the orbit plane from the equator</td><td>Normal burns</td></tr>
+<tr><td>raan</td><td>Right ascension of the ascending node, where the tilted plane crosses the equator going north</td><td>Normal burns; J2 (precesses)</td></tr>
+<tr><td>omega</td><td>Argument of periapsis, angle from the ascending node to the low point, measured in the orbit plane</td><td>Burns; J2 (precesses)</td></tr>
+<tr><td>M</td><td>Mean anomaly, a clock angle advancing at a constant rate</td><td>Every sub-step</td></tr>
+<tr><td>theta</td><td>True anomaly, the real angle from periapsis to the satellite</td><td>Derived from M</td></tr>
 </table></div>
-<div class="why"><div class="t">Why store the clock angle and derive the real one</div>
-<p>M advances linearly with time, so propagation is exact for any time step and warps cost nothing in accuracy. theta does not advance linearly. The C stores both but always recomputes theta from M after any change. Treat theta as a cache.</p></div>
+<p>Five of the seven describe the ellipse and its orientation and are constant under pure two-body motion. Only M moves. Under J2, raan and omega also move, at constant rates. theta is a cache recomputed from M after every change.</p>
+<div class="why"><div class="t">The consumer rule</div>
+<p>Near i = 0 the node is undefined, so omega and raan individually are ill-conditioned: a metre of position noise moves each by degrees while their sum barely changes. The C forbids any observation, reward, or termination code from reading omega or raan alone. Consumers use the well-conditioned combinations ϖ = ω + Ω, λ = M + ω + Ω, the unit angular-momentum vector ĥ, and the eccentricity vector ē. Section 5 builds those.</p></div>
 
-<h2 id="s2">2. Constants and the action menu</h2>
-<pre><code># ── 1. Constants (orbital.h lines 20–61) ─────────────────────────────────────
-MU       = 3.986004418e14   # Earth GM, m^3/s^2
-R_EARTH  = 6.371e6          # m
-ALT_MIN  = 200e3            # survivable altitude floor
-DT       = 60.0             # one sub-step, s
-ISP, G0  = 300.0, 9.80665
-VE       = ISP * G0         # exhaust velocity ~2942 m/s
-FUEL_FRAC = 0.15            # fuel is 15% of initial total mass
-DRY_MASS  = 850.0           # kg
+<h2 id="s2">2. Constants and the 31-row action menu</h2>
+<pre><code># ── 1. Constants (orbital.h lines 20–75) ─────────────────────────────────────
+MU        = 3.986004418e14   # Earth GM, m^3/s^2
+R_EARTH   = 6.371e6          # m (collision radius)
+ALT_MIN   = 200e3            # survivable altitude floor
+DT        = 60.0             # one sub-step, s
+ISP, G0   = 300.0, 9.80665
+VE        = ISP * G0         # exhaust velocity ~2942 m/s
+FUEL_FRAC = 0.15             # fuel is 15% of initial total mass
+DRY_MASS  = 850.0            # kg
 EARTH_KEEPOUT = R_EARTH + ALT_MIN
-OBS_ALT_SCALE = 1.6e6       # obs altitude normaliser
-TWO_PI = 2.0 * math.pi
-
-# ── 2. The action table (orbital.h ACTION_DV / ACTION_TAU) ───────────────────
-# (dv_prograde, dv_radial) in m/s, and tau = how many 60 s sub-steps it takes.
-ACTION_DV  = [(0,0),(5,0),(10,0),(25,0),(-5,0),(-10,0),(-25,0),(0,10),(0,-10),
-              (0,0),(0,0),(0,0),(1,0),(-1,0),(2,0),(-2,0)]
-ACTION_TAU = [1,1,1,1,1,1,1,1,1, 5,30,60, 1,1,1,1]
-NUM_ACTIONS = 16</code></pre>
-<p>The action table is the contract between the policy and the physics: each row is a burn (prograde, radial) in m/s, and <code>tau</code> is how many 60-second sub-steps the action consumes. Warps (rows 9, 10, 11) carry zero burn and 5, 30 or 60 sub-steps. Row indices are frozen because trained checkpoints depend on them; the real table extends to 31 rows for 3D and long warps.</p>
+DEBRIS_HARD_R, DEBRIS_KEEPOUT = 1.0, 5000.0
+J2_COEF   = 1.08262668e-3    # WGS-84 J2
+J2_R_EQ   = 6.378137e6       # equatorial radius used by J2 (NOT R_EARTH)
+OBS_ALT_SCALE = 1.6e6
+OBS_DIM   = 38
+TWO_PI    = 2.0 * math.pi</code></pre>
+<p>Two Earth radii appear on purpose. <code>R_EARTH</code> is the collision radius. <code>J2_R_EQ</code> is the equatorial radius the J2 formula is defined against, 7 km larger; using the wrong one would bias every precession rate.</p>
+<pre><code># ── 2. The action table (orbital.h ACTION_DV / ACTION_TAU), 31 rows ──────────
+# (dv_prograde, dv_radial, dv_normal) in m/s; tau = 60 s sub-steps consumed.
+ACTION_DV = [
+    (0,0,0),(5,0,0),(10,0,0),(25,0,0),(-5,0,0),(-10,0,0),(-25,0,0),(0,10,0),(0,-10,0),
+    (0,0,0),(0,0,0),(0,0,0),                         # 9-11: warp 5 / 30 / 60 min
+    (1,0,0),(-1,0,0),(2,0,0),(-2,0,0),               # 12-15: fine prograde/retro
+    (0,0,0),(0,0,0),(0,1,0),(0,-1,0),                # 16-17: warp 3 h / 6 h; 18-19: radial ±1
+    (0,0,1),(0,0,-1),(0,0,10),(0,0,-10),(0,0,25),(0,0,-25),   # 20-25: normal (out of plane)
+    (25,0,25),(25,0,-25),(-25,0,25),(-25,0,-25),     # 26-29: combined prograde+normal
+    (0,0,0),                                         # 30: warp 24 h
+]
+ACTION_TAU = [1]*9 + [5,30,60] + [1]*4 + [180,360] + [1]*2 + [1]*10 + [1440]
+NUM_ACTIONS = 31</code></pre>
+<p>Each row is a burn (prograde, radial, normal) in m/s, and <code>tau</code> is how many 60-second sub-steps the action consumes. Rows 0 to 19 are the 2D lineage. Rows 20 to 25 are pure out-of-plane burns along the orbit normal ĥ. Rows 26 to 29 are combined prograde-plus-normal impulses, added because two single-axis burns one step apart cost \(D + P\) in fuel while one combined burn costs \(\sqrt{D^2 + P^2}\). Row 30 is a 24-hour warp for the J2 drift-and-wait campaigns. Indices are frozen forever because trained checkpoints index into them.</p>
 
 <h2 id="s3">3. Three angles and Kepler's equation</h2>
-<p>There are three ways to say where a satellite is on its ellipse, and the simulator needs all three.</p>
-<ul>
-<li><b>Mean anomaly M</b>: fraction of the period elapsed since periapsis, times 2π. Uniform in time. Easy to advance, meaningless geometrically.</li>
-<li><b>Eccentric anomaly E</b>: the angle you get by projecting the satellite onto the circle that circumscribes the ellipse. A geometric middleman.</li>
-<li><b>True anomaly θ</b>: the actual angle at Earth from periapsis to the satellite. What you need for position.</li>
-</ul>
-<p>Kepler's equation links M and E:</p>
+<p>There are three ways to say where a satellite is on its ellipse. <b>Mean anomaly M</b> is the fraction of the period elapsed since periapsis, times 2π: uniform in time, meaningless geometrically. <b>Eccentric anomaly E</b> is a geometric middleman. <b>True anomaly θ</b> is the actual angle at Earth from periapsis to the satellite, which is what position needs. Kepler's equation links the first two:</p>
 \[ M = E - e\sin E \]
-<p>It cannot be inverted algebraically, so given M the code refines a guess for E with Newton's method, five iterations, starting from E = M (or E = π for very eccentric orbits). Then E converts to θ by a half-angle identity, and the reverse map θ to M exists for use after burns.</p>
-<pre><code># ── 5. Kepler&#x27;s equation (orbital.h solve_kepler, eccentric_to_true, true_to_mean)
+<p>It has no algebraic inverse, so E is found by Newton's method from the guess E = M, five iterations, exiting early at 1e-12. At e ≤ 0.05 it converges in about three. Then E converts to θ by a half-angle identity, and the reverse map θ → M exists for use after burns.</p>
+<pre><code># ── 4. Kepler&#x27;s equation (solve_kepler, eccentric_to_true, true_to_mean) ─────
 def solve_kepler(M, e):
-    &quot;&quot;&quot;M = E - e sin E, solved for E. Newton, 5 iterations, exactly as the C.&quot;&quot;&quot;
+    &quot;&quot;&quot;M = E - e sin E. Newton from E0 = M (or pi for e &gt;= 0.8), 5 iterations.&quot;&quot;&quot;
     M = M % TWO_PI
     E = M if e &lt; 0.8 else math.pi
     for _ in range(5):
@@ -171,249 +172,505 @@ def solve_kepler(M, e):
     return E
 
 def eccentric_to_true(E, e):
-    &quot;&quot;&quot;E -&gt; theta, half-angle form (no quadrant ambiguity).&quot;&quot;&quot;
     return 2.0 * math.atan2(math.sqrt(1 + e) * math.sin(E / 2),
                             math.sqrt(1 - e) * math.cos(E / 2))
 
 def true_to_mean(theta, e):
-    &quot;&quot;&quot;theta -&gt; E -&gt; M. The sqrt factors are SWAPPED relative to the forward
-    map; this is the function whose bug (2026-08-10) teleported phase on burns.&quot;&quot;&quot;
+    &quot;&quot;&quot;Inverse of the above (sqrt factors swapped). Site of the 2026-08-10 bug.&quot;&quot;&quot;
     E = 2.0 * math.atan2(math.sqrt(1 - e) * math.sin(theta / 2),
                          math.sqrt(1 + e) * math.cos(theta / 2))
     return E - e * math.sin(E)</code></pre>
 <div class="why"><div class="t">The bug that lived here</div>
-<p>The two half-angle formulas differ only in which square root multiplies sine and which multiplies cosine. On 2026-08-10 it was found that the reverse map had them swapped, so it was applying the forward map twice. Since the reverse map runs only after burns, every burn corrupted M by about 2e·sin θ and teleported the satellite along its orbit. Every result before that date describes a different physics.</p></div>
-<div class="plain"><div class="t">In plain words</div>
-<p>The clock says "one third of the lap is done." Where is the satellite? Not one third of the way around, because it moves faster near Earth. Kepler's equation is the lookup from clock to place, and Newton's method is guess-and-correct until the equation balances.</p></div>
+<p>The two half-angle formulas differ only in which square root multiplies sine and which multiplies cosine. Until 2026-08-10 the reverse map had them swapped, so it was applying the forward map twice. Because the reverse map runs only after burns, every burn corrupted M by about 2e·sin θ and teleported the satellite along its orbit. Every result before that date describes a different physics.</p></div>
 
-<h2 id="s4">4. Coasting is one line</h2>
-<div class="lab">C · orbital.h line 740</div>
-<pre class="c"><code>static inline void propagate_orbit(Orbit* o, double dt) {
-    double n = sqrt(MU / (o-&gt;a * o-&gt;a * o-&gt;a));  /* mean motion (rad/s) */
-    o-&gt;M += n * dt;
-    o-&gt;M = fmod(o-&gt;M, 2.0 * M_PI);
-    if (o-&gt;M &lt; 0.0) o-&gt;M += 2.0 * M_PI;
+<h2 id="s4">4. Coasting: two-body, then J2</h2>
+<div class="lab">C · orbital.h propagate_orbit_j2, line 800</div>
+<pre class="c"><code>static inline void propagate_orbit_j2(Orbit* o, double dt, int j2_mode) {
+    if (!j2_mode) { propagate_orbit(o, dt); return; }     /* branch, never add a zero */
+    double n   = sqrt(MU / (o-&gt;a * o-&gt;a * o-&gt;a));
+    double p   = o-&gt;a * (1.0 - o-&gt;e * o-&gt;e);
+    double k   = 1.5 * n * J2_COEF * (J2_R_EQ / p) * (J2_R_EQ / p);
+    double si2 = sin(o-&gt;inc) * sin(o-&gt;inc);
+    double Om  = -k * cos(o-&gt;inc);
+    double om  =  0.5 * k * (4.0 - 5.0 * si2);
+    double Md  =  n + 0.5 * k * sqrt(1.0 - o-&gt;e * o-&gt;e) * (2.0 - 3.0 * si2);
+    if (o-&gt;inc == 0.0) o-&gt;omega = wrap_2pi(o-&gt;omega + (om + Om) * dt);
+    else { o-&gt;raan = wrap_2pi(o-&gt;raan + Om*dt); o-&gt;omega = wrap_2pi(o-&gt;omega + om*dt); }
+    o-&gt;M = wrap_2pi(o-&gt;M + Md * dt);
     double E = solve_kepler(o-&gt;M, o-&gt;e);
     o-&gt;theta = eccentric_to_true(E, o-&gt;e);
 }</code></pre>
 <div class="lab">Python</div>
-<pre><code># ── 6. Coasting (orbital.h propagate_orbit) ──────────────────────────────────
-def propagate(o, dt):
-    &quot;&quot;&quot;Advance the clock angle by n*dt, then re-derive theta. Nothing else moves.&quot;&quot;&quot;
+<pre><code># ── 5. Coasting: two-body and secular J2 (propagate_orbit, propagate_orbit_j2)
+def propagate(o, dt, j2_mode=0):
+    &quot;&quot;&quot;Advance the clock angle; under J2 also precess the node and periapsis.&quot;&quot;&quot;
     n = math.sqrt(MU / o[&#x27;a&#x27;] ** 3)
-    o[&#x27;M&#x27;] = (o[&#x27;M&#x27;] + n * dt) % TWO_PI
+    if not j2_mode:
+        o[&#x27;M&#x27;] = wrap_2pi(o[&#x27;M&#x27;] + n * dt)
+    else:
+        # Secular J2 rates: functions of (a, e, i) only, all three constant, so
+        # the map is exact at ANY dt. R_EQ is the equatorial radius, not R_EARTH.
+        p   = o[&#x27;a&#x27;] * (1 - o[&#x27;e&#x27;] ** 2)
+        k   = 1.5 * n * J2_COEF * (J2_R_EQ / p) ** 2
+        si2 = math.sin(o[&#x27;inc&#x27;]) ** 2
+        Om  = -k * math.cos(o[&#x27;inc&#x27;])                        # node regression
+        om  =  0.5 * k * (4.0 - 5.0 * si2)                   # apsidal precession
+        Md  =  n + 0.5 * k * math.sqrt(1 - o[&#x27;e&#x27;]**2) * (2.0 - 3.0 * si2)
+        if o[&#x27;inc&#x27;] == 0.0:
+            # Equatorial: RAAN is a gauge angle with a MAXIMAL rate. Fold both
+            # rates into omega and keep raan exactly 0.0 so the identity gauge
+            # fast paths never disengage mid-episode.
+            o[&#x27;omega&#x27;] = wrap_2pi(o[&#x27;omega&#x27;] + (om + Om) * dt)
+        else:
+            o[&#x27;raan&#x27;]  = wrap_2pi(o[&#x27;raan&#x27;]  + Om * dt)
+            o[&#x27;omega&#x27;] = wrap_2pi(o[&#x27;omega&#x27;] + om * dt)
+        o[&#x27;M&#x27;] = wrap_2pi(o[&#x27;M&#x27;] + Md * dt)
     o[&#x27;theta&#x27;] = eccentric_to_true(solve_kepler(o[&#x27;M&#x27;], o[&#x27;e&#x27;]), o[&#x27;e&#x27;])</code></pre>
-<p>Mean motion \(n = \sqrt{\mu/a^3}\) is the clock rate in radians per second, fixed by the size of the orbit. Add n·dt to M, wrap to [0, 2π), and re-derive θ. Nothing else in the orbit is touched. Because this is exact, the C comment at the propagation call site notes that a warp of τ sub-steps is identical to one call with τ·dt, which is what makes the warp actions free of integration error.</p>
+<h3>Two-body</h3>
+<p>Mean motion \(n = \sqrt{\mu/a^3}\) is the clock rate. Add n·dt to M, wrap, re-derive θ. Nothing else changes. This is exact for any dt, which is why a 6-hour warp is the same as 360 one-minute steps to float noise.</p>
+<h3>J2: Earth's equatorial bulge</h3>
+<p>Earth is not a point mass. The bulge pulls slightly harder near the equator, and averaged over an orbit that torque does two things: it drags the orbit plane westward around the pole (node regression, Ω̇) and it rotates the ellipse within its plane (apsidal precession, ω̇). It also slightly changes the clock rate. The secular rates, with \(p = a(1-e^2)\) and \(k = \tfrac32 n J_2 (R_{eq}/p)^2\):</p>
+\[ \dot\Omega = -k\cos i, \qquad \dot\omega = \tfrac12 k\,(4 - 5\sin^2 i), \qquad \dot M = n + \tfrac12 k\sqrt{1-e^2}\,(2 - 3\sin^2 i) \]
+<p>with \(\dot a = \dot e = \dot i = 0\). At 500 km and 50° inclination the node moves about 5° per day. The environment keeps only these secular rates and omits all periodic terms, so the state is the <b>mean element set</b>. Since the rates depend only on a, e and i, and those three are constant, the rates are constant for the life of the element set, and one warp of τ·dt equals τ steps of dt to float noise. J2 therefore costs nothing in warp accuracy.</p>
+<div class="why"><div class="t">The equatorial fold</div>
+<p>At i = 0 the node line does not exist, so Ω is a gauge angle, yet its formula gives the maximal rate −k. Propagating Ω normally would push raan off exactly 0.0 after one step and silently disengage every 2D fast path mid-episode. Skipping Ω̇ would make the physical precession ϖ̇ = Ω̇ + ω̇ wrong by 2×. So at exactly i = 0 both rates are folded into omega and raan stays 0.0. Cross-checked against a Cowell integrator to 0.8%.</p></div>
+<div class="why"><div class="t">The stated inconsistency</div>
+<p>No mean-to-osculating conversion happens anywhere. A burn is applied to the mean state through the osculating Gauss response. Re-flown through a full-J2 integrator, the relative state error is 83 m and 0.094 m/s per orbit at 5 km separation, benign at the 30 km box, but 9.4% of a 1 m/s tolerance per orbit, so a tight-box J2 rung must not claim osculating-grade fidelity. The C comment says this in as many words; say it too.</p></div>
+<div class="plain"><div class="t">In plain words</div>
+<p>Earth is slightly fat around the middle. That extra pull slowly swings a tilted orbit sideways around the pole and slowly rotates the oval within its own plane. The simulator adds those two slow rotations to the clock tick. Because they are steady, fast-forwarding stays exact.</p></div>
 
-<h2 id="s5">5. Elements to position and back</h2>
-<pre><code># ── 7. Elements &lt;-&gt; Cartesian (orbital.h orbit_to_cartesian / cartesian_to_elements)
-def to_cartesian(o):
-    &quot;&quot;&quot;Perifocal frame (periapsis on +x), then rotate by omega.&quot;&quot;&quot;
-    p = o[&#x27;a&#x27;] * (1 - o[&#x27;e&#x27;] ** 2)              # semi-latus rectum
+<h2 id="s5">5. The orbit plane: ĥ, ē and the 3-1-3 rotation</h2>
+<pre><code># ── 6. Element combinations consumers are allowed to read (orb_hhat, orb_evec)
+def hhat(o):
+    &quot;&quot;&quot;Unit angular momentum, 3-1-3 convention: (sin i sin O, -sin i cos O, cos i).&quot;&quot;&quot;
+    si, ci = math.sin(o[&#x27;inc&#x27;]), math.cos(o[&#x27;inc&#x27;])
+    return (si * math.sin(o[&#x27;raan&#x27;]), -si * math.cos(o[&#x27;raan&#x27;]), ci)
+
+def evec(o):
+    &quot;&quot;&quot;Inertial eccentricity 3-vector from ELEMENTS (reduces to (e cos w, e sin w, 0) at i = 0).&quot;&quot;&quot;
+    cO, sO = math.cos(o[&#x27;raan&#x27;]), math.sin(o[&#x27;raan&#x27;])
+    cw, sw = math.cos(o[&#x27;omega&#x27;]), math.sin(o[&#x27;omega&#x27;])
+    ci, si = math.cos(o[&#x27;inc&#x27;]), math.sin(o[&#x27;inc&#x27;])
+    e = o[&#x27;e&#x27;]
+    return (e * (cO*cw - sO*sw*ci), e * (sO*cw + cO*sw*ci), e * (sw*si))</code></pre>
+<p>The unit angular-momentum vector ĥ is the orbit plane's normal, built directly from i and Ω. It is exactly invariant under prograde and radial burns, so the plane channels in the observation move only when a normal burn fires. The eccentricity vector ē points at periapsis with length e, built from elements rather than from position and velocity because the two routes are different floating-point paths and only the element route reduces bit-exactly to the 2D pair (e cos ω, e sin ω) at i = Ω = 0.</p>
+<div class="lab">C · the 3-1-3 rotation in orbit_to_cartesian</div>
+<pre class="c"><code>double cO = cos(o-&gt;raan), sO = sin(o-&gt;raan);
+double cw = cos(o-&gt;omega), sw = sin(o-&gt;omega);
+double ci = cos(o-&gt;inc),   si = sin(o-&gt;inc);
+double R11 =  cO*cw - sO*sw*ci, R12 = -cO*sw - sO*cw*ci;
+double R21 =  sO*cw + cO*sw*ci, R22 = -sO*sw + cO*cw*ci;
+double R31 =  sw*si,            R32 =  cw*si;
+*x = R11*xp + R12*yp;  *y = R21*xp + R22*yp;  *z = R31*xp + R32*yp;</code></pre>
+<div class="lab">Python</div>
+<pre><code>def to_cartesian(o):
+    &quot;&quot;&quot;Perifocal (periapsis on +x) -&gt; inertial via the 3-1-3 rotation
+    R3(-Omega) R1(-i) R3(-omega). Value-gated 2D fast path when i = Omega = 0.&quot;&quot;&quot;
+    p = o[&#x27;a&#x27;] * (1 - o[&#x27;e&#x27;] ** 2)
     r = p / (1 + o[&#x27;e&#x27;] * math.cos(o[&#x27;theta&#x27;]))
-    h = math.sqrt(MU * p)                       # angular momentum
+    h = math.sqrt(MU * p)
     xp, yp   = r * math.cos(o[&#x27;theta&#x27;]), r * math.sin(o[&#x27;theta&#x27;])
     vxp, vyp = -(MU / h) * math.sin(o[&#x27;theta&#x27;]), (MU / h) * (o[&#x27;e&#x27;] + math.cos(o[&#x27;theta&#x27;]))
-    co, so = math.cos(o[&#x27;omega&#x27;]), math.sin(o[&#x27;omega&#x27;])
-    return (co*xp - so*yp, so*xp + co*yp, co*vxp - so*vyp, so*vxp + co*vyp)
+    if o[&#x27;inc&#x27;] == 0.0 and o[&#x27;raan&#x27;] == 0.0:
+        co, so = math.cos(o[&#x27;omega&#x27;]), math.sin(o[&#x27;omega&#x27;])
+        return (co*xp - so*yp, so*xp + co*yp, 0.0, co*vxp - so*vyp, so*vxp + co*vyp, 0.0)
+    cO, sO = math.cos(o[&#x27;raan&#x27;]), math.sin(o[&#x27;raan&#x27;])
+    cw, sw = math.cos(o[&#x27;omega&#x27;]), math.sin(o[&#x27;omega&#x27;])
+    ci, si = math.cos(o[&#x27;inc&#x27;]), math.sin(o[&#x27;inc&#x27;])
+    R11, R12 =  cO*cw - sO*sw*ci, -cO*sw - sO*cw*ci
+    R21, R22 =  sO*cw + cO*sw*ci, -sO*sw + cO*cw*ci
+    R31, R32 =  sw*si,             cw*si
+    return (R11*xp + R12*yp, R21*xp + R22*yp, R31*xp + R32*yp,
+            R11*vxp + R12*vyp, R21*vxp + R22*vyp, R31*vxp + R32*vyp)</code></pre>
+<p>Forward conversion is two steps. First, in the <b>perifocal frame</b> (origin at Earth's centre, x toward periapsis, in the orbit plane) position and velocity are closed-form in θ, using \(r = p/(1 + e\cos\theta)\) and \(h = \sqrt{\mu p}\):</p>
+\[ \mathbf r_p = r(\cos\theta, \sin\theta, 0), \qquad \mathbf v_p = \frac{\mu}{h}\big(-\sin\theta,\; e + \cos\theta,\; 0\big) \]
+<p>Second, rotate into the inertial frame by three successive rotations: by ω about the orbit normal (to put the node on the x axis), by i about that node line (to tilt the plane down to the equator), by Ω about the pole (to put the node at its inertial longitude). Composed, that is the 3×3 matrix R with entries R11 through R32; the third column is never needed because perifocal z is zero. Both frames share Earth's centre as origin, so this is a pure rotation with no translation.</p>
+<div class="why"><div class="t">Why the 2D fast path is value-gated, not just a special case</div>
+<p>When inc == 0.0 and raan == 0.0 exactly, the C runs the four original 2D statements verbatim. Algebraically the general matrix gives the same numbers, but not the same bits, and every 2D checkpoint and published figure was validated against specific bits. Gating on exact zero makes the 2D lineage a structural invariant of the 3D code rather than a coincidence of one compiler.</p></div>
 
-def from_cartesian(x, y, vx, vy):
-    &quot;&quot;&quot;Position+velocity -&gt; elements. Mirrors the C equatorial branch exactly.&quot;&quot;&quot;
-    r  = math.hypot(x, y)
-    v2 = vx*vx + vy*vy
-    vr = (x*vx + y*vy) / r                       # radial speed
-    a  = 1.0 / (2.0/r - v2/MU)                   # vis-viva
-    ex = ((v2 - MU/r)*x - vr*r*vx) / MU          # eccentricity vector
-    ey = ((v2 - MU/r)*y - vr*r*vy) / MU
-    e  = math.hypot(ex, ey)
-    if e &lt; 1e-10:
-        omega, theta = 0.0, math.atan2(y, x)
-    else:
-        omega = math.atan2(ey, ex)
-        c = max(-1.0, min(1.0, (ex*x + ey*y) / (e*r)))
-        theta = math.acos(c)
-        if vr &lt; 0.0:
-            theta = TWO_PI - theta
+<h2 id="s6">6. Cartesian back to elements</h2>
+<pre><code>def from_cartesian(x, y, z, vx, vy, vz):
+    &quot;&quot;&quot;Position+velocity -&gt; elements. Exact hxy == 0 test picks the 2D branch.&quot;&quot;&quot;
+    hx, hy, hz = y*vz - z*vy, z*vx - x*vz, x*vy - y*vx
+    hxy = math.sqrt(hx*hx + hy*hy)
+    if hxy == 0.0:                                        # ── equatorial branch
+        r  = math.sqrt(x*x + y*y); v2 = vx*vx + vy*vy
+        vr = (x*vx + y*vy) / r
+        a  = 1.0 / (2.0/r - v2/MU)
+        ex = ((v2 - MU/r)*x - vr*r*vx) / MU
+        ey = ((v2 - MU/r)*y - vr*r*vy) / MU
+        e  = math.sqrt(ex*ex + ey*ey)
+        if e &lt; 1e-10:
+            omega, theta = 0.0, math.atan2(y, x)
+        else:
+            omega = math.atan2(ey, ex)
+            c = max(-1.0, min(1.0, (ex*x + ey*y) / (e*r)))
+            theta = math.acos(c)
+            if vr &lt; 0.0: theta = TWO_PI - theta
+        inc, raan = 0.0, 0.0
+    else:                                                 # ── inclined branch
+        r  = math.sqrt(x*x + y*y + z*z); v2 = vx*vx + vy*vy + vz*vz
+        vr = (x*vx + y*vy + z*vz) / r
+        a  = 1.0 / (2.0/r - v2/MU)
+        hmag = math.sqrt(hx*hx + hy*hy + hz*hz)
+        inc  = math.atan2(hxy, hz)                        # atan2, never acos(hz/h)
+        raan = wrap_2pi(math.atan2(hx, -hy))              # node vector n = z x h
+        ex = ((v2 - MU/r)*x - vr*r*vx) / MU
+        ey = ((v2 - MU/r)*y - vr*r*vy) / MU
+        ez = ((v2 - MU/r)*z - vr*r*vz) / MU
+        e  = math.sqrt(ex*ex + ey*ey + ez*ez)
+        nx, ny = -hy/hxy, hx/hxy                          # n-hat (node direction)
+        wx, wy, wz = hx/hmag, hy/hmag, hz/hmag            # h-hat
+        mx, my, mz = -wz*ny, wz*nx, wx*ny - wy*nx         # m-hat = h x n
+        if e &lt; 1e-10:
+            omega = 0.0
+            theta = wrap_2pi(math.atan2(x*mx + y*my + z*mz, x*nx + y*ny))
+        else:
+            omega = wrap_2pi(math.atan2(ex*mx + ey*my + ez*mz, ex*nx + ey*ny))
+            eux, euy, euz = ex/e, ey/e, ez/e
+            qx, qy, qz = wy*euz - wz*euy, wz*eux - wx*euz, wx*euy - wy*eux   # q = h x e
+            theta = wrap_2pi(math.atan2(x*qx + y*qy + z*qz, x*eux + y*euy + z*euz))
     M = true_to_mean(theta, e)
-    if M &lt; 0.0:
-        M += TWO_PI
-    return {&#x27;a&#x27;: a, &#x27;e&#x27;: e, &#x27;M&#x27;: M, &#x27;theta&#x27;: theta, &#x27;omega&#x27;: omega}</code></pre>
-<p>Forward: in the perifocal frame (periapsis on the +x axis) the position and velocity are closed-form in θ, using the semi-latus rectum \(p = a(1-e^2)\), the radius \(r = p/(1+e\cos\theta)\) and the angular momentum \(h = \sqrt{\mu p}\):</p>
-\[ \mathbf r_p = r(\cos\theta, \sin\theta), \qquad \mathbf v_p = \frac{\mu}{h}\big(-\sin\theta,\; e + \cos\theta\big) \]
-<p>then rotate both by ω into the inertial frame. Reverse: from position and velocity, the size comes from the vis-viva energy equation, \(a = 1/(2/r - v^2/\mu)\); the shape and its direction come from the eccentricity vector</p>
+    if M &lt; 0.0: M += TWO_PI
+    return {&#x27;a&#x27;: a, &#x27;e&#x27;: e, &#x27;M&#x27;: M, &#x27;theta&#x27;: theta, &#x27;omega&#x27;: omega, &#x27;inc&#x27;: inc, &#x27;raan&#x27;: raan}</code></pre>
+<p>The reverse does not undo the rotation. It computes invariants directly. The angular momentum \(\mathbf h = \mathbf r \times \mathbf v\) gives the plane: inclination is the angle between ĥ and the pole, and the node line is \(\hat z \times \mathbf h = (-h_y, h_x, 0)\), so Ω = atan2(h_x, −h_y). Size comes from the vis-viva energy, \(a = 1/(2/r - v^2/\mu)\). Shape and orientation come from the eccentricity vector</p>
 \[ \mathbf e = \frac{(v^2 - \mu/r)\,\mathbf r - (\mathbf r\cdot\mathbf v)\,\mathbf v}{\mu} \]
-<p>whose length is e and whose direction is ω; θ is the angle from that vector to the position, with the sign fixed by whether the satellite is moving outward or inward. The C keeps the equatorial branch verbatim from the 2D build because rewriting the eccentricity vector in an algebraically equal form changed results at the last bit in 5% of cases.</p>
+<p>ω is the angle from the node vector n̂ to ē measured in the plane (using the in-plane basis n̂, m̂ = ĥ × n̂), and θ is the angle from ē to the position (using ê, q̂ = ĥ × ê).</p>
+<div class="why"><div class="t">Two numerical rules the C enforces</div>
+<p>Inclination is <code>atan2(hxy, hz)</code>, never <code>acos(hz/h)</code>: acos loses half the mantissa near i = 0, a degradation measured at 2.4e15×. The branch test <code>hxy == 0.0</code> is exact: with z = v_z = 0 exactly, h_x and h_y are each a difference of two exact zeros, so the equatorial branch fires deterministically and holds the original 2D statements.</p></div>
 
-<h2 id="s6">6. Burns and fuel</h2>
-<pre><code># ── 8. Burns and fuel (orbital.h apply_impulse) ──────────────────────────────
-def apply_impulse(sat, dv_pro, dv_rad):
-    &quot;&quot;&quot;Returns |dv| actually applied. Mutates sat[&#x27;orbit&#x27;] and sat[&#x27;fuel_mass&#x27;].&quot;&quot;&quot;
-    x, y, vx, vy = to_cartesian(sat[&#x27;orbit&#x27;])
-    v, r = math.hypot(vx, vy), math.hypot(x, y)
-    # local frame: prograde = v-hat, radial = r-hat (not orthogonal when e &gt; 0)
-    dvx = dv_pro * vx / v + dv_rad * x / r
-    dvy = dv_pro * vy / v + dv_rad * y / r
-    dv  = math.hypot(dvx, dvy)
+<h2 id="s7">7. The target-plane gauge</h2>
+<pre><code># ── 8. The target-plane gauge (PlaneGauge, gauge_from_orbit, orb_lambda_gauge)
+def gauge_from_orbit(t):
+    &quot;&quot;&quot;Orthonormal frame of the target&#x27;s orbit plane: e1 along its node line,
+    e3 = h-hat, e2 = e3 x e1. Identity when the target is exactly equatorial.&quot;&quot;&quot;
+    if t[&#x27;inc&#x27;] == 0.0 and t[&#x27;raan&#x27;] == 0.0:
+        return None
+    wx, wy, wz = hhat(t)
+    nx, ny = -wy, wx
+    nn = math.sqrt(nx*nx + ny*ny)
+    e1 = (nx/nn, ny/nn, 0.0) if nn &gt; 1e-14 else (1.0, 0.0, 0.0)
+    e3 = (wx, wy, wz)
+    e2 = (e3[1]*e1[2] - e3[2]*e1[1], e3[2]*e1[0] - e3[0]*e1[2], e3[0]*e1[1] - e3[1]*e1[0])
+    return (e1, e2, e3)
+
+def varpi_gauge(o, g):
+    &quot;&quot;&quot;Longitude of periapsis (omega + Omega) measured in the target&#x27;s plane frame.&quot;&quot;&quot;
+    if g is None:
+        return o[&#x27;omega&#x27;] + o[&#x27;raan&#x27;]
+    x, y, z, vx, vy, vz = to_cartesian(o)
+    e1, e2, e3 = g
+    dot = lambda v, e: v[0]*e[0] + v[1]*e[1] + v[2]*e[2]
+    t = from_cartesian(dot((x,y,z),e1), dot((x,y,z),e2), dot((x,y,z),e3),
+                       dot((vx,vy,vz),e1), dot((vx,vy,vz),e2), dot((vx,vy,vz),e3))
+    return t[&#x27;omega&#x27;] + t[&#x27;raan&#x27;]
+
+def lambda_gauge(o, g):
+    &quot;&quot;&quot;Mean longitude M + varpi in the target-plane gauge (M is frame-invariant).&quot;&quot;&quot;
+    return o[&#x27;M&#x27;] + varpi_gauge(o, g)</code></pre>
+<p>The problem it solves: Ω is measured from the inertial x axis. If the chaser and target planes differ, rotating the whole scene about the pole changes Ω_s and Ω_t by different amounts, so a phase gap computed as λ_s − λ_t with λ = M + ω + Ω is not a function of the physical relative state. Measured: 59.8° of spurious drift at 1° relative inclination. The fix is to express both bodies in the target's own plane frame (e1 along the target's node line, e3 = ĥ_t, e2 completing it), recompute the elements there, and read ϖ from that. M is a time coordinate and frame-invariant, so it is taken directly. When the target is exactly equatorial the gauge is the identity and λ collapses bit-exactly to M + ω.</p>
+<div class="plain"><div class="t">In plain words</div>
+<p>"How far ahead is the target" should not depend on which way you happened to point your x axis. With tilted orbits the naive formula does depend on it. So measure everything relative to the target's own orbit plane instead of the equator.</p></div>
+
+<h2 id="s8">8. Burns in three axes, and fuel</h2>
+<pre><code># ── 9. Burns and fuel (apply_impulse) ────────────────────────────────────────
+def apply_impulse(sat, dv_pro, dv_rad, dv_nor):
+    &quot;&quot;&quot;Impulse in the local frame: prograde = v-hat, radial = r-hat, normal = h-hat.
+    Returns |dv| applied; mutates sat[&#x27;orbit&#x27;] and sat[&#x27;fuel_mass&#x27;].&quot;&quot;&quot;
+    x, y, z, vx, vy, vz = to_cartesian(sat[&#x27;orbit&#x27;])
+    v = math.sqrt(vx*vx + vy*vy + vz*vz); r = math.sqrt(x*x + y*y + z*z)
+    hx, hy, hz = y*vz - z*vy, z*vx - x*vz, x*vy - y*vx
+    h = math.sqrt(hx*hx + hy*hy + hz*hz)
+    # in-plane terms FIRST, normal LAST (so dv_nor == 0 is bitwise the 2D value)
+    dvx = dv_pro * vx/v + dv_rad * x/r + dv_nor * hx/h
+    dvy = dv_pro * vy/v + dv_rad * y/r + dv_nor * hy/h
+    dvz = dv_pro * vz/v + dv_rad * z/r + dv_nor * hz/h
+    dv  = math.sqrt(dvx*dvx + dvy*dvy + dvz*dvz)          # norm of the ASSEMBLED vector
     if dv &lt; 1e-10:
         return 0.0
-    # Tsiolkovsky: fuel burned = m_total * (1 - exp(-dv / VE))
-    m_total = DRY_MASS + sat[&#x27;fuel_mass&#x27;]
-    need = m_total * (1.0 - math.exp(-dv / VE))
-    if need &gt; sat[&#x27;fuel_mass&#x27;]:                  # tank runs dry mid-burn
+    m_total = sat[&#x27;dry_mass&#x27;] + sat[&#x27;fuel_mass&#x27;]
+    need = m_total * (1.0 - math.exp(-dv / VE))           # Tsiolkovsky
+    if need &gt; sat[&#x27;fuel_mass&#x27;]:
         actual = -VE * math.log(1.0 - sat[&#x27;fuel_mass&#x27;] / m_total)
         if actual &lt; 1e-6:
             sat[&#x27;fuel_mass&#x27;] = 0.0
             return 0.0
-        dvx *= actual / dv; dvy *= actual / dv; dv = actual
+        s = actual / dv; dvx *= s; dvy *= s; dvz *= s; dv = actual
         sat[&#x27;fuel_mass&#x27;] = 0.0
     else:
         sat[&#x27;fuel_mass&#x27;] -= need
-    sat[&#x27;orbit&#x27;] = from_cartesian(x, y, vx + dvx, vy + dvy)
+    sat[&#x27;orbit&#x27;] = from_cartesian(x, y, z, vx + dvx, vy + dvy, vz + dvz)
     return dv</code></pre>
-<p>A burn is impulsive: an instant change in velocity. The requested Δv is given in the satellite's own frame (prograde along the velocity, radial along the position vector), assembled into inertial components, and added to the velocity. Then the orbit is recomputed from the new position and velocity. Fuel follows the rocket equation:</p>
-\[ \Delta m = m_{\text{total}}\big(1 - e^{-\Delta v / v_e}\big), \qquad v_e = I_{sp}\, g_0 \approx 2942\ \text{m/s} \]
-<p>so a 50 m/s burn costs about five times a 10 m/s burn, not five times exactly: 1.69% versus 0.34% of current mass. With a 15% fuel fraction the total budget is \(v_e \ln(1/0.85) \approx 478\) m/s. If a burn would need more fuel than remains, the burn is scaled down to what the tank can deliver and the tank is emptied.</p>
-<div class="why"><div class="t">Why round-trip through Cartesian</div>
-<p>Adding a velocity vector is trivial in Cartesian and messy in elements. Converting to position and velocity, adding, and converting back is exact and reuses the two conversion functions, so the burn code contains no orbital mechanics of its own.</p></div>
+<p>The local frame is prograde v̂, radial r̂, normal ĥ. Note v̂ and r̂ are not orthogonal when e &gt; 0; that is deliberate and matches the original build. A normal burn of δv rotates the plane by δv/v radians about the current position vector, changing i and Ω together depending on where in the orbit it fires (at the node it changes only i, 90° away it changes mostly Ω). The cost of a plane change is the reason 3D is hard:</p>
+\[ \Delta v_{\text{plane}} = 2 v \sin\tfrac{\Delta i}{2} \approx v\,\Delta i \]
+<p>At 7.6 km/s a 1° plane change is 133 m/s, over a quarter of the 478 m/s tank. That is why the 3D campaigns sample relative inclinations up to about 1°, and why the environment offers ±1 m/s normal burns: 1 m/s is 0.0075° of plane, the plane tolerance of the tight box.</p>
+<p>Fuel follows the rocket equation on the norm of the assembled vector, never a sum of components:</p>
+\[ \Delta m = m_{\text{total}}\big(1 - e^{-|\Delta v| / v_e}\big), \qquad v_e = I_{sp}\, g_0 \approx 2942\ \text{m/s} \]
+<p>A burn that would empty the tank is scaled to what remains. In-plane terms are summed first and the normal term last so that with dv_nor = 0 every component is bitwise the 2D value.</p>
 
-<h2 id="s7">7. Reset: how an episode is drawn</h2>
-<pre><code># ── 9. Reset: sample an episode (orbital.h c_reset, T3 defaults) ─────────────
+<h2 id="s9">9. Bodies: Earth and debris</h2>
+<pre><code># ── 10. Bodies (body_position) ───────────────────────────────────────────────
+def body_position(b):
+    if b[&#x27;is_static&#x27;]:
+        return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    return to_cartesian(b[&#x27;orbit&#x27;])</code></pre>
+<p>Every physical object is a <code>Body</code> with an orbit and two radii. Earth is <code>bodies[0]</code>, static at the origin, hard radius R_EARTH, keep-out at 200 km altitude. Debris are bodies on random low-eccentricity LEO orbits with a 1 m hard radius and a 5 km keep-out. They propagate with the same function as everything else and the collision loop treats them identically; adding a Moon would be one more entry. Debris are disabled in every current training lineage, and the 3D observation block reuses the slots debris would occupy, so the C asserts that dim3_mode requires zero debris.</p>
+
+<h2 id="s10">10. Reset: drawing an episode, planes included</h2>
+<pre><code># ── 11. Reset (c_reset) ──────────────────────────────────────────────────────
 def reset(env, rng):
-    &quot;&quot;&quot;T3 headline config: LEO 300-800 km, e &lt;= 0.05 both, gap +-180 deg,
-    perigee validity, physical mean-longitude gap (phase_gap_mode 1).&quot;&quot;&quot;
-    e_max, gap_max, cap = env[&#x27;e_max&#x27;], env[&#x27;gap_max&#x27;], env[&#x27;cap&#x27;]
-    for _attempt in range(4096):
-        a_init   = R_EARTH + 300e3 + rng.random() * 500e3
+    cfg = env[&#x27;cfg&#x27;]
+    for _ in range(4096):                                  # perigee rejection sampling
+        a_init = R_EARTH + 300e3 + rng.random() * 500e3
         while True:
             a_target = R_EARTH + 300e3 + rng.random() * 500e3
-            if abs(a_target - a_init) &gt;= 50e3:      # meaningful transfer
-                break
-        e_t = rng.random() * e_max
+            if abs(a_target - a_init) &gt;= 50e3: break
+        e_t = rng.random() * cfg[&#x27;e_max&#x27;]
         w_t = rng.random() * TWO_PI if e_t &gt; 0 else 0.0
-        e_s = rng.random() * e_max
+        e_s = rng.random() * cfg[&#x27;e_max&#x27;]
         w_s = rng.random() * TWO_PI
         M_s = rng.random() * TWO_PI
-        # reject inits whose perigee is below the keep-out altitude
-        if a_init*(1-e_s) &gt;= EARTH_KEEPOUT and a_target*(1-e_t) &gt;= EARTH_KEEPOUT:
-            break
-    env[&#x27;sat&#x27;] = {&#x27;orbit&#x27;: orbit(a_init, e_s, M_s, w_s),
-                  &#x27;dry_mass&#x27;: DRY_MASS,
-                  &#x27;fuel_mass&#x27;: DRY_MASS * FUEL_FRAC / (1 - FUEL_FRAC)}   # 150 kg
-    # Phase gap in MEAN LONGITUDE (lambda = M + omega), so it is physical:
-    gap = (2*rng.random() - 1) * gap_max
-    M_t = M_s + gap + (w_s - w_t)                 # lambda_t - lambda_s == gap
-    env[&#x27;target&#x27;] = orbit(a_target, e_t, M_t, w_t)
-    env[&#x27;step&#x27;] = 0
+        if a_init*(1-e_s) &gt;= EARTH_KEEPOUT and a_target*(1-e_t) &gt;= EARTH_KEEPOUT: break
+    # ── planes. Target plane defaults to i = Omega = 0 (it is pure gauge under
+    # two-body dynamics). Chaser plane = target plane rotated by delta about a
+    # random axis IN the target plane (Rodrigues), delta = di_max * sqrt(U).
+    i_t, O_t = 0.0, 0.0
+    if cfg[&#x27;dim3&#x27;]:
+        i_t = cfg[&#x27;i_t_min&#x27;] + rng.random() * (cfg[&#x27;i_t_max&#x27;] - cfg[&#x27;i_t_min&#x27;]) if cfg[&#x27;i_t_max&#x27;] &gt; cfg[&#x27;i_t_min&#x27;] else cfg[&#x27;i_t&#x27;]
+        O_t = cfg[&#x27;raan_t&#x27;]
+    tgt = orbit(a_target, e_t, 0.0, w_t, i_t, O_t)
+    inc_s, raan_s = i_t, O_t
+    if cfg[&#x27;dim3&#x27;] and cfg[&#x27;di_max&#x27;] &gt;= 0.0:
+        delta = cfg[&#x27;di_max&#x27;] * math.sqrt(rng.random())
+        ph = rng.random() * TWO_PI
+        wx, wy, wz = hhat(tgt)
+        u1 = (-wy, wx, 0.0); n1 = math.hypot(u1[0], u1[1])
+        u1 = (u1[0]/n1, u1[1]/n1, 0.0) if n1 &gt; 1e-14 else (1.0, 0.0, 0.0)
+        u2 = (wy*u1[2] - wz*u1[1], wz*u1[0] - wx*u1[2], wx*u1[1] - wy*u1[0])
+        nx, ny, nz = (u1[0]*math.cos(ph) + u2[0]*math.sin(ph),
+                      u1[1]*math.cos(ph) + u2[1]*math.sin(ph),
+                      u1[2]*math.cos(ph) + u2[2]*math.sin(ph))
+        cd, sd = math.cos(delta), math.sin(delta)
+        crx, cry, crz = ny*wz - nz*wy, nz*wx - nx*wz, nx*wy - ny*wx
+        hs = (wx*cd + crx*sd, wy*cd + cry*sd, wz*cd + crz*sd)
+        hxy = math.hypot(hs[0], hs[1])
+        if hxy &gt; 1e-14:
+            inc_s, raan_s = math.atan2(hxy, hs[2]), wrap_2pi(math.atan2(hs[0], -hs[1]))
+        else:
+            inc_s, raan_s = (0.0 if hs[2] &gt;= 0 else math.pi), 0.0
+    sat_orbit = orbit(a_init, e_s, M_s, w_s, inc_s, raan_s)
+    env[&#x27;sat&#x27;] = {&#x27;orbit&#x27;: sat_orbit, &#x27;dry_mass&#x27;: DRY_MASS,
+                  &#x27;fuel_mass&#x27;: DRY_MASS * FUEL_FRAC / (1 - FUEL_FRAC)}
+    # ── phase gap set in MEAN LONGITUDE, in the target-plane gauge
+    gap = (2*rng.random() - 1) * cfg[&#x27;gap_max&#x27;]
+    g = gauge_from_orbit(tgt)
+    tgt[&#x27;M&#x27;] = wrap_2pi(M_s + gap + varpi_gauge(sat_orbit, g) - varpi_gauge(tgt, g))
+    tgt[&#x27;theta&#x27;] = eccentric_to_true(solve_kepler(tgt[&#x27;M&#x27;], tgt[&#x27;e&#x27;]), tgt[&#x27;e&#x27;])
+    env[&#x27;target&#x27;] = tgt
+    # ── bodies: Earth + optional debris on random low-e LEO orbits
+    env[&#x27;bodies&#x27;] = [{&#x27;orbit&#x27;: orbit(0,0,0,0), &#x27;hard_radius&#x27;: R_EARTH,
+                      &#x27;keepout_radius&#x27;: EARTH_KEEPOUT, &#x27;is_static&#x27;: 1}]
+    nd = cfg[&#x27;debris_min&#x27;] + (rng.randrange(cfg[&#x27;debris_max&#x27;] - cfg[&#x27;debris_min&#x27;] + 1)
+                              if cfg[&#x27;debris_max&#x27;] &gt; cfg[&#x27;debris_min&#x27;] else 0)
+    for _ in range(nd):
+        d_a = R_EARTH + 300e3 + rng.random() * 500e3
+        d_e = rng.random() * 0.05
+        d_M = rng.random() * TWO_PI
+        d_w = rng.random() * TWO_PI
+        env[&#x27;bodies&#x27;].append({&#x27;orbit&#x27;: orbit(d_a, d_e, d_M, d_w), &#x27;hard_radius&#x27;: DEBRIS_HARD_R,
+                              &#x27;keepout_radius&#x27;: DEBRIS_KEEPOUT, &#x27;is_static&#x27;: 0})
+    env[&#x27;step&#x27;] = 0; env[&#x27;cause&#x27;] = 0
     env[&#x27;phi_prev&#x27;] = compute_phi(env)
-    env[&#x27;cause&#x27;] = 0
     return observe(env)</code></pre>
-<p>The C reset is a thousand lines because of curriculum knobs; this is the T3 headline path. Altitudes for chaser and target are uniform in 300 to 800 km with at least a 50 km difference. Eccentricities are uniform up to 0.05 with random orientation. The chaser's clock angle is random. Then rejection sampling: if either orbit's perigee, \(a(1-e)\), dips below 200 km altitude, redraw everything. Finally the target's clock angle is set so the mean-longitude gap \(\lambda_t - \lambda_s\), with \(\lambda = M + \omega\), equals a uniform draw in ±180°.</p>
-<div class="why"><div class="t">Why the gap is set in mean longitude</div>
-<p>An earlier version offset M alone. With independent ω on each orbit, that made the physical angular gap effectively uniform over ±180° no matter what the knob said, which silently unstaged every phase curriculum at e greater than zero. Setting the gap in λ makes the knob mean what it says.</p></div>
-<p>Fuel is initialised so the fuel fraction is exactly 0.15: \(m_{\text{fuel}} = m_{\text{dry}}\cdot 0.15/0.85 = 150\) kg on an 850 kg bus.</p>
+<p>The in-plane draw: altitudes uniform in 300 to 800 km with at least 50 km between chaser and target, eccentricities uniform to 0.05 with random orientation, random chaser clock angle, and rejection sampling until both perigees clear 200 km altitude.</p>
+<p>The plane draw, when 3D is on. The target plane is sampled directly (an inclination band, a fixed or sampled node). The chaser plane is then the target plane rotated by a small angle δ about a random axis lying in the target plane, using Rodrigues' rotation formula on ĥ_t, with δ = di_max·√U so the relative-inclination vector is uniform on a disc. Inclination and node are recovered from the rotated ĥ by atan2. The earlier design added a disc to the projected vector (sin i cos Ω, sin i sin Ω) and was deleted because that projection under-measures by cos i_t and asin cannot represent i &gt; 90°.</p>
+<p>Finally the phase gap is set in mean longitude, in the target-plane gauge: the target's M is chosen so that λ_t − λ_s equals the drawn gap exactly. Fuel is initialised to 150 kg on an 850 kg bus, a 15% fraction.</p>
 
-<h2 id="s8">8. Termination, in order</h2>
-<pre><code># ── 10. Termination (orbital.h check_termination) ────────────────────────────
+<h2 id="s11">11. Termination, in order</h2>
+<pre><code># ── 12. Termination (check_termination) ──────────────────────────────────────
 def check_termination(env):
-    &quot;&quot;&quot;Returns (terminal?, reward). Order matters: hyperbolic, collision,
-    escape, cap, stranded, success.&quot;&quot;&quot;
-    sat, tgt = env[&#x27;sat&#x27;], env[&#x27;target&#x27;]
+    sat, tgt, cfg = env[&#x27;sat&#x27;], env[&#x27;target&#x27;], env[&#x27;cfg&#x27;]
     if sat[&#x27;orbit&#x27;][&#x27;a&#x27;] &lt;= 0.0:
         env[&#x27;cause&#x27;] = 6; return True, -10.0
-    sx, sy, svx, svy = to_cartesian(sat[&#x27;orbit&#x27;])
-    r = math.hypot(sx, sy)
-    if r &lt; R_EARTH:                                # Earth is bodies[0]
-        env[&#x27;cause&#x27;] = 2; return True, -10.0
-    if 0.5*(svx*svx + svy*svy) - MU/r &gt;= 0.0:      # specific energy &gt;= 0
+    sx, sy, sz, svx, svy, svz = to_cartesian(sat[&#x27;orbit&#x27;])
+    r = math.sqrt(sx*sx + sy*sy + sz*sz)
+    for b in env[&#x27;bodies&#x27;]:                                 # every distance includes z
+        bx, by, bz, *_ = body_position(b)
+        if math.sqrt((sx-bx)**2 + (sy-by)**2 + (sz-bz)**2) &lt; b[&#x27;hard_radius&#x27;]:
+            env[&#x27;cause&#x27;] = 2; return True, -10.0
+    if 0.5*(svx*svx + svy*svy + svz*svz) - MU/r &gt;= 0.0:
         env[&#x27;cause&#x27;] = 3; return True, -10.0
-    if env[&#x27;step&#x27;] &gt;= env[&#x27;cap&#x27;]:
-        env[&#x27;cause&#x27;] = 4; return True, env[&#x27;cap_reward&#x27;]
-    tx, ty, tvx, tvy = to_cartesian(tgt)
-    d  = math.hypot(sx - tx, sy - ty)
-    rv = math.hypot(svx - tvx, svy - tvy)
-    at_target = d &lt; env[&#x27;box_r&#x27;] and rv &lt; env[&#x27;box_v&#x27;]
+    if env[&#x27;step&#x27;] &gt;= cfg[&#x27;cap&#x27;]:
+        env[&#x27;cause&#x27;] = 4; return True, cfg[&#x27;cap_reward&#x27;]
+    tx, ty, tz, tvx, tvy, tvz = to_cartesian(tgt)
+    d  = math.sqrt((sx-tx)**2 + (sy-ty)**2 + (sz-tz)**2)
+    rv = math.sqrt((svx-tvx)**2 + (svy-tvy)**2 + (svz-tvz)**2)
+    at_target = d &lt; cfg[&#x27;box_r&#x27;] and rv &lt; cfg[&#x27;box_v&#x27;]
     if sat[&#x27;fuel_mass&#x27;] &lt;= 0.0 and not at_target:
         env[&#x27;cause&#x27;] = 5; return True, -10.0
     if at_target:
-        initial_fuel = DRY_MASS * FUEL_FRAC / (1 - FUEL_FRAC)
-        frac = max(0.0, min(1.0, sat[&#x27;fuel_mass&#x27;] / initial_fuel))
+        frac = max(0.0, min(1.0, sat[&#x27;fuel_mass&#x27;] / (DRY_MASS * FUEL_FRAC / (1 - FUEL_FRAC))))
         env[&#x27;cause&#x27;] = 1; return True, 10.0 * (0.5 + 0.5 * frac)
     return False, 0.0</code></pre>
-<p>The order is the C order and it matters, because the first condition that fires wins:</p>
 <div class="tbl"><table>
 <tr><th>#</th><th>Condition</th><th>Reward</th><th>Meaning</th></tr>
-<tr><td>0</td><td>a ≤ 0</td><td>−10</td><td>A burn produced a hyperbola; no position can be computed</td></tr>
-<tr><td>1</td><td>r &lt; R_EARTH (any body's hard radius)</td><td>−10</td><td>Collision</td></tr>
-<tr><td>2</td><td>½v² − μ/r ≥ 0</td><td>−10</td><td>Escape: specific energy non-negative, never coming back</td></tr>
+<tr><td>0</td><td>a ≤ 0</td><td>−10</td><td>A burn produced a hyperbola</td></tr>
+<tr><td>1</td><td>distance to any body &lt; its hard radius</td><td>−10</td><td>Collision with Earth or debris</td></tr>
+<tr><td>2</td><td>½v² − μ/r ≥ 0</td><td>−10</td><td>Escape: specific energy non-negative</td></tr>
 <tr><td>3</td><td>step ≥ cap</td><td>0 (T3) or −10 (legacy)</td><td>Out of time</td></tr>
 <tr><td>4</td><td>fuel = 0 and not in box</td><td>−10</td><td>Stranded</td></tr>
 <tr><td>5</td><td>d &lt; 30 km and |v_rel| &lt; 50 m/s</td><td>+5 to +10</td><td>Success, scaled by fuel remaining</td></tr>
 </table></div>
-<p>Success is a Euclidean sphere around the propagated target, checked every sub-step, so a warp cannot skip through the box. The success reward is 10·(0.5 + 0.5·fuel_remaining), so arriving with a full tank pays 10 and arriving on fumes pays 5.</p>
+<p>Every distance includes z. The C comment names this trap: omit z anywhere and the success sphere becomes a cylinder that awards success kilometres out of plane. Success is checked every sub-step so a warp cannot skip through the box.</p>
 
-<h2 id="s9">9. The shaping potential</h2>
-<pre><code># ── 11. The shaping potential (orbital.h compute_phi, shaping_mode 1) ────────
-def wrap_pi(x):
-    return x - TWO_PI * math.floor((x + math.pi) / TWO_PI)
-
+<h2 id="s12">12. The shaping potential, modes 1 and 2</h2>
+<pre><code># ── 13. The shaping potential (compute_phi, modes 1 and 2) ───────────────────
 def compute_phi(env):
-    &quot;&quot;&quot;Phi = -[ W_l * |dlambda|/pi + W_m * min(1, dv_match / DV_REF) ] &lt;= 0.&quot;&quot;&quot;
-    s, t = env[&#x27;sat&#x27;][&#x27;orbit&#x27;], env[&#x27;target&#x27;]
-    dlam = wrap_pi((s[&#x27;M&#x27;] + s[&#x27;omega&#x27;]) - (t[&#x27;M&#x27;] + t[&#x27;omega&#x27;]))
-    de = math.hypot(s[&#x27;e&#x27;]*math.cos(s[&#x27;omega&#x27;]) - t[&#x27;e&#x27;]*math.cos(t[&#x27;omega&#x27;]),
-                    s[&#x27;e&#x27;]*math.sin(s[&#x27;omega&#x27;]) - t[&#x27;e&#x27;]*math.sin(t[&#x27;omega&#x27;]))
-    da_rel = (s[&#x27;a&#x27;] - t[&#x27;a&#x27;]) / t[&#x27;a&#x27;]
+    s, t, cfg = env[&#x27;sat&#x27;][&#x27;orbit&#x27;], env[&#x27;target&#x27;], env[&#x27;cfg&#x27;]
     v_t = math.sqrt(MU / t[&#x27;a&#x27;])
-    dv_match = 0.5 * v_t * math.hypot(da_rel, de)   # linearised 2-impulse cost
-    match = min(1.0, dv_match / env[&#x27;dv_ref&#x27;])
-    return -(env[&#x27;w_lambda&#x27;] * abs(dlam) / math.pi + env[&#x27;w_match&#x27;] * match)</code></pre>
-<p>Sparse terminal rewards are hard to learn from, so every non-terminal step also pays the change in a potential Φ. Two terms: the mean-longitude gap normalised to [0, 1], and a linearised two-impulse orbit-match cost (the same size-plus-shape Δv the scripted expert uses) capped at a reference. Φ is always ≤ 0 and equals 0 only at the goal.</p>
-<p>With \(\gamma_{\text{shape}} = 1\) the per-step shaping reward is \(\Phi(s_{t+1}) - \Phi(s_t)\), so summed over an episode it telescopes to \(\Phi_T - \Phi_0\). That is the potential-based shaping guarantee (Ng, Harada and Russell 1999): the optimal policy is unchanged, the agent just gets dense progress credit. The earlier γ = 0.995 form leaked a small do-nothing income each step; setting it to exactly 1 removed that.</p>
+    da_rel = (s[&#x27;a&#x27;] - t[&#x27;a&#x27;]) / t[&#x27;a&#x27;]
+    if cfg[&#x27;shaping_mode&#x27;] == 1:                            # 2D: mean-longitude gap + in-plane match
+        dlam = wrap_pi((s[&#x27;M&#x27;] + s[&#x27;omega&#x27;]) - (t[&#x27;M&#x27;] + t[&#x27;omega&#x27;]))
+        de = math.hypot(s[&#x27;e&#x27;]*math.cos(s[&#x27;omega&#x27;]) - t[&#x27;e&#x27;]*math.cos(t[&#x27;omega&#x27;]),
+                        s[&#x27;e&#x27;]*math.sin(s[&#x27;omega&#x27;]) - t[&#x27;e&#x27;]*math.sin(t[&#x27;omega&#x27;]))
+        dv_match = 0.5 * v_t * math.sqrt(da_rel*da_rel + de*de)
+        match = min(1.0, dv_match / cfg[&#x27;dv_ref&#x27;])
+    else:                                                   # mode 2: the 3D lift
+        g = gauge_from_orbit(t)
+        dlam = wrap_pi(lambda_gauge(s, g) - lambda_gauge(t, g))
+        es, et = evec(s), evec(t)
+        de = math.sqrt(sum((es[i]-et[i])**2 for i in range(3)))
+        dv_in = 0.5 * v_t * math.sqrt(da_rel*da_rel + de*de)         # in-plane, lever 2
+        hs, ht = hhat(s), hhat(t)
+        dv_pl = 1.0 * v_t * math.sqrt(sum((hs[i]-ht[i])**2 for i in range(3)))  # plane, lever 1
+        match = (dv_in + dv_pl) / cfg[&#x27;dv_ref&#x27;]                        # L1, not hypot
+        match = match / (1 + match) if cfg[&#x27;squash&#x27;] else min(1.0, match)
+    return -(cfg[&#x27;w_lambda&#x27;] * abs(dlam) / math.pi + cfg[&#x27;w_match&#x27;] * match)</code></pre>
+<p>Sparse terminal rewards are hard to learn from, so every non-terminal step also pays the change in a potential Φ ≤ 0. <b>Mode 1</b> (2D): the mean-longitude gap normalised to [0, 1] plus a linearised two-impulse orbit-match cost, capped. <b>Mode 2</b> (3D) adds a plane term and uses the gauge-corrected λ:</p>
+\[ \Delta v_{\text{in}} = \tfrac12 v_t \sqrt{\delta a_{\text{rel}}^2 + \|\Delta\bar e\|^2}, \qquad \Delta v_{\text{pl}} = 1.0\, v_t\, \|\hat h_s - \hat h_t\| = 2 v_t \sin\tfrac{\Delta i}{2} \]
+\[ \Phi = -\Big[ W_\lambda \frac{|\Delta\lambda|}{\pi} + W_m \cdot \text{squash}\Big(\frac{\Delta v_{\text{in}} + \Delta v_{\text{pl}}}{\Delta v_{\text{ref}}}\Big) \Big] \]
+<div class="why"><div class="t">Why 0.5 on the in-plane term and 1.0 on the plane term</div>
+<p>A tangential impulse has a Gauss lever of 2 on both δa and δē, and two impulses at opposite points trade one against the other, which is what the shared 0.5 encodes. The normal axis has a lever of 1 and no such trade. The rule is "coefficient = 1 / best lever", so Φ reads in true m/s of Δv-to-go and one m/s of correctly aimed burn buys exactly one unit on either axis. The two are summed (L1) rather than combined in quadrature, because the quadrature gradient attenuates the in-plane signal 4.8× whenever the plane error is large, a soft gate in disguise.</p></div>
+<p>With γ_shape = 1 the per-step reward is Φ(s') − Φ(s), which telescopes to Φ_T − Φ_0 over an episode. That is the potential-based shaping guarantee: the optimal policy is unchanged and any path-dependent over-counting is unfarmable.</p>
 
-<h2 id="s10">10. The observation, slot by slot</h2>
-<pre><code># ── 12. The observation (orbital.h fill_observations, slots 0-16) ────────────
+<h2 id="s13">13. The observation, all 38 slots</h2>
+<pre><code># ── 14. The observation (fill_observations), all 38 slots ────────────────────
+def clamp2(v):
+    if not (v &gt; -2.0): return 2.0 if v &gt; 0.0 else -2.0    # also traps NaN
+    return 2.0 if v &gt; 2.0 else v
+
 def observe(env):
-    s, t = env[&#x27;sat&#x27;][&#x27;orbit&#x27;], env[&#x27;target&#x27;]
-    sx, sy, svx, svy = to_cartesian(s)
-    r = math.hypot(sx, sy)
+    s, t, cfg = env[&#x27;sat&#x27;][&#x27;orbit&#x27;], env[&#x27;target&#x27;], env[&#x27;cfg&#x27;]
+    sat = env[&#x27;sat&#x27;]
+    sx, sy, sz, svx, svy, svz = to_cartesian(s)
+    r = math.hypot(sx, sy)                                  # in-plane radius, as the C
     vr = (sx*svx + sy*svy) / r
     vt = (sx*svy - sy*svx) / r
     v_circ = math.sqrt(MU / r)
-    fuel_frac = env[&#x27;sat&#x27;][&#x27;fuel_mass&#x27;] / (DRY_MASS + env[&#x27;sat&#x27;][&#x27;fuel_mass&#x27;])
-    dlam = (s[&#x27;M&#x27;] + s[&#x27;omega&#x27;]) - (t[&#x27;M&#x27;] + t[&#x27;omega&#x27;])
-    t_frac = max(0.0, (env[&#x27;cap&#x27;] - env[&#x27;step&#x27;]) / env[&#x27;cap&#x27;])
-    obs = [0.0] * 17
-    obs[0] = (s[&#x27;a&#x27;] - R_EARTH) / OBS_ALT_SCALE        # chaser altitude, ~[0,1]
-    obs[1] = s[&#x27;e&#x27;]
+    scale_dist = R_EARTH + OBS_ALT_SCALE
+    obs = [0.0] * OBS_DIM
+    # [0-6] chaser
+    obs[0] = (s[&#x27;a&#x27;] - R_EARTH) / OBS_ALT_SCALE; obs[1] = s[&#x27;e&#x27;]
     obs[2], obs[3] = math.sin(s[&#x27;theta&#x27;]), math.cos(s[&#x27;theta&#x27;])
-    obs[4], obs[5] = vr / v_circ, vt / v_circ            # radial, tangential speed
-    obs[6] = fuel_frac
-    obs[7] = (t[&#x27;a&#x27;] - R_EARTH) / OBS_ALT_SCALE        # target altitude
-    obs[8] = t[&#x27;e&#x27;]
+    obs[4], obs[5] = vr / v_circ, vt / v_circ
+    obs[6] = sat[&#x27;fuel_mass&#x27;] / (sat[&#x27;dry_mass&#x27;] + sat[&#x27;fuel_mass&#x27;])
+    # [7-12] target size/shape, both orientations
+    obs[7] = (t[&#x27;a&#x27;] - R_EARTH) / OBS_ALT_SCALE; obs[8] = t[&#x27;e&#x27;]
     obs[9], obs[10]  = math.sin(s[&#x27;omega&#x27;]), math.cos(s[&#x27;omega&#x27;])
     obs[11], obs[12] = math.sin(t[&#x27;omega&#x27;]), math.cos(t[&#x27;omega&#x27;])
-    obs[13], obs[14] = math.sin(dlam), math.cos(dlam)   # phase gap
-    obs[15] = t_frac                                    # episode clock
-    obs[16] = math.cos(s[&#x27;omega&#x27;] - t[&#x27;omega&#x27;])         # apsidal alignment
+    # [13-16] phase gap (gauge-corrected in 3D), clock, apsidal alignment
+    if cfg[&#x27;dim3&#x27;]:
+        g = gauge_from_orbit(t); dlam = lambda_gauge(s, g) - lambda_gauge(t, g)
+    else:
+        dlam = (s[&#x27;M&#x27;] + s[&#x27;omega&#x27;]) - (t[&#x27;M&#x27;] + t[&#x27;omega&#x27;])
+    obs[13], obs[14] = math.sin(dlam), math.cos(dlam)
+    obs[15] = max(0.0, (cfg[&#x27;cap&#x27;] - env[&#x27;step&#x27;]) / cfg[&#x27;cap&#x27;])
+    obs[16] = math.cos(s[&#x27;omega&#x27;] - t[&#x27;omega&#x27;])
+    # [17-32] four nearest bodies: distance, bearing, closing rate, keep-out radius
+    dists = []
+    for b in env[&#x27;bodies&#x27;]:
+        bx, by, bz, bvx, bvy, bvz = body_position(b)
+        dists.append((math.sqrt((sx-bx)**2 + (sy-by)**2 + (sz-bz)**2), b, (bx,by,bz,bvx,bvy,bvz)))
+    dists.sort(key=lambda q: q[0])
+    for k in range(4):
+        base = 17 + 4*k
+        if k &gt;= len(dists): continue
+        dr, b, (bx,by,bz,bvx,bvy,bvz) = dists[k]
+        dth = wrap_pi(math.atan2(sy, sx) - math.atan2(by, bx))
+        closing = ((sx-bx)*(svx-bvx) + (sy-by)*(svy-bvy) + (sz-bz)*(svz-bvz)) / dr
+        obs[base], obs[base+1] = dr / scale_dist, dth / math.pi
+        obs[base+2], obs[base+3] = closing / v_circ, b[&#x27;keepout_radius&#x27;] / scale_dist
+    # [21-30] 3D block overwrites body slots 1-3 (requires no debris)
+    tx, ty, tz, tvx, tvy, tvz = to_cartesian(t)
+    v_c_t = math.sqrt(MU / t[&#x27;a&#x27;])
+    if cfg[&#x27;dim3&#x27;]:
+        hs, ht = hhat(s), hhat(t)
+        cx, cy, cz = ht[1]*hs[2] - ht[2]*hs[1], ht[2]*hs[0] - ht[0]*hs[2], ht[0]*hs[1] - ht[1]*hs[0]
+        cn = math.sqrt(cx*cx + cy*cy + cz*cz)
+        di_rel = math.atan2(cn, ht[0]*hs[0] + ht[1]*hs[1] + ht[2]*hs[2])
+        di = (di_rel*cx/cn, di_rel*cy/cn, di_rel*cz/cn) if cn &gt; 1e-300 else (0.0, 0.0, 0.0)
+        r3 = math.sqrt(sx*sx + sy*sy + sz*sz)
+        R = (sx/r3, sy/r3, sz/r3)                                       # chaser radial
+        T = (hs[1]*R[2] - hs[2]*R[1], hs[2]*R[0] - hs[0]*R[2], hs[0]*R[1] - hs[1]*R[0])  # along-track
+        di_scale = max(cfg[&#x27;di_max&#x27;] if cfg[&#x27;di_max&#x27;] &gt; 0 else 0.0, math.radians(0.25))
+        de_scale = 0.05
+        obs[21] = clamp2(sum(di[i]*R[i] for i in range(3)) / di_scale)  # rel. inclination vector,
+        obs[22] = clamp2(sum(di[i]*T[i] for i in range(3)) / di_scale)  # in chaser RTN
+        es, et = evec(s), evec(t); de3 = tuple(es[i]-et[i] for i in range(3))
+        obs[23] = clamp2(sum(de3[i]*ht[i] for i in range(3)) / de_scale)
+        rho_N  = sum((p-q)*w for p, q, w in zip((sx,sy,sz), (tx,ty,tz), ht))
+        rhod_N = sum((p-q)*w for p, q, w in zip((svx,svy,svz), (tvx,tvy,tvz), ht))
+        obs[24] = clamp2(rho_N / cfg[&#x27;lvlh_scale&#x27;]); obs[25] = clamp2(rhod_N / v_c_t)
+        dv_pl = v_c_t * math.sqrt(sum((hs[i]-ht[i])**2 for i in range(3)))
+        dv_in = 0.5 * v_c_t * math.sqrt(((s[&#x27;a&#x27;]-t[&#x27;a&#x27;])/t[&#x27;a&#x27;])**2 + sum(x*x for x in de3))
+        dv_rem = VE * math.log((sat[&#x27;dry_mass&#x27;] + sat[&#x27;fuel_mass&#x27;]) / sat[&#x27;dry_mass&#x27;])
+        obs[26] = clamp2(dv_pl / cfg[&#x27;dv_ref&#x27;]); obs[27] = clamp2(dv_rem / cfg[&#x27;dv_ref&#x27;])
+        obs[28] = clamp2((dv_rem - dv_pl - dv_in) / cfg[&#x27;dv_ref&#x27;])    # feasibility margin
+        if cfg[&#x27;j2&#x27;]:
+            obs[29], obs[30] = clamp2(math.cos(s[&#x27;inc&#x27;])), clamp2(math.cos(t[&#x27;inc&#x27;]))
+    # [33-37] LVLH relative state in the target&#x27;s rotating frame
+    dxi, dyi, dzi = sx - tx, sy - ty, sz - tz
+    dvxi, dvyi, dvzi = svx - tvx, svy - tvy, svz - tvz
+    if cfg[&#x27;lvlh_frame_mode&#x27;] == 1:                         # true orbital frame: r-hat, h x r-hat
+        rn = math.sqrt(tx*tx + ty*ty + tz*tz); rt = (tx/rn, ty/rn, tz/rn)
+        ht = hhat(t); tt = (ht[1]*rt[2] - ht[2]*rt[1], ht[2]*rt[0] - ht[0]*rt[2], ht[0]*rt[1] - ht[1]*rt[0])
+        dx_l  = dxi*rt[0] + dyi*rt[1] + dzi*rt[2];  dy_l  = dxi*tt[0] + dyi*tt[1] + dzi*tt[2]
+        dvx_l = dvxi*rt[0] + dvyi*rt[1] + dvzi*rt[2]; dvy_l = dvxi*tt[0] + dvyi*tt[1] + dvzi*tt[2]
+    else:                                                   # legacy: equatorial projection by u = w + theta
+        u = t[&#x27;theta&#x27;] + t[&#x27;omega&#x27;]; cu, su = math.cos(u), math.sin(u)
+        dx_l, dy_l   =  cu*dxi + su*dyi,  -su*dxi + cu*dyi
+        dvx_l, dvy_l =  cu*dvxi + su*dvyi, -su*dvxi + cu*dvyi
+    n_t = math.sqrt(MU / t[&#x27;a&#x27;]**3)
+    dvx_l += n_t * dy_l; dvy_l -= n_t * dx_l                # rotating-frame correction
+    obs[33], obs[34] = dx_l / cfg[&#x27;lvlh_scale&#x27;], dy_l / cfg[&#x27;lvlh_scale&#x27;]
+    obs[35], obs[36] = dvx_l / v_c_t, dvy_l / v_c_t
+    obs[37] = n_t / 1e-3
     return obs</code></pre>
 <div class="tbl"><table>
-<tr><th>Slot</th><th>Value</th><th>Range</th><th>Why</th></tr>
-<tr><td>0</td><td>(a − R_E) / 1600 km</td><td>~0 to 1</td><td>Chaser altitude</td></tr>
-<tr><td>1</td><td>e</td><td>0 to 0.05</td><td>Chaser shape</td></tr>
-<tr><td>2, 3</td><td>sin θ, cos θ</td><td>−1 to 1</td><td>Position on orbit, no wrap discontinuity</td></tr>
-<tr><td>4, 5</td><td>v_r / v_circ, v_t / v_circ</td><td>~−0.05 to 1.05</td><td>Radial and tangential speed relative to circular</td></tr>
-<tr><td>6</td><td>fuel fraction</td><td>0 to 0.15</td><td>Budget remaining</td></tr>
-<tr><td>7, 8</td><td>target altitude, e</td><td></td><td>Target size and shape</td></tr>
-<tr><td>9–12</td><td>sin/cos ω for both</td><td>−1 to 1</td><td>Oval orientations</td></tr>
-<tr><td>13, 14</td><td>sin/cos Δλ</td><td>−1 to 1</td><td>The phase gap, in mean longitude</td></tr>
-<tr><td>15</td><td>(cap − step) / cap</td><td>1 to 0</td><td>The episode clock; measured load-bearing</td></tr>
-<tr><td>16</td><td>cos(ω_s − ω_t)</td><td>−1 to 1</td><td>Apsidal alignment; drives shape-burn timing</td></tr>
-<tr><td>17–32</td><td>nearest-body block</td><td></td><td>Zero with no debris; reused for 3D state</td></tr>
-<tr><td>33–37</td><td>LVLH relative state</td><td></td><td>Straight-line offset in the target's rotating frame (not rebuilt here)</td></tr>
+<tr><th>Slot</th><th>Value</th><th>Why</th></tr>
+<tr><td>0–1</td><td>chaser altitude / 1600 km, e</td><td>Size and shape</td></tr>
+<tr><td>2–3</td><td>sin θ, cos θ</td><td>Position on orbit, no wrap discontinuity</td></tr>
+<tr><td>4–5</td><td>v_r / v_circ, v_t / v_circ</td><td>Radial and tangential speed relative to circular</td></tr>
+<tr><td>6</td><td>fuel fraction</td><td>Budget remaining</td></tr>
+<tr><td>7–8</td><td>target altitude, e</td><td>Target size and shape</td></tr>
+<tr><td>9–12</td><td>sin/cos ω for both</td><td>Oval orientations</td></tr>
+<tr><td>13–14</td><td>sin/cos Δλ (gauge-corrected in 3D)</td><td>The phase gap</td></tr>
+<tr><td>15</td><td>(cap − step) / cap</td><td>Episode clock, measured load-bearing</td></tr>
+<tr><td>16</td><td>cos(ω_s − ω_t)</td><td>Apsidal alignment</td></tr>
+<tr><td>17–20</td><td>nearest body: distance, bearing, closing rate, keep-out radius</td><td>Earth, always</td></tr>
+<tr><td>21–22</td><td>relative-inclination vector δī in the chaser's radial and along-track axes</td><td>Continuous through Δi = 0; its angle is "how far to coast to the relative node"</td></tr>
+<tr><td>23</td><td>Δē · ĥ_t</td><td>Out-of-plane eccentricity mismatch</td></tr>
+<tr><td>24–25</td><td>cross-track offset and rate along ĥ_t</td><td>Completes the LVLH block</td></tr>
+<tr><td>26–28</td><td>Δv_plane, Δv_remaining, feasibility margin, each / Δv_ref</td><td>A fuel ledger in the units Φ uses; negative margin means the tank cannot pay</td></tr>
+<tr><td>29–30</td><td>cos i_s, cos i_t (J2 only)</td><td>The only new physical information the equator adds under axisymmetric J2</td></tr>
+<tr><td>31–32</td><td>reserved</td><td></td></tr>
+<tr><td>33–34</td><td>LVLH radial and along-track offset / R_EARTH</td><td>Rectilinear relative position</td></tr>
+<tr><td>35–36</td><td>LVLH relative velocity / v_circ,t with rotating-frame correction</td><td></td></tr>
+<tr><td>37</td><td>n_t / 1e-3</td><td>Target mean motion</td></tr>
 </table></div>
-<p>Every angle is sent as a sine and cosine pair so the network never sees a jump from 359° to 0°. Everything is scaled to roughly unit range because raw metres would swamp the network's inputs.</p>
+<p>Two design points. Slots 21 to 32 were measured identically zero at the standing no-debris configuration, so the 3D state was placed there instead of relaying out the vector, which kept every trained decoder and the scripted expert working. And the LVLH block has two frame modes: mode 0 rotates by the in-plane angle u = ω + θ only, which equals LVLH solely at i = Ω = 0; mode 1 builds the true (r̂, ĥ × r̂) frame. Mode 0 is kept as the default so old checkpoints see bit-identical inputs; the J2 campaigns use mode 1.</p>
 
-<h2 id="s11">11. One step, with warps</h2>
+<h2 id="s14">14. One step, with warps</h2>
 <div class="lab">C · orbital.h c_step, the sub-step loop</div>
 <pre class="c"><code>for (int k = 0; k &lt; tau; k++) {
     for (int i = 1; i &lt; env-&gt;num_bodies; i++)
@@ -426,67 +683,55 @@ def observe(env):
     if (check_termination(env)) { warped_terminated = 1; break; }
 }</code></pre>
 <div class="lab">Python</div>
-<pre><code># ── 13. One step (orbital.h c_step) ──────────────────────────────────────────
+<pre><code># ── 15. One step (c_step) ────────────────────────────────────────────────────
 def step(env, action):
-    &quot;&quot;&quot;Returns (obs, reward, terminal, dv_applied).&quot;&quot;&quot;
-    reward, dv = 0.0, 0.0
+    cfg = env[&#x27;cfg&#x27;]; dv = 0.0
     tau = ACTION_TAU[action]
-    # 13a. burn (only tau == 1 non-coast actions burn; warps never do)
     if action != 0 and tau == 1 and env[&#x27;sat&#x27;][&#x27;fuel_mass&#x27;] &gt; 0.0:
         dv = apply_impulse(env[&#x27;sat&#x27;], *ACTION_DV[action])
-    if env[&#x27;sat&#x27;][&#x27;orbit&#x27;][&#x27;a&#x27;] &lt;= 0.0:              # burned onto a hyperbola
-        env[&#x27;cause&#x27;] = 6
-        return observe(env), -10.0, True, dv
-    # 13b. propagate tau sub-steps, checking termination after each
-    for _ in range(tau):
-        propagate(env[&#x27;target&#x27;], DT)
-        propagate(env[&#x27;sat&#x27;][&#x27;orbit&#x27;], DT)
+    if env[&#x27;sat&#x27;][&#x27;orbit&#x27;][&#x27;a&#x27;] &lt;= 0.0:
+        env[&#x27;cause&#x27;] = 6; return observe(env), -10.0, True, dv
+    for _ in range(tau):                                    # sub-step; check every 60 s
+        for b in env[&#x27;bodies&#x27;][1:]:
+            propagate(b[&#x27;orbit&#x27;], DT, cfg[&#x27;j2&#x27;])
+        propagate(env[&#x27;target&#x27;], DT, cfg[&#x27;j2&#x27;])
+        propagate(env[&#x27;sat&#x27;][&#x27;orbit&#x27;], DT, cfg[&#x27;j2&#x27;])
         env[&#x27;step&#x27;] += 1
         term, r_term = check_termination(env)
         if term:
             return observe(env), r_term, True, dv
-    # 13c. non-terminal: potential-based shaping, gamma_shape = 1 (telescoping)
-    phi = compute_phi(env)
-    reward += phi - env[&#x27;phi_prev&#x27;]
-    env[&#x27;phi_prev&#x27;] = phi
+    phi = compute_phi(env)                                  # PBRS, gamma_shape = 1
+    reward = phi - env[&#x27;phi_prev&#x27;]; env[&#x27;phi_prev&#x27;] = phi
     return observe(env), reward, False, dv</code></pre>
-<p>A step has three parts. First, if the action is a burn and there is fuel, apply it. Second, propagate every body one sub-step at a time, τ times, checking termination after each sub-step so a warp can never jump over a collision or through the success box. Third, if nothing terminated, add the shaping delta. Only τ = 1 non-coast actions can burn; warps propagate only.</p>
-<div class="why"><div class="t">Why shaping runs after the termination check</div>
-<p>At a terminal, the reward is the terminal reward and nothing else. An earlier version added the shaping delta first and then let the terminal check overwrite it, which corrupted the potential bookkeeping. The order here is the fixed order.</p></div>
+<p>Burn first if the action is a burn and fuel remains. Then propagate every body, one sub-step at a time, τ times, checking termination after each so a warp cannot jump over a collision or through the box. Then, if nothing terminated, add the shaping delta. Shaping runs after termination because at a terminal the reward is the terminal reward and nothing else; an earlier ordering corrupted the potential bookkeeping.</p>
 
-<h2 id="s12">12. Checking it against the C</h2>
-<p>The <code>--check</code> mode copies the C environment's initial state into the Python one, then feeds both the same random action stream and compares all 17 observation slots and the reward at every non-terminal decision.</p>
-<pre><code>  ep0: terminated at decision 136: C=True py=True cause_py=stranded r_C=-10.00 r_py=-10.00
-  ep1: terminated at decision 156: C=True py=True cause_py=stranded r_C=-10.00 r_py=-10.00
-  ep2: terminated at decision 126: C=True py=True cause_py=stranded r_C=-10.00 r_py=-10.00
-max |obs_C - obs_py| (slots 0-16) and |r_C - r_py| over all non-terminal steps: 5.90e-08</code></pre>
-<p>The residual is float32 rounding in the C observation buffer. Terminal observations are excluded from the comparison because the C environment auto-resets on a terminal and returns the next episode's first observation.</p>
+<h2 id="s15">15. Verification against the C</h2>
+<p>The <code>--check</code> mode runs two configurations. The 2D-T3 config is the headline environment. The 3D-J2 config turns on dim3_mode, a 1° relative-inclination disc, a target inclination band of 20° to 60°, J2, the true LVLH frame, shaping mode 2 with Δv_ref = 700, and the 30-action space including normal and combined burns.</p>
+<pre><code>  [2D-T3] ep0: terminal at decision 136: C=True py=True cause_py=stranded r_C=-10.00 r_py=-10.00
+  [2D-T3] ep1: terminal at decision 156: C=True py=True cause_py=stranded r_C=-10.00 r_py=-10.00
+  [2D-T3] max |obs_C - obs_py| over 17 slots and |r_C - r_py|, non-terminal steps: 5.90e-08
+  [3D-J2] ep0: terminal at decision 56: C=True py=True cause_py=stranded r_C=-10.00 r_py=-10.00
+  [3D-J2] ep1: terminal at decision 46: C=True py=True cause_py=stranded r_C=-10.00 r_py=-10.00
+  [3D-J2] max |obs_C - obs_py| over 38 slots and |r_C - r_py|, non-terminal steps: 1.15e-07</code></pre>
+<p>Residuals are float32 rounding in the C observation buffer. Terminal observations are excluded because the C auto-resets on a terminal and returns the next episode's first observation.</p>
 
-<h2 id="s13">13. What the C has that this does not</h2>
+<h2 id="s16">16. What is left out</h2>
 <ul>
-<li><b>3D.</b> Two more elements, inclination and RAAN, a 3-1-3 rotation in the conversions, and a target-plane gauge so the phase gap stays well-defined when planes differ. The 2D path is a value-gated fast path inside the same functions.</li>
-<li><b>J2.</b> Earth's oblateness, modelled as secular mean-element rates on top of the two-body clock:</li>
-</ul>
-<pre class="c"><code>n  = sqrt(MU/a^3)      p = a(1 - e^2)      k = 1.5 * n * J2 * (R_EQ/p)^2
-RAAN_dot  = -k * cos(i)
-omega_dot = +0.5 * k * (4 - 5 sin^2 i)
-M_dot     =  n + 0.5 * k * sqrt(1 - e^2) * (2 - 3 sin^2 i)
-a_dot = e_dot = i_dot = 0</code></pre>
-<p>a, e and i are constants under secular J2, so the rates are constants for the life of the element set and the map stays closed-form at any dt. The state is treated as mean elements throughout, with no conversion to osculating; the C comment quantifies that as an 83 m / 0.094 m/s per-orbit inconsistency at 5 km separation.</p>
-<ul>
-<li><b>Debris.</b> Extra <code>Body</code> entries on random LEO orbits, each with a 1 m hard radius and 5 km keep-out. The termination loop over bodies handles them with no special casing. Disabled for all current training.</li>
-<li><b>The LVLH block.</b> Slots 33 to 37: the straight-line inertial offset rotated into the target's radial/along-track frame, with a rotating-frame velocity correction. Rectilinear, per the coordinate discussion.</li>
-<li><b>Cell mixture, fuel sampling, trajectory logging.</b> Curriculum plumbing that draws per-episode configuration and records every sub-step for later analysis.</li>
+<li><b>The T11 cell mixture and per-episode fuel sampling.</b> Configuration plumbing that draws a training cell (altitude band, box, cap, J2 on/off, fuel budget) at each reset. Physics unchanged.</li>
+<li><b>Trajectory logging.</b> Every sub-step is recorded to a buffer for the plots and audits.</li>
+<li><b>Legacy shaping mode 0</b> and the <b>action-validity mask</b> (obs 38 to 47), both retired.</li>
+<li><b>The gave-up terminal</b>, emitted when rejection sampling exhausts its cap.</li>
 </ul>
 
-<h2 id="s14">14. Things to try</h2>
+<h2 id="s17">17. Things to try</h2>
 <ul>
-<li>Change <code>solve_kepler</code> to one Newton iteration and rerun <code>--check</code>. How large does the error get, and at what eccentricity?</li>
-<li>Swap the square roots in <code>true_to_mean</code> back to the pre-fix form, take a 1 m/s burn near e = 0.05, and print M before and after. That is the 2026-08-10 bug.</li>
-<li>Replace the shaping delta with γ = 0.995 and coast for 3000 steps. Sum the rewards. That is the do-nothing income the fix removed.</li>
-<li>Set <code>ACTION_TAU[11] = 600</code> and confirm a 10-hour warp still lands within float noise of 600 single steps.</li>
-<li>Burn prograde 25 m/s repeatedly from 300 km and watch the specific energy in <code>check_termination</code> climb toward zero. About 3.2 km/s of Δv gets you to escape; the tank holds 478.</li>
+<li>Set <code>j2=1</code> on an equatorial orbit and print omega each hour. That is the folded rate ϖ̇ = k.</li>
+<li>Start two orbits at i = 50° and i = 51°, propagate a week under J2, and watch their nodes separate. That differential node drift is what the J2 drift-and-wait campaign exploits to buy plane change for free.</li>
+<li>Fire action 22 (normal +10) at the ascending node, then again 90° later, and compare which of inc and raan changed each time.</li>
+<li>Fire action 26 (combined +25/+25) versus actions 3 then 24 on consecutive steps and compare fuel consumed.</li>
+<li>Swap the square roots in <code>true_to_mean</code> back, take a 1 m/s burn near e = 0.05, and print M before and after.</li>
+<li>Set <code>lvlh_frame_mode=0</code> with a 50° target and compare obs[33..36] against mode 1. That is the cos i squash the C comment describes.</li>
 </ul>
 
-<div class="foot">Sources: <code>pufferlib/pufferlib/ocean/orbital/orbital.h</code> (structs 324–440, Kepler 696–748, conversions 865–1028, impulse 1086–1161, observations 1214–1545, potential 1579–1605, termination 1719–1860, reset 1976–2467, step 2468–2636, J2 758–830), <code>orbital.py</code> defaults, <code>scripts/orbital/t3/mini_env.py</code>. Line numbers as of 2026-09-27.</div>
+<div class="foot">Sources: <code>pufferlib/pufferlib/ocean/orbital/orbital.h</code> (structs 324–440, actions 158–232, Kepler 696–748, J2 758–830, ĥ/ē 833–862, conversions 865–1028, gauge 1038–1085, impulse 1086–1161, observations 1214–1545, potential 1579–1667, termination 1719–1860, reset 1976–2467, step 2468–2636), <code>binding.c</code> vec_get_state, <code>orbital.py</code> defaults, <code>scripts/orbital/t3/mini_env.py</code>. Line numbers as of 2026-09-27.</div>
 </main></div>
