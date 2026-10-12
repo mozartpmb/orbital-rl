@@ -3,6 +3,12 @@
 Beamer deck for a 30-minute interview (about 10 minutes of talk, the rest Q&A).
 12 core slides, appendix A1–A9 for deep dives. Speaker notes are in `\note{}` on every core slide.
 
+Two versions:
+
+- `deck.tex` — full version, 12 core slides + A1–A9.
+- `deck_short.tex` — 7 core slides + 8 appendix slides; steers toward dynamics, policy, results, verification. Navigation, Lambert, and the C port each appear as one line and one appendix slide.
+- `defensive_briefing.md` — plain-language 30-second answers, likely follow-ups, and redirects for the EKF, batch IOD, Lambert comparator, and C port.
+
 ## Build
 
 ```bash
