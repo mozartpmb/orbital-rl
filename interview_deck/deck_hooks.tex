@@ -223,7 +223,7 @@ Exact at any step size, so a 24-hour coast is one solve. About half a million en
 \begin{frame}{What the policy actually does, scenario by scenario}
 \centering
 \IfFileExists{figs/generalist_behaviour.pdf}{\includegraphics[width=0.9\textwidth]{generalist_behaviour.pdf}}{\includegraphics[width=0.8\textwidth]{decision_timeline.pdf}}
-\\[1mm]{\scriptsize\textcolor{grey}{Decision mix of the seven-skill policy on five of its scenarios, 20 held-out episodes each. The same weights coast for a day when a plane gap can be drifted shut, and burn in 1\,m/s steps when the box is tight.}}
+\\[1mm]{\scriptsize\textcolor{grey}{Decision mix of the seven-skill policy on five of its scenarios, 20 held-out episodes each (success rates on slide 8 are the 200-episode ones). The same weights coast a day at a time only when a plane gap can be drifted shut, use fine 1--2\,m/s burns only for the tight box, and never touch the radial burns.}}
 \note{Hooks: "why so many coasts" (waiting is the cheapest manoeuvre), "why day-long coasts only on the plane-change cell" (J2 drift needs days; elsewhere they would waste the clock), "why fine burns on the tight box" (a 10 m/s quantum cannot land inside 1 m/s).}
 \end{frame}
 
