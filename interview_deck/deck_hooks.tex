@@ -136,32 +136,31 @@ Exact at any step size, so a 24-hour coast is one solve. About half a million en
 \begin{columns}[c]
 \begin{column}{0.46\textwidth}
 \centering
-\begin{tikzpicture}[arr/.style={-{Stealth[length=2.2mm]},very thick}]
-  \draw[grey,dashed] (-1.6,-2.2) arc (-35:35:3.4);
-  \node[font=\scriptsize,grey,anchor=east] at (-1.3,-1.9) {orbit};
+\begin{tikzpicture}[scale=1.25,arr/.style={-{Stealth[length=2.2mm]},very thick}]
+  \node[font=\small\bfseries,navy] at (0,2.0) {Burns};
+  \draw[grey,dashed] (-3.4,0) ++(-22:3.4) arc (-22:22:3.4);
+  \node[font=\scriptsize,grey,anchor=east] at (-0.4,1.2) {orbit};
   \node[draw,fill=white,rounded corners,minimum size=0.4cm,inner sep=0] (c) at (0,0) {};
-  \draw[arr,accent] (c) -- ++(0,1.3) node[above,font=\scriptsize,accent] {prograde (along velocity)};
+  \draw[arr,accent] (c) -- ++(0,1.3) node[above,font=\scriptsize,accent] {prograde};
   \draw[arr,accent!60] (c) -- ++(0,-1.3) node[below,font=\scriptsize,accent!60!black] {retrograde};
   \draw[arr,blue2] (c) -- ++(1.3,0) node[right,font=\scriptsize,blue2] {radial out};
   \draw[arr,blue2!60] (c) -- ++(-1.3,0) node[left,font=\scriptsize,blue2!60!black] {radial in};
   \draw[arr,amber!90!black] (c) -- ++(0.8,0.8) node[above right,font=\scriptsize,amber!90!black] {normal $\pm$};
-  \node[font=\scriptsize,grey] at (0,-2.2) {burn grades 1, 2, 5, 10, 25\,m/s};
 \end{tikzpicture}
 \end{column}
 \begin{column}{0.54\textwidth}
 \centering
 \begin{tikzpicture}[x=1cm]
+  \node[font=\small\bfseries,navy,anchor=west] at (0,1.5) {Coasts};
   \draw[-{Stealth},thick,navy] (0,0) -- (5.6,0) node[right,font=\scriptsize] {log time};
   \foreach \x/\lab in {0.3/1\,min, 1.0/5\,min, 1.9/30\,min, 2.3/1\,h, 3.0/3\,h, 3.5/6\,h, 4.6/24\,h}{
     \fill[navy] (\x,0) circle (0.1); \node[font=\scriptsize,rotate=50,anchor=west] at (\x,0.15) {\lab}; }
-  \node[font=\scriptsize,navy,anchor=west] at (0,1.5) {\textbf{Coasts}: no burn, physics and sensor still run every 60\,s};
-  \node[font=\scriptsize,grey,text width=5.4cm,anchor=north west] at (0,-0.4) {Each decision lasts as long as the coast it chose; a burn takes one sub-step. 31 actions in all.};
 \end{tikzpicture}
 \end{column}
 \end{columns}
-\vspace{2mm}
-\centering\small A rendezvous is hours of waiting and seconds of burning. Letting the policy pick \emph{how long} to wait is what makes it learnable.
-\note{Hooks: "why not continuous thrust" (impulsive burns match chemical engines; a continuous head collapsed in early trials), "why do the long coasts matter" (credit assignment: without them the horizon is thousands of steps; with them the headline policy takes about 20 decisions per episode), "what frame are the burns in" (the chaser's own: along velocity, along the radius, along the orbit normal).}
+\vspace{4mm}
+\centering\small burn grades 1, 2, 5, 10, 25\,m/s \;$\cdot$\; 31 actions in all
+\note{Hooks: "why not continuous thrust" (impulsive burns match chemical engines; a continuous head collapsed in early trials), "why do the long coasts matter" (credit assignment: without them the horizon is thousands of steps; with them the headline policy takes about 20 decisions per episode; physics and the sensor still run every 60 s inside a coast), "what frame are the burns in" (the chaser's own: along velocity, along the radius, along the orbit normal).}
 \end{frame}
 
 % ===================================================================== 5 policy
