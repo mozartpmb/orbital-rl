@@ -172,7 +172,7 @@
 \end{column}
 \end{columns}
 \vspace{-1mm}
-{\scriptsize\textcolor{grey}{Left: held-out success per skill, 200 episodes each, bearings-only navigation, one training seed; tight box reaches 92.5\,\% at its training fuel floor. Right: one held-out episode, a $158^\circ$ gap and a $0.9^\circ$ plane difference closed in 22.5\,h with 306\,m/s and 23 decisions. The seventh skill waits for J2 nodal precession to close a plane gap that burning could not afford.}}
+{\scriptsize\textcolor{grey}{Left: held-out success per skill, 200 episodes each, bearings-only navigation; six of the seven skills reproduce at a second training seed; tight box reaches 92.5\,\% at its training fuel floor. Right: one held-out episode, a $158^\circ$ gap and a $0.9^\circ$ plane difference closed in 22.5\,h with 306\,m/s and 23 decisions. The seventh skill waits for J2 nodal precession to close a plane gap that burning could not afford.}}
 \note{Centrepiece. Five skills at 96 to 99.5, tight box 86 (92.5 at training floor), plane change 74. Talk the physics of the seventh skill: dOmega/dt depends on altitude and inclination, so parking at a different altitude makes the planes drift together; a 3 degree change by burning would exceed the tank. Single-skill specialists score 6 to 42 percent off their home cell, which is why one policy was worth building.}
 \end{frame}
 
@@ -205,7 +205,7 @@
 \begin{column}{0.5\textwidth}\footnotesize
 \textbf{Open}
 \begin{itemize}
-  \item Generalist is single training seed; the 2-D headline, wide envelope, and 3-D rungs are multi-seed.
+  \item The seventh skill's final refinement chain is one training seed; six skills reproduce at a second seed.
   \item Fuel is 1.18$\times$ the two-impulse optimum, not 1.0; the burn grid is coarse.
   \item Chaser navigation assumed perfect; no eclipses or sensor bias; arrival certified, not station-keeping.
 \end{itemize}
@@ -344,7 +344,7 @@ Policy result: trained on truth and handed the estimate, \key{51\,\%}; trained w
   \item[Why discrete actions?] PPO is stable with them; a continuous head collapsed early on. The grid costs fuel (1.14--1.18$\times$ across two evaluation sets); finer grades are the obvious next step.
   \item[Why not MPC?] It is the right production baseline and the comparison I would run next, with the same filter in the loop.
   \item[Is 200 episodes enough?] At 97\,\% the 95\,\% Wilson interval is about $\pm2.5$\,pp; for 0/200 failures the lower bound is 98.2\,\%. I report intervals, not "100\,\%".
-  \item[Single seed?] The generalist, yes. The 2-D headline (5), wide envelope (4), 3-D nav and J2 rungs (3) are multi-seed.
+  \item[Single seed?] The six-skill policy reproduced at a second training seed (tight box 92.5\,\%, wide cells 93.5--100\,\%). The seventh skill's four-step refinement was run once by design; its first two steps reproduced at a second seed with matching gains. The 2-D headline (5), wide envelope (4), 3-D nav and J2 rungs (3) are multi-seed.
   \item[Why coast 24\,h?] J2 nodal precession closes a plane gap for free; burning it would exceed the tank. The policy learned to wait.
   \item[How does the filter work?] Angles only, so range comes from how the bearing changes while the orbits curve; a batch solver picks the range that explains the first hour of bearings, then a recursive filter refines it. The finding I own is on the policy side: train on the estimate or lose 46 points.
   \item[What would you do differently?] Audit against physics from day one; log learning curves on every run; design the observation with the filter in mind from the start.

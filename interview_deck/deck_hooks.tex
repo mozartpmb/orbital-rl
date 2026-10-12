@@ -208,7 +208,7 @@ Exact at any step size, so a 24-hour coast is one solve. About half a million en
 \centering
 \includegraphics[width=0.8\textwidth,height=0.62\textheight,keepaspectratio]{generalist_cells.pdf}
 \\[1mm]{\small Same network, same weights, every cell. 200 held-out episodes per skill, flying on the angles-only estimate.}
-\note{Five skills at 96 to 99.5; the tight box at 86 (92.5 at its training fuel floor); the plane change at 74. Hooks: "what is the plane-change skill" (J2 nodal precession at a different altitude drifts the planes together; burning a 3 degree change would exceed the tank), "why one policy" (specialists score 6 to 42 percent off their home cell), "single seed?" (yes for this one; the 2-D headline and 3-D rungs are multi-seed).}
+\note{Five skills at 96 to 99.5; the tight box at 86 (92.5 at its training fuel floor); the plane change at 74. Hooks: "what is the plane-change skill" (J2 nodal precession at a different altitude drifts the planes together; burning a 3 degree change would exceed the tank), "why one policy" (specialists score 6 to 42 percent off their home cell), "single seed?" (six of seven skills reproduce at a second seed; the seventh skill\'s final chain is one seed; A11).}
 \end{frame}
 
 % ===================================================================== 8 3-D episode
@@ -233,7 +233,7 @@ Exact at any step size, so a 24-hour coast is one solve. About half a million en
 \begin{column}{0.5\textwidth}
 \textbf{Open}
 \begin{itemize}\setlength{\itemsep}{1.5mm}
-  \item The seven-skill policy is one training seed
+  \item The seventh skill's final refinement chain is one training seed
   \item Fuel is 1.18$\times$ optimal; the burn grid is coarse
   \item Chaser navigation assumed perfect; no eclipses or sensor bias
   \item Two-body plus secular J2 only
@@ -248,12 +248,12 @@ Exact at any step size, so a 24-hour coast is one solve. About half a million en
 \end{itemize}
 \end{column}
 \end{columns}
-\note{Keep this short. Each open item is a hook you can answer: single seed (the 2-D headline and 3-D rungs are multi-seed), fuel (coarse burn grid), chaser nav (common-mode error would need an augmented filter state), J2 (secular mean elements only).}
+\note{Keep this short. Each open item is a hook you can answer: seeds (six of seven skills reproduce at a second seed; A11 has the table), fuel (coarse burn grid), chaser nav (common-mode error would need an augmented filter state), J2 (secular mean elements only).}
 \end{frame}
 
 % ===================================================================== appendix
 \appendix
-\begin{frame}[plain]\centering{\Large\textcolor{navy}{\textbf{Appendix}}}\\[2mm]\small observation vector \;$\cdot$\; phasing and J2 \;$\cdot$\; the seven cells \;$\cdot$\; fuel audit \;$\cdot$\; Lambert search \;$\cdot$\; navigation in one picture \;$\cdot$\; C port \;$\cdot$\; how the seventh skill was trained \;$\cdot$\; FAQ\end{frame}
+\begin{frame}[plain]\centering{\Large\textcolor{navy}{\textbf{Appendix}}}\\[2mm]\small observation vector \;$\cdot$\; phasing and J2 \;$\cdot$\; the seven cells \;$\cdot$\; fuel audit \;$\cdot$\; Lambert search \;$\cdot$\; navigation \;$\cdot$\; C port \;$\cdot$\; the seventh skill \;$\cdot$\; FAQ \;$\cdot$\; verification measures \;$\cdot$\; seeds and sample sizes\end{frame}
 
 \begin{frame}{A1 \; Observation vector (\nObs\ floats, roughly in $[-1,1]$)}
 \tiny
@@ -306,7 +306,7 @@ W1\_driftwait & 300--800 & 0.05 & \boxR\,/\,\boxV & 22,000 & 74.0\,\%\\
 \bottomrule
 \end{tabular}
 \\[2mm]
-$^\dagger$92.5\,\% at the training fuel floor. All cells: 3-D, J2 on, targets inclined $30$--$60^\circ$, relative plane up to $0.75$--$1^\circ$ ($2$--$5^\circ$ for W1), bearings-only navigation, Discrete(31) head, fuel budget sampled per episode (353--656\,m/s). Held-out seed 123, 200 episodes per cell, greedy actions, LSTM state zeroed per episode.
+$^\dagger$92.5\,\% at the training fuel floor. All cells: 3-D, J2 on, targets inclined $30$--$60^\circ$, relative plane up to $0.75$--$1^\circ$ ($2$--$5^\circ$ for W1), bearings-only navigation, Discrete(31) head, fuel budget sampled per episode (353--656\,m/s). Held-out seed 123, 200 episodes per cell, greedy actions, LSTM state zeroed per episode. A second training seed reproduces six of the seven cells (A11).
 \end{frame}
 
 \begin{frame}{A4 \; Fuel audit against a two-impulse optimum}
@@ -376,11 +376,51 @@ Policy result: trained on truth and handed the estimate, \key{51\,\%}; trained w
   \item[Why RL, when Lambert exists?] Lambert needs perfect state and gives an open-loop two-burn plan; the policy is closed-loop on an estimate, respects a budget, and one network covers seven regimes. Lambert is the grader, not the competitor.
   \item[Why discrete actions?] PPO is stable with them; a continuous head collapsed early on. The grid costs fuel (1.14--1.18$\times$ across two evaluation sets); finer grades are the obvious next step.
   \item[Is 200 episodes enough?] At 97\,\% the 95\,\% Wilson interval is about $\pm2.5$\,pp; for 0/200 failures the lower bound is 98.2\,\%. I report intervals, not "100\,\%".
-  \item[Single seed?] The generalist, yes. The 2-D headline (5), wide envelope (4), 3-D nav and J2 rungs (3) are multi-seed.
+  \item[Single seed?] The six-skill policy reproduced at a second training seed (tight box 92.5\,\%, wide cells 93.5--100\,\%). The seventh skill's four-step refinement was run once by design; its first two steps reproduced at a second seed with matching gains. The 2-D headline (5), wide envelope (4), 3-D nav and J2 rungs (3) are multi-seed.
   \item[Why coast 24\,h?] J2 nodal precession closes a plane gap for free; burning it would exceed the tank. The policy learned to wait.
   \item[How does the filter work?] Angles only, so range comes from how the bearing changes while the orbits curve; a batch solver picks the range that explains the first hour of bearings, then a recursive filter refines it. The finding I own is on the policy side: train on the estimate or lose 46 points.
   \item[What would you do differently?] Audit against physics from day one; log learning curves on every run; design the observation with the filter in mind from the start.
 \end{description}
+\end{frame}
+
+\begin{frame}{A10 \; Verification measures}
+\tiny
+\begin{tabular}{@{}p{2.6cm}p{6.6cm}p{3.6cm}@{}}
+\toprule
+what & how & result\\
+\midrule
+Propagator & independent Lagrange $f$,$g$ oracle sharing no code; 980 adversarial episodes, 618k sub-steps & worst error 0.68\,m (float32 logging floor)\\
+Conservation & energy and angular momentum on every coast step & at float precision\\
+Transfer \dv & Hohmann 400$\to$800\,km and LEO$\to$GEO vs analytic & 217.02 vs 217.02\,m/s; 3856.7 vs 3856.7\\
+Elements $\leftrightarrow$ Cartesian & 400 random round trips & median $3\times10^{-8}$\,m\\
+Regression & three bitwise trajectory anchors (action-stream hash must not move) & caught real drift twice\\
+Metrics & mutation test: 14 seeded errors in the evaluation code & 14/14 caught\\
+Evaluation & held-out episode seed, greedy actions, Wilson intervals; 0/200 failures reported as $\ge98.2\,\%$ & every number on these slides\\
+Comparator & two-impulse Lambert optimum per episode, same clock & 1.18$\times$ median\\
+Filter & NEES / NIS in-bounds fractions (range/bearing EKF) & 94 / 95\,\%\\
+C port & action agreement on 7,048 observations; 200 closed-loop episodes & 100\,\%; identical action stream\\
+\bottomrule
+\end{tabular}
+\\[2mm]\textcolor{grey}{Sources: \texttt{T3\_RECOVERY\_CAMPAIGN.md} \S4--7, \texttt{PROGRESS.md} physics table, \texttt{scripts/orbital/embedded/results/}.}
+\end{frame}
+
+\begin{frame}{A11 \; Seeds and sample sizes}
+\scriptsize
+\begin{tabular}{@{}p{4.6cm}p{2.6cm}p{2.6cm}p{3.4cm}@{}}
+\toprule
+result & training seeds & held-out episodes & note\\
+\midrule
+2-D headline, 30\,km / 50\,m/s & 5 & 200 per seed (+500 at a second eval seed) & 200/200 every seed\\
+2-D wide envelope (300--8,000\,km, $e\le0.30$) & 4 & 200 per seed & 800/800\\
+3-D rendezvous, truth state & 3 & 200 per seed & 200/200 every seed\\
+3-D bearings-only, tight box & 3 & 200 per seed & 589/600 pooled\\
+J2 tight box, truth state & 3 & 200 per seed & 595/600 pooled\\
+Six-skill generalist (anchored) & 2 & 200 per cell & seed 7: tight 92.5, wides 93.5--100\\
+Seventh skill, refinement chain & 1 (steps 1--2 at a second seed) & 200 per cell & 74.0 at seed 42; 47.5 after two steps at seed 7\\
+2-D policy-on-estimate, 51$\to$97 & 1 & 200 & replicated in 3-D across 3 seeds\\
+\bottomrule
+\end{tabular}
+\\[2mm]\textcolor{grey}{Held-out means a fresh evaluation seed never used in training. 200 episodes at 97\,\% gives a 95\,\% Wilson interval of about $\pm2.4$ points.}
 \end{frame}
 
 \end{document}
