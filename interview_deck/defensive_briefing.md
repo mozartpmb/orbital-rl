@@ -73,3 +73,21 @@ The flight-software properties people care about: no memory allocation during a 
 - When a question goes deep into one of these: give the 30-second answer, then "the part of that I spent my time on was..." and name the policy or verification result it connects to.
 - When you do not know: "I did not go that deep on that piece; what I verified is X, and the thing I would check next is Y." Specific beats vague.
 - The three results you can always return to: 200/200 on five seeds in 2-D; one policy at 96 to 99.5% on five 3-D skills; the dynamics bug caught by the comparator.
+
+---
+
+## 5. How the seventh skill was trained (appendix A8: interference, anchors, DAgger)
+
+**The picture.** A neural network has one set of weights shared by every skill. Train it hard on a new skill and the weights move to fit that skill; nothing stops them from moving away from what the old skills needed. That is catastrophic interference, and the left panel measures it: fine-tuning on the tight box took three other skills from the high 90s to 29, 6, and 40 percent. Mixing the old data back in restored them, and lost the tight box. A seesaw.
+
+Two things fixed it. A much smaller learning rate, so each update moves the weights a little instead of a lot. And an **anchor**: keep replaying a small set of the tight-box specialist's own trajectories so the network is reminded every update what that skill looks like. With both, all six skills held.
+
+The seventh skill (plane change by J2 drift) was different: the policy never discovered it from reward at all, because the payoff only arrives after days of coasting and random exploration never gets there. So a scripted expert that knows the manoeuvre demonstrated it. **DAgger** is the loop: let the current policy fly, have the expert label what it should have done at each state the policy actually visited, retrain on those labels, repeat. Four rounds took the skill from 31.5 to 74 percent, each round scored on 200 held-out episodes, and the stopping rule (stop when a round closes less than 20 percent of the remaining gap) was written down before the numbers existed.
+
+**30-second answer.** "Fine-tuning one skill broke others, so I measured the interference directly, then held the six skills with a low learning rate plus a replay anchor. The seventh skill never bootstrapped from reward, so I distilled it from a scripted expert with four DAgger rounds, 31 to 74 percent, each scored on held-out episodes."
+
+**Likely follow-up: why not just train all seven from scratch together?** "Fresh training at the hard endpoint flat-lines; the plane-change skill has no reward signal until days of coasting have happened. Warm-starting and distillation are what worked."
+
+**Likely follow-up: is 74 percent good?** "The scripted teacher itself gets 91, so there is headroom; and it is a single training seed. The mechanism reproduced at a second seed."
+
+**Redirect.** "The interesting part to me was the measurement: the seesaw table is the honest picture of what fine-tuning does to a shared network."

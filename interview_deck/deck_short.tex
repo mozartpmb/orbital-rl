@@ -303,7 +303,7 @@ $^\dagger$92.5\,\% at the training fuel floor. All cells: 3-D, J2 on, targets in
 \begin{column}{0.56\textwidth}\includegraphics[width=\textwidth]{dv_ratio.pdf}\end{column}
 \begin{column}{0.44\textwidth}\footnotesize
 For each episode an offline solver finds the cheapest two-burn transfer from the chaser's start to the target's position at arrival, searching over how long to wait before the first burn and how long to fly, on the same clock the policy used.\\[1.5mm]
-Median learned \dv\ is \key{1.18$\times$} that optimum; 1.55$\times$ when the optimum is only required to reach the box. The circular Hohmann surrogate (2.38$\times$) ignores phasing and the velocity match, so it was retired.\\[1.5mm]
+Median learned \dv\ is \key{1.18$\times$} that optimum (time-matched); 1.55$\times$ when the optimum is credited the box's 50\,m/s velocity tolerance.\\[1.5mm]
 {\scriptsize\textcolor{grey}{200 held-out episodes. Ratios below 1 happen because arrival is credited inside a box, not at an exact state, and a two-burn plan is not the unconstrained optimum.}}
 \end{column}
 \end{columns}
@@ -337,7 +337,7 @@ Policy result: trained on truth and handed the estimate, \key{51\,\%}; trained w
 \end{columns}
 \end{frame}
 
-\begin{frame}{A8 \; If asked}
+\begin{frame}{A8 \; FAQ}
 \scriptsize
 \begin{description}
   \item[Why RL, when Lambert exists?] Lambert needs perfect state and gives an open-loop two-burn plan; the policy is closed-loop on an estimate, respects a budget, and one network covers seven regimes. Lambert is the grader, not the competitor.

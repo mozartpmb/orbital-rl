@@ -237,7 +237,7 @@ Shown: a $91^\circ$ gap closed in 8.1\,h with 210\,m/s; low and behind, catch up
 \textbf{Comparator} \; a Lambert solver (Izzo--Lancaster universal variables, multi-rev, both branches) searched over departure wait $\times$ time of flight, with perfect information.\\[1.5mm]
 \textbf{Fair denominator} \; same episode, same time budget: median \key{\lambertRatio} the optimum.\\[1mm]
 \textbf{Credited to the box} \; \boxRatio.\\[1mm]
-\textbf{Hohmann surrogate} \; \hohmannRatio, but it ignores phasing and the velocity match, so it was retired as the headline.\\[1.5mm]
+
 {\scriptsize\textcolor{grey}{200 held-out episodes, \texttt{web\_data/results/fuel\_audit.csv}. Ratios below 1 are possible because arrival is credited inside a box, not at an exact state.}}
 \end{column}
 \end{columns}
@@ -476,7 +476,7 @@ $^\dagger$92.5\,\% at the training fuel floor. LONGRANGE is a $\sim$500\,km tran
 {\scriptsize\textcolor{grey}{\texttt{reports/msc\_REDTEAM.md} \S9.}}
 \end{frame}
 
-\begin{frame}{A9 \; If asked}
+\begin{frame}{A9 \; FAQ}
 \scriptsize
 \begin{description}
   \item[Why RL at all, when Lambert exists?] Lambert needs perfect state and gives an open-loop plan; the policy is closed-loop on an estimate, handles a budget, and the same network covers seven regimes. Lambert is my grader, not my competitor.

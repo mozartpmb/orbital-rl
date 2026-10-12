@@ -61,15 +61,15 @@
 \end{column}
 \begin{column}{0.55\textwidth}
 \begin{itemize}\setlength{\itemsep}{2mm}
-  \item \textbf{Win} \; inside \boxR\ and \boxV\ of the target
-  \item \textbf{Lose} \; re-enter, escape, run dry, or run out of clock
-  \item \textbf{Tank} \; 478\,m/s, about 2$\times$ a Hohmann transfer
-  \item \textbf{Start} \; random LEO orbits, any phase gap up to $\pm180^\circ$
+  \item \textbf{Success} \; inside \boxR\ and \boxV\ of the target
+  \item \textbf{Failure} \; re-enter, escape, run dry, or run out of clock
+  \item \textbf{Tank} \; 478\,m/s (15\,\% propellant); the generalist draws 353--656\,m/s per episode
+  \item \textbf{Start} \; random orbits, phase gap up to $\pm180^\circ$; LEO 300--800\,km in the headline, up to 8,000\,km and $e\le0.3$ in the generalist
   \item \textbf{Act} \; a fixed-size burn, or a coast of 1\,min to 24\,h
 \end{itemize}
 \end{column}
 \end{columns}
-\note{Hooks: "why 2x Hohmann" (Hohmann 400 to 800 km is 217 m/s; the tank is 478; enough for a good plan, not for random burning), "what is the phase gap" (angle along the orbit between chaser and target; the hard part of the task is closing it), "why those terminations" (every one is a real mission failure).}
+\note{Hooks: "how does fuel work" (rocket equation: 15 percent propellant at Isp 300 s is 478 m/s; bigger burns cost disproportionately more mass; the generalist sees its own tank size in the observation), "is that a lot" (a Hohmann 400 to 800 km is 217 m/s, so about 2x: enough for a good plan, not for random burning), "what is the phase gap" (angle along the orbit between chaser and target; the hard part of the task is closing it), "why those terminations" (every one is a real mission failure).}
 \end{frame}
 
 % ===================================================================== 2 loop
@@ -131,20 +131,37 @@ Exact at any step size, so a 24-hour coast is one solve. About half a million en
 \note{Hooks: the elements picture (define a, e, theta from the sketch), "how do you solve Kepler" (Newton on E, then the half-angle formula to theta), "how did you validate it" (energy and angular momentum conserved; Hohmann 400 to 800 km matches 217 m/s; independent f and g oracle agreed to under a metre), "why J2" (the seventh skill uses nodal precession; A2).}
 \end{frame}
 
-% ===================================================================== 4 decisions
-\begin{frame}{Decisions: a few fixed burns, and coasts of very different lengths}
+% ===================================================================== 4 actions
+\begin{frame}{Actions: a short menu of fixed burns and coasts}
+\begin{columns}[c]
+\begin{column}{0.46\textwidth}
 \centering
-\includegraphics[width=0.78\textwidth]{decision_timeline.pdf}
-\vspace{2mm}
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}\small
-\textbf{The menu} \; burns of 1 to 25\,m/s along track, radial, or out of plane; coasts of 1\,min, 5\,min, 30\,min, 1, 3, 6, or 24\,h. 31 actions.
+\begin{tikzpicture}[arr/.style={-{Stealth[length=2.2mm]},very thick}]
+  \draw[grey,dashed] (-1.6,-2.2) arc (-35:35:3.4);
+  \node[font=\scriptsize,grey,anchor=east] at (-1.3,-1.9) {orbit};
+  \node[draw,fill=white,rounded corners,minimum size=0.4cm,inner sep=0] (c) at (0,0) {};
+  \draw[arr,accent] (c) -- ++(0,1.3) node[above,font=\scriptsize,accent] {prograde (along velocity)};
+  \draw[arr,accent!60] (c) -- ++(0,-1.3) node[below,font=\scriptsize,accent!60!black] {retrograde};
+  \draw[arr,blue2] (c) -- ++(1.3,0) node[right,font=\scriptsize,blue2] {radial out};
+  \draw[arr,blue2!60] (c) -- ++(-1.3,0) node[left,font=\scriptsize,blue2!60!black] {radial in};
+  \draw[arr,amber!90!black] (c) -- ++(0.8,0.8) node[above right,font=\scriptsize,amber!90!black] {normal $\pm$};
+  \node[font=\scriptsize,grey] at (0,-2.2) {burn grades 1, 2, 5, 10, 25\,m/s};
+\end{tikzpicture}
 \end{column}
-\begin{column}{0.5\textwidth}\small
-\textbf{Why coasts} \; a rendezvous is hours of waiting and seconds of burning. Letting the policy choose \emph{how long} to wait is what makes it learnable.
+\begin{column}{0.54\textwidth}
+\centering
+\begin{tikzpicture}[x=1cm]
+  \draw[-{Stealth},thick,navy] (0,0) -- (5.6,0) node[right,font=\scriptsize] {log time};
+  \foreach \x/\lab in {0.3/1\,min, 1.0/5\,min, 1.9/30\,min, 2.3/1\,h, 3.0/3\,h, 3.5/6\,h, 4.6/24\,h}{
+    \fill[navy] (\x,0) circle (0.1); \node[font=\scriptsize,rotate=50,anchor=west] at (\x,0.15) {\lab}; }
+  \node[font=\scriptsize,navy,anchor=west] at (0,1.5) {\textbf{Coasts}: no burn, physics and sensor still run every 60\,s};
+  \node[font=\scriptsize,grey,text width=5.4cm,anchor=north west] at (0,-0.4) {Each decision lasts as long as the coast it chose; a burn takes one sub-step. 31 actions in all.};
+\end{tikzpicture}
 \end{column}
 \end{columns}
-\note{Hooks: "why not continuous thrust" (impulsive burns match chemical engines; a continuous head collapsed in early trials), "why does the long coast matter" (credit assignment: without it the horizon is thousands of steps; with it the headline policy takes 24 decisions), "physics still runs every 60 s inside a coast, and so does the sensor".}
+\vspace{2mm}
+\centering\small A rendezvous is hours of waiting and seconds of burning. Letting the policy pick \emph{how long} to wait is what makes it learnable.
+\note{Hooks: "why not continuous thrust" (impulsive burns match chemical engines; a continuous head collapsed in early trials), "why do the long coasts matter" (credit assignment: without them the horizon is thousands of steps; with them the headline policy takes about 20 decisions per episode), "what frame are the burns in" (the chaser's own: along velocity, along the radius, along the orbit normal).}
 \end{frame}
 
 % ===================================================================== 5 policy
@@ -174,13 +191,14 @@ Exact at any step size, so a 24-hour coast is one solve. About half a million en
 \end{frame}
 
 % ===================================================================== 6 what it learned
-\begin{frame}{What it learned: drop, catch up, raise}
+\begin{frame}{What it learned, 2-D: phasing, shape matching, and when to wait}
 \centering
 \includegraphics[width=0.66\textwidth]{traj_rendezvous.pdf}
 \vspace{1mm}
 \begin{itemize}\small
   \item \key{200/200} held-out episodes on \key{5/5 training seeds}; wide envelope (300--8,000\,km, $e\le0.30$) 800/800 on 4 seeds.
-  \item Fuel: median 1.18$\times$ a two-impulse optimum on the same clock.
+  \item Fuel: median 1.18$\times$ a two-impulse optimum on the same clock (appendix A4).
+  \item Phasing by altitude, apse and eccentricity matching, and coasting through windows where a burn would not help.
 \end{itemize}
 \note{Point at the right panel: the chaser sits below and behind, the lower orbit's shorter period closes the gap, then it raises in steps. This is the textbook phasing manoeuvre; nobody told it. Hooks: "why does lower catch up" (T proportional to a^1.5; 100 km lower is about 4 degrees per orbit), "what is the comparator" (two-burn Lambert optimum, same episode, same clock; A5).}
 \end{frame}
@@ -199,6 +217,14 @@ Exact at any step size, so a 24-hour coast is one solve. About half a million en
 \includegraphics[width=0.92\textwidth,height=0.74\textheight,keepaspectratio]{traj3d_rendezvous.pdf}
 \\[-1mm]{\scriptsize\textcolor{grey}{A $158^\circ$ gap and a $0.9^\circ$ plane difference closed in 22.5\,h with 306\,m/s and 23 decisions, on the filter's estimate of the target.}}
 \note{Panel (b): parks above the target so the target catches up, then descends. Panel (b2): out-of-plane left alone until the end, then nulled with three normal burns. Panel (c): closure. Hook: "why wait on the plane" (plane burns are cheapest at the relative node and once, late).}
+\end{frame}
+
+% ===================================================================== 8b behaviour
+\begin{frame}{What the policy actually does, scenario by scenario}
+\centering
+\IfFileExists{figs/generalist_behaviour.pdf}{\includegraphics[width=0.9\textwidth]{generalist_behaviour.pdf}}{\includegraphics[width=0.8\textwidth]{decision_timeline.pdf}}
+\\[1mm]{\scriptsize\textcolor{grey}{Decision mix of the seven-skill policy on five of its scenarios, 20 held-out episodes each. The same weights coast for a day when a plane gap can be drifted shut, and burn in 1\,m/s steps when the box is tight.}}
+\note{Hooks: "why so many coasts" (waiting is the cheapest manoeuvre), "why day-long coasts only on the plane-change cell" (J2 drift needs days; elsewhere they would waste the clock), "why fine burns on the tight box" (a 10 m/s quantum cannot land inside 1 m/s).}
 \end{frame}
 
 % ===================================================================== 9 close
@@ -220,16 +246,14 @@ Exact at any step size, so a 24-hour coast is one solve. About half a million en
   \item More seeds on the generalist
   \item A maneuvering target
 \end{itemize}
-\vspace{3mm}
-{\small\textcolor{grey}{And one story about a bug the physics caught that the success metric could not, if there is time.}}
 \end{column}
 \end{columns}
-\note{The grey line is the hook for the dynamics bug (A4): a swapped half-angle factor in true-to-mean anomaly let every burn teleport phase; the comparator caught it because the policy was beating the optimum; the old headline fell from 97.5 to 13 and was rebuilt to 100 on five seeds. Tell it only if asked or if there is time; it is your best verification anecdote.}
+\note{Keep this short. Each open item is a hook you can answer: single seed (the 2-D headline and 3-D rungs are multi-seed), fuel (coarse burn grid), chaser nav (common-mode error would need an augmented filter state), J2 (secular mean elements only).}
 \end{frame}
 
 % ===================================================================== appendix
 \appendix
-\begin{frame}[plain]\centering{\Large\textcolor{navy}{\textbf{Appendix}}}\\[2mm]\small observation vector \;$\cdot$\; phasing and J2 \;$\cdot$\; the seven cells \;$\cdot$\; the dynamics bug \;$\cdot$\; fuel audit \;$\cdot$\; navigation in one picture \;$\cdot$\; C port \;$\cdot$\; how the seventh skill was trained \;$\cdot$\; if asked\end{frame}
+\begin{frame}[plain]\centering{\Large\textcolor{navy}{\textbf{Appendix}}}\\[2mm]\small observation vector \;$\cdot$\; phasing and J2 \;$\cdot$\; the seven cells \;$\cdot$\; fuel audit \;$\cdot$\; Lambert search \;$\cdot$\; navigation in one picture \;$\cdot$\; C port \;$\cdot$\; how the seventh skill was trained \;$\cdot$\; FAQ\end{frame}
 
 \begin{frame}{A1 \; Observation vector (\nObs\ floats, roughly in $[-1,1]$)}
 \tiny
@@ -285,34 +309,24 @@ W1\_driftwait & 300--800 & 0.05 & \boxR\,/\,\boxV & 22,000 & 74.0\,\%\\
 $^\dagger$92.5\,\% at the training fuel floor. All cells: 3-D, J2 on, targets inclined $30$--$60^\circ$, relative plane up to $0.75$--$1^\circ$ ($2$--$5^\circ$ for W1), bearings-only navigation, Discrete(31) head, fuel budget sampled per episode (353--656\,m/s). Held-out seed 123, 200 episodes per cell, greedy actions, LSTM state zeroed per episode.
 \end{frame}
 
-\begin{frame}{A4 \; The dynamics bug}
-\small
+\begin{frame}{A4 \; Fuel audit against a two-impulse optimum}
 \begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\textbf{What} \; the true-anomaly $\to$ mean-anomaly conversion, called only after a burn, had its $\sqrt{1\pm e}$ factors swapped. Each burn off an apse silently moved the chaser along-track (up to 700\,km at $e=0.05$); a median $25^\circ$ of free phasing per episode. Burns at apsides were unaffected, so every unit test passed.\\[2mm]
-\textbf{Found} \; twice on one day: by formula inspection while porting the dynamics into the navigation code, and by the fuel audit, where 15\,\% of episodes beat half the two-impulse optimum on the same clock.\\[2mm]
-\textbf{Cost} \; the then-canonical checkpoint went from 97.5\,\% to 13\,\% under corrected dynamics. All pre-fix checkpoints and numbers were retired.
-\end{column}
-\begin{column}{0.5\textwidth}
-\textbf{Recovery} (each piece ablated)
-\begin{itemize}
-  \item potential shaping on the \emph{mean-longitude} gap with $\gamma_{shape}=1$
-  \item physical-gap initialisation and a fixed phase observation
-  \item an episode-clock observation; cap reward 0, not $-10$
-  \item scripted GNC expert as a reference: 99.2\,\%
-\end{itemize}
-\textbf{Lesson} \; the comparator caught what the success metric could not. Audits against physics belong in the training loop.
+\begin{column}{0.56\textwidth}\includegraphics[width=\textwidth]{dv_ratio.pdf}\end{column}
+\begin{column}{0.44\textwidth}\footnotesize
+For each episode an offline solver finds the cheapest two-burn transfer from the chaser's start to the target, searching over how long to wait before the first burn and how long to fly, under the same clock the policy used.\\[1.5mm]
+\textbf{Time-matched} \; must hit the target's exact position and velocity: median learned \dv\ is \key{1.18$\times$} it.\\[1mm]
+\textbf{Box-credited} \; the same solution minus the 50\,m/s velocity tolerance the policy is never asked to close: \key{1.55$\times$}. The fairer of the two.\\[1.5mm]
+{\scriptsize\textcolor{grey}{200 held-out episodes. Ratios below 1 happen because arrival is credited inside a box and a two-burn plan is not the unconstrained optimum.}}
 \end{column}
 \end{columns}
 \end{frame}
 
-\begin{frame}{A5 \; Fuel audit against a two-impulse optimum}
-\begin{columns}[T]
-\begin{column}{0.56\textwidth}\includegraphics[width=\textwidth]{dv_ratio.pdf}\end{column}
-\begin{column}{0.44\textwidth}\footnotesize
-For each episode an offline solver finds the cheapest two-burn transfer from the chaser's start to the target's position at arrival, searching over how long to wait before the first burn and how long to fly, on the same clock the policy used.\\[1.5mm]
-Median learned \dv\ is \key{1.18$\times$} that optimum; 1.55$\times$ when the optimum is only required to reach the box. The circular Hohmann surrogate (2.38$\times$) ignores phasing and the velocity match, so it was retired.\\[1.5mm]
-{\scriptsize\textcolor{grey}{200 held-out episodes. Ratios below 1 happen because arrival is credited inside a box, not at an exact state, and a two-burn plan is not the unconstrained optimum.}}
+\begin{frame}{A5 \; What the Lambert search looks like for one episode}
+\begin{columns}[c]
+\begin{column}{0.58\textwidth}\includegraphics[width=\textwidth]{lambert_porkchop.pdf}\end{column}
+\begin{column}{0.42\textwidth}\footnotesize
+Every cell is one candidate plan: wait this long, then fly for that long. Colour is the two-burn \dv\ of the best conic connecting the two points in that time, including multi-revolution solutions. The banded structure is the orbital period showing through: cheap plans recur once per orbit.\\[1.5mm]
+The star is the cheapest plan inside the policy's own clock. On this episode the optimum was 202\,m/s and the policy spent 210.
 \end{column}
 \end{columns}
 \end{frame}
@@ -332,14 +346,13 @@ Policy result: trained on truth and handed the estimate, \key{51\,\%}; trained w
 
 \begin{frame}{A7 \; C port of the policy}
 \begin{columns}[T]
-\begin{column}{0.5\textwidth}\includegraphics[width=0.95\textwidth]{cport_timing.pdf}\\[2mm]\includegraphics[width=0.95\textwidth]{action_hist.pdf}\end{column}
+\begin{column}{0.5\textwidth}\includegraphics[width=0.95\textwidth]{cport_timing.pdf}\end{column}
 \begin{column}{0.5\textwidth}\footnotesize
 \begin{itemize}
   \item The trained weights exported to a C header; forward pass written by hand: linear, GELU, LSTM cell, two linear heads.
   \item No heap, no globals; the caller owns the 1\,kB of recurrent state; fixed work per call.
   \item Checked against PyTorch: identical action on 7,048 recorded observations and an identical action stream over 200 closed-loop episodes.
   \item Median 50\,$\mu$s per decision on a laptop against a 60\,s decision period (a benchmark, not a worst-case timing).
-  \item Bottom: what the headline policy actually does, per decision.
 \end{itemize}
 \end{column}
 \end{columns}
@@ -357,7 +370,7 @@ Policy result: trained on truth and handed the estimate, \key{51\,\%}; trained w
 \end{itemize}
 \end{frame}
 
-\begin{frame}{A9 \; If asked}
+\begin{frame}{A9 \; FAQ}
 \scriptsize
 \begin{description}
   \item[Why RL, when Lambert exists?] Lambert needs perfect state and gives an open-loop two-burn plan; the policy is closed-loop on an estimate, respects a budget, and one network covers seven regimes. Lambert is the grader, not the competitor.
