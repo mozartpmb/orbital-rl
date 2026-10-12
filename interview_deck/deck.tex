@@ -102,7 +102,7 @@
   arr/.style={-{Stealth[length=2.5mm]},thick,navy}]
   \node[box,fill=navy!8] (sim) {C simulator\\{\scriptsize Kepler + J2, 60\,s sub-steps}};
   \node[box,right=0.4cm of sim] (sen) {Angle sensor\\{\scriptsize line-of-sight + noise}};
-  \node[box,right=0.4cm of sen] (nav) {Navigation\\{\scriptsize batch IOD $\to$ EKF}};
+  \node[box,right=0.4cm of sen] (nav) {Navigation\\{\scriptsize batch IOD $\to$ recursive filter}};
   \node[box,right=0.4cm of nav,fill=accent!10] (pol) {Guidance policy\\{\scriptsize LSTM, \nParams\ params}};
   \node[box,right=0.4cm of pol] (act) {Action\\{\scriptsize burn or coast}};
   \draw[arr] (sim) -- (sen); \draw[arr] (sen) -- (nav); \draw[arr] (nav) -- (pol); \draw[arr] (pol) -- (act);
@@ -136,7 +136,7 @@ true anomaly from $\tan\frac{\theta}{2}=\sqrt{\tfrac{1+e}{1-e}}\tan\frac{E}{2}$\
 Exact at any step size, so a 24-hour coast costs one Kepler solve, not 1,440 integrator steps. The decision clock and the physics clock are decoupled.
 \end{block}
 \begin{block}{Throughput}
-\stepRate\ environment steps per second on \nEnvs\ parallel envs, one laptop CPU. A 50\,M-step training rung is about two hours.
+Roughly half a million environment steps per second on \nEnvs\ parallel envs, one laptop CPU. A 50\,M-step training rung is about two hours.
 \end{block}
 \vspace{1mm}
 {\scriptsize\textcolor{grey}{Two-body plus secular J2 only; the state is the mean element set. Earth termination at the surface radius.}}
@@ -201,7 +201,7 @@ Exact at any step size, so a 24-hour coast costs one Kepler solve, not 1,440 int
 \textbf{Why an LSTM} \; the estimate's history carries information the instantaneous state does not (is the filter converging? did that burn do what I expected?)\\[1.5mm]
 \textbf{PPO} \; \nEnvs\ envs, $\gamma=0.995$, clipped surrogate $\pm0.2$, GAE $\lambda=0.9$, entropy 0.01, Muon optimizer, 50\,M steps per curriculum rung (about 2\,h each)\\[1.5mm]
 \textbf{Reward} \; $+1$ success, $-1$ failure, dense potential-difference shaping on the \emph{mean-longitude} gap and element match, clamped to $[-1,1]$\\[1.5mm]
-\textbf{Curriculum} \; $30^\circ\to90^\circ\to180^\circ$ phase gap, circular $\to$ eccentric, 2-D $\to$ 3-D, truth $\to$ estimate, then the seven-skill mixture
+\textbf{Curriculum} \; one variable per rung, warm-started: circular at the full $\pm180^\circ$ gap $\to$ eccentric $\to$ wide envelope $\to$ 3-D $\to$ estimate in the loop $\to$ the seven-skill mixture. Fresh training at the hard endpoint flat-lines.
 \end{column}
 \end{columns}
 \note{If asked why not a bigger net: 140k parameters is enough and it has to run on a flight processor. If asked about shaping being a crutch: it is potential-based with gamma_shape = 1, so it does not change the optimal policy; the ablation without it peaks at 3.6 percent. If asked about the clamp: it is in the trainer; it caps the per-step gradient from rare terminal events.}
@@ -217,7 +217,7 @@ Exact at any step size, so a 24-hour coast costs one Kepler solve, not 1,440 int
 \begin{itemize}
   \item \key{200/200} held-out episodes (eval seed 123) for \key{\headlineSeeds}, including the seed that had flat-lined at 0\,\% before the dynamics fix.
   \item Re-run for this deck on a fresh evaluation seed: 200/200.
-  \item Wide envelope (300--8,000\,km, $e\le0.30$): 4 seeds, 3,199/3,200.
+  \item Wide envelope (300--8,000\,km, $e\le0.30$): 4 seeds, 800/800; 3,199/3,200 over the whole four-rung ladder.
 \end{itemize}
 \end{column}
 \begin{column}{0.36\textwidth}\scriptsize\textcolor{grey}{
@@ -247,15 +247,15 @@ Shown: a $91^\circ$ gap closed in 8.1\,h with 210\,m/s; low and behind, catch up
 % =====================================================================
 \begin{frame}{Bearings-only navigation: the policy flies on an angles-only estimate}
 \begin{columns}[T]
-\begin{column}{0.46\textwidth}
-\includegraphics[width=0.9\textwidth]{err_3sigma_crop.png}\\
-{\scriptsize\textcolor{grey}{Estimation error inside $\pm3\sigma$; the envelope breathes once per orbit as the observability geometry cycles. NEES/NIS in-bounds 94.4\,\% / 95.1\,\% (validate stage, 100 episodes).}}
+\begin{column}{0.5\textwidth}
+\includegraphics[width=\textwidth]{nav3d_estimate.pdf}\\
+{\scriptsize\textcolor{grey}{3-D, cell E1\_j2, same episode as the generalist slide. Shaded: blind, angles accumulating. After acquisition the estimate error (red) collapses as range closes; dashed is the filter's own $3\sigma$ claim.}}
 \end{column}
-\begin{column}{0.54\textwidth}\small
-\textbf{Sensor} \; line-of-sight angles only (range unobserved), noise added; one measurement per 60\,s sub-step\\[1mm]
-\textbf{Acquire} \; batch initial-orbit determination over a range-hypothesis lattice, Levenberg-damped Gauss--Newton, accepted on a $\chi^2$ test and a runner-up margin\\[1mm]
-\textbf{Track} \; EKF on the target's inertial state, Joseph-form update, process noise set by NEES not by hand\\[1mm]
-\textbf{Result} \; a policy trained on truth and handed the estimate: \key{51\,\%}. Retrained with the filter in the loop: \key{97\,\%} (2-D, tight box); \key{46\,\%$\to$98\,\%} in 3-D across three seeds.\\[1mm]
+\begin{column}{0.5\textwidth}\small
+\textbf{Sensor} \; line-of-sight angles only, 1\,mrad noise, one per 60\,s sub-step; range is never measured\\[1mm]
+\textbf{Acquire} \; batch initial-orbit determination: range-hypothesis lattice along the first ray, Levenberg-damped Gauss--Newton, accepted on a $\chi^2$ test and a runner-up margin\\[1mm]
+\textbf{Track} \; recursive filter in log-spherical coordinates seeded by the batch solution; calibration checked per channel (a range/bearing EKF with NEES/NIS is in A4)\\[1mm]
+\textbf{Result} \; a policy trained on truth and handed the estimate: \key{51\,\%}. Retrained with the filter in the loop: \key{97\,\%} (2-D tight box, one seed); \key{46\,\%$\to$98\,\%} in 3-D across three seeds.\\[1mm]
 {\scriptsize\textcolor{grey}{It did not learn to \emph{probe} (measured null); it learned to wait for acquisition and burn nothing while blind (median \dv\ before acquisition 75$\to$0\,m/s).}}
 \end{column}
 \end{columns}
@@ -307,13 +307,13 @@ Shown: a $91^\circ$ gap closed in 8.1\,h with 210\,m/s; low and behind, catch up
   \item A swapped half-angle factor in the true-to-mean anomaly conversion let every burn teleport phase (median $25^\circ$ per episode). The old headline fell from 97.5\,\% to 13\,\% under correct dynamics; every number here is post-fix.
   \item A reward leak that made coast-only policies look capable at high altitude (null test: a zero policy reproduced it).
   \item A red team on the filter: a coordinate-chart swap was a measured null; an unscented filter restored calibration without it.
-  \item A ledger of seven metric-versus-implementation bugs, each with a before/after number.
+  \item A numbered ledger of metric-versus-implementation bugs, each with a before/after number.
 \end{itemize}
 \end{column}
 \begin{column}{0.5\textwidth}\footnotesize
 \textbf{Still open}
 \begin{itemize}
-  \item Generalist is single-seed; the 2-D headline and 3-D nav rungs are multi-seed.
+  \item Generalist and the 2-D 51$\to$97 arm are single-seed; the 2-D headline, wide envelope, 3-D nav and J2 rungs are multi-seed.
   \item Fuel is \lambertRatio\ the Lambert optimum, not 1.0; the action grid is coarse.
   \item Chaser navigation is assumed perfect; no eclipses, dropouts, or sensor bias.
   \item Arrival is certified, not station-keeping; two-body plus secular J2 only.
@@ -388,7 +388,7 @@ The comparator grids departure wait $\times$ time of flight (log-spaced), takes 
 \end{columns}
 \end{frame}
 
-\begin{frame}{A4 \; Filter consistency and sensor-noise robustness}
+\begin{frame}{A4 \; Range/bearing EKF: consistency and sensor-noise robustness (2-D)}
 \begin{columns}[T]
 \begin{column}{0.5\textwidth}
 \includegraphics[width=0.84\textwidth]{nees.png}\\
@@ -401,12 +401,6 @@ NEES $=\tilde{\mathbf x}^\top P^{-1}\tilde{\mathbf x}$ tests the state covarianc
 {\scriptsize\textcolor{grey}{2-D range/bearing EKF ($\sigma_\rho$ 50\,m, $\sigma_\beta$ 1\,mrad) on the headline policy; flat to 10$\times$ noise because converged error (tens of metres) is far inside the 30\,km box; beyond 30$\times$ the limit is filter divergence.}}
 \end{column}
 \end{columns}
-\end{frame}
-
-\begin{frame}{A4b \; Bearings-only filter in the loop, 3-D: acquisition then convergence}
-\centering
-\includegraphics[width=0.8\textwidth]{nav3d_estimate.pdf}
-\\[-1mm]{\scriptsize\textcolor{grey}{Same episode as the 3-D rendezvous slide. The policy is blind until the batch solver accepts a solution, then the recursive filter's error collapses as range closes; the $3\sigma$ envelope is the filter's own claim.}}
 \end{frame}
 
 \begin{frame}{A5 \; The seven cells of the generalist mixture}
@@ -486,7 +480,7 @@ $^\dagger$92.5\,\% at the training fuel floor. LONGRANGE is a $\sim$500\,km tran
 \scriptsize
 \begin{description}
   \item[Why RL at all, when Lambert exists?] Lambert needs perfect state and gives an open-loop plan; the policy is closed-loop on an estimate, handles a budget, and the same network covers seven regimes. Lambert is my grader, not my competitor.
-  \item[Why discrete actions?] PPO is stable with them; a continuous Box(2) head collapsed in early trials. The grid costs fuel (\lambertRatio\ optimum); finer grades are the obvious next step.
+  \item[Why discrete actions?] PPO is stable with them; a continuous Box(2) head collapsed in early trials. The grid costs fuel (1.14--1.18$\times$ the time-matched optimum across two evaluation sets); finer grades are the obvious next step.
   \item[Why not MPC?] It would be the right production baseline. The project's question was whether a learned policy can close the loop on estimated state across regimes; MPC with the same filter is the comparison I would run next.
   \item[Is 200 episodes enough?] For a 97\,\% point the Wilson 95\,\% interval is about $\pm2.5$\,pp; for 0/200 the two-sided Clopper--Pearson lower bound is 98.2\,\%. I report intervals, and I do not say 100\,\% means zero.
   \item[Single seed?] The generalist, yes. The 2-D headline (5 seeds), wide envelope (4), 3-D nav rungs (3), J2 tight box (3) are multi-seed.

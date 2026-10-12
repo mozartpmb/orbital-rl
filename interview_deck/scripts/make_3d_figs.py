@@ -432,10 +432,15 @@ def fig_b(ep, stats, cell, out, acq_min_s=2700.0):
                     xytext=(6, 0), textcoords='offset points',
                     fontsize=6.3, color=INK2, ha='left', va='top')
 
-    pre = t <= t_acq
-    ax.plot(t[pre], (3 * sig)[pre], color=C_TARGET, lw=1.0, ls=':', alpha=0.7)
-    ax.plot(t[pre], err[pre], color=C_CHASER, lw=1.0, ls=':', alpha=0.7)
-    post = t >= t_acq
+    # Split at the acquisition index, OVERLAPPING by one sample so the two
+    # segments join; a strict `t <= t_acq` mask leaves the single pre-handoff
+    # sample as an invisible one-point line.
+    ia = int(np.searchsorted(t, t_acq))
+    pre, post = slice(0, ia + 1), slice(ia, None)
+    ax.plot(t[pre], (3 * sig)[pre], color=C_TARGET, lw=1.0, ls=':', alpha=0.8,
+            marker='.', ms=4)
+    ax.plot(t[pre], err[pre], color=C_CHASER, lw=1.0, ls=':', alpha=0.8,
+            marker='.', ms=4)
     ax.plot(t[post], (3 * sig)[post], color=C_TARGET, lw=1.2, ls='--',
             label='filter $3\\sigma$ position bound')
     ax.plot(t[post], err[post], color=C_CHASER, lw=1.4,
@@ -529,7 +534,16 @@ def main():
     eps, traj_dir = rollout(a.ckpt, a.cell, a.episodes, a.seed, a.scratch)
     S = [ep_stats(e) for e in eps]
     nsucc = sum(s['success'] for s in S)
-    print(f'  {nsucc}/{len(eps)} success; dumps in {traj_dir}')
+    # Provenance, CHECKED rather than asserted: t11_eval.py hashes the whole
+    # action stream. Matching it proves that enabling the trajectory log and
+    # reading the filter per decision changed neither the env nor the policy,
+    # and that these episodes are the first N of the published 200-episode run.
+    import hashlib
+    md5 = hashlib.md5(np.concatenate([e['acts'] for e in eps])
+                      .astype(np.int32).tobytes()).hexdigest()
+    print(f'  {nsucc}/{len(eps)} success; action md5 {md5[:12]} '
+          f'(compare: t11_eval.py --cell {a.cell} --episodes {a.episodes} '
+          f'--seed {a.seed}); dumps in {traj_dir}')
     print('  ep  outcome      gap     plane    range0        dv/budget      h   dec')
     for i, s in enumerate(S, 1):
         print(f"  {i:3d}  {s['cause']:11s} {s['gap_deg']:6.1f}° "
