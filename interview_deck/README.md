@@ -7,6 +7,7 @@ Two versions:
 
 - `deck.tex` — full version, 12 core slides + A1–A9.
 - `deck_short.tex` — 7 core slides + 8 appendix slides; steers toward dynamics, policy, results, verification. Navigation, Lambert, and the C port each appear as one line and one appendix slide.
+- `deck_hooks.tex` — 9 core slides, minimal text, each slide a hook toward strong ground; "how it got there" moved to appendix A8; new decision-timeline figure (`scripts/make_timeline_fig.py`).
 - `defensive_briefing.md` — plain-language 30-second answers, likely follow-ups, and redirects for the EKF, batch IOD, Lambert comparator, and C port.
 
 ## Build
