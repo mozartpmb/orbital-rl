@@ -66,15 +66,15 @@ FAMILIES = [
     ('coast 30 min–1 h',   '#9ec5f4'),   # seq 200
     ('coast 3–6 h',        '#5598e7'),   # seq 350
     ('coast 24 h',              '#1c5cab'),   # seq 550
-    ('along-track burn',        '#eb6834'),   # cat orange
+    ('along-track burn',        '#e34a33'),   # warm: red
     # aqua, NOT the palette's yellow: orange<->yellow scores dE 13.7 on the
     # validator's normal-vision floor (hard FAIL, <15) and these two segments
     # are ADJACENT in the stack. orange<->aqua is 27.6. Checked, not eyeballed:
     #   validate_palette.js "#1c5cab,#eb6834,#1baf7a,#4a3aa7,#e87ba4" --mode light
     #   -> all adjacent pairs PASS (worst CVD dE 9.2 deutan, normal 27.6).
-    ('radial burn',             '#1baf7a'),   # cat aqua
-    ('out-of-plane burn',       '#4a3aa7'),   # cat violet
-    ('fine burn ≤2 m/s',   '#e87ba4'),   # cat magenta
+    ('radial burn',             '#fdae61'),   # warm: orange
+    ('out-of-plane burn',       '#99000d'),   # warm: dark red
+    ('fine burn ≤2 m/s',   '#fcbba1'),   # warm: salmon
 ]
 FNAMES = [f for f, _ in FAMILIES]
 LIGHT_TEXT = {3, 6}          # the two dark fills that need light numerals
