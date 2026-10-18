@@ -250,7 +250,7 @@ Exact at any step size, so a 24-hour coast is one solve. About half a million en
 
 % ===================================================================== appendix
 \appendix
-\begin{frame}[plain]\centering{\Large\textcolor{navy}{\textbf{Appendix}}}\\[2mm]\small observation vector \;$\cdot$\; phasing and J2 \;$\cdot$\; the seven cells \;$\cdot$\; fuel audit \;$\cdot$\; Lambert search \;$\cdot$\; navigation \;$\cdot$\; C port \;$\cdot$\; the seventh skill \;$\cdot$\; FAQ \;$\cdot$\; verification measures \;$\cdot$\; seeds and sample sizes\end{frame}
+\begin{frame}[plain]\centering{\Large\textcolor{navy}{\textbf{Appendix}}}\\[2mm]\small observation vector \;$\cdot$\; phasing and J2 \;$\cdot$\; the seven cells \;$\cdot$\; fuel audit \;$\cdot$\; Lambert search \;$\cdot$\; navigation \;$\cdot$\; C port \;$\cdot$\; the seventh skill \;$\cdot$\; FAQ \;$\cdot$\; verification \;$\cdot$\; seeds \;$\cdot$\; curriculum \;$\cdot$\; the seventh skill \;$\cdot$\; LSTM \;$\cdot$\; extensions \;$\cdot$\; PPO \;$\cdot$\; fuel awareness\end{frame}
 
 \begin{frame}{A1 \; Observation vector (\nObs\ floats, roughly in $[-1,1]$)}
 \tiny
@@ -418,6 +418,147 @@ Seventh skill, refinement chain & 1 (steps 1--2 at a second seed) & 200 per cell
 \bottomrule
 \end{tabular}
 \\[2mm]\textcolor{grey}{Held-out means a fresh evaluation seed never used in training. 200 episodes at 97\,\% gives a 95\,\% Wilson interval of about $\pm2.4$ points.}
+\end{frame}
+
+
+\begin{frame}{A12 \; The curriculum: one new difficulty per stage, warm-started}
+\scriptsize
+\begin{tabular}{@{}llll@{}}
+\toprule
+stage & what changes & held-out result & cost\\
+\midrule
+L1 & circular orbits, full $\pm180^\circ$ phase gap, fresh weights & 200/200 & 50\,M steps ($\sim$2\,h)\\
+L2 & eccentricity $\le0.05$, independent apse orientation & 200/200 & 50\,M\\
+WL3, WL4 & altitude to 2,000 then 8,000\,km, $e$ to 0.30 & 200/200 each & 50\,M each\\
+3-D & inclined planes, out-of-plane burns, 30-action head & 200/200 (3 seeds) & 50\,M\\
+nav & filter estimate replaces truth in the observation & 97--98\,\% & 50\,M\\
+J2 & secular drift on, tight box via three sub-rungs & 99.2\,\% (3 seeds) & 3 $\times$ 50\,M\\
+mixture & seven cells sampled per episode, tank sampled & slide 8 & 50--200\,M\\
+\bottomrule
+\end{tabular}
+\vspace{1mm}
+\begin{itemize}\scriptsize
+  \item \textbf{Why one variable per stage} \; fresh training at the hard endpoint flat-lined six times; each stage starts from a policy that already solves the previous one, so the new difficulty is the only thing left to learn.
+  \item \textbf{How a stage was declared done} \; a pre-registered gate ($\ge60\,\%$ held-out, 3 seeds); in practice every rung cleared 200/200 before moving on. By the number, not by eye.
+  \item \textbf{Warm start} \; weights copied; new action-head rows zero-initialised so behaviour is unchanged at step zero.
+\end{itemize}
+\note{Two-minute answer. The order is "cheapest new information first": phasing is the core skill, so it is learned alone on circular orbits; shape, altitude, plane, estimate, drift are each added once the previous policy is at ceiling. Boundaries were set by what the previous policy failed on, measured, not by intuition. The 60 percent gate was the floor; nothing advanced below 100 percent in practice. Cost: 50M environment steps per rung is about two hours on a laptop CPU at half a million steps per second, so the whole chain is a day or two of compute.}
+\end{frame}
+
+\begin{frame}{A13 \; Why reward never found the seventh skill}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\small
+\textbf{The skill} \; close a $2$--$5^\circ$ plane gap by parking at a different altitude and letting J2 nodal precession drift the planes together over days, then rendezvous.\\[2mm]
+\textbf{What reward offers} \; $+1$ at the end of a 175-hour episode, $-1$ otherwise, a shaping hint that cannot see the drift because it rewards closing the gap, not setting up the conditions that will close it later.\\[2mm]
+\textbf{What exploration offers} \; a random policy must choose the day-long coast repeatedly, at the right altitude, with no intermediate signal. The probability is vanishing; 0/200 under every reward variant tried.
+\end{column}
+\begin{column}{0.5\textwidth}\small
+\textbf{The fix} \; a scripted expert that knows the manoeuvre (91\,\% on the cell) demonstrates it; the policy is trained on those demonstrations (kickstart, 31.5\,\%), then refreshed four times on the expert's corrections of the states the policy itself visits (DAgger): 45, 59, 70, \key{74\,\%}.\\[2mm]
+\textbf{Why DAgger and not plain imitation} \; a policy that only sees expert states drifts into states the expert never showed it and has no idea what to do; relabelling its own visited states closes that gap.\\[2mm]
+\textbf{The framing} \; an exploration problem, not a capacity problem: the same 128-unit network holds the skill once shown it.
+\end{column}
+\end{columns}
+\note{Stopping rule was written before the numbers: stop when a round closes less than 20 percent of the remaining gap to the teacher. Mechanism reproduced at a second seed: 33.5 kickstart, +14 on the first refresh, matching seed 42 step for step. The endpoint chain was run once by design.}
+\end{frame}
+
+\begin{frame}{A14 \; Why an LSTM, and what the memory carries}
+\begin{columns}[T]
+\begin{column}{0.52\textwidth}\small
+\textbf{Partial observability} \; the policy sees the filter's estimate of the target, not the truth. Two things live only in history:
+\begin{itemize}
+  \item what the last burn did (the observation shows the state after, not the delta)
+  \item where the filter is in its convergence (is the estimate still moving, or settled)
+\end{itemize}
+\vspace{1mm}
+\textbf{Architecture} \; Linear 38$\to$128, GELU, LSTM 128, two linear heads. 139,281 parameters. Hidden and cell state (256 numbers) persist across decisions within an episode and are zeroed at reset.\\[1.5mm]
+\textbf{Training detail} \; truncated backpropagation through time over 64 decisions; the recurrent state is carried across rollout boundaries.
+\end{column}
+\begin{column}{0.48\textwidth}\small
+\textbf{The obvious alternative, tested} \; give the policy the filter's covariance directly ($\sigma$ of range over range) as an extra observation channel.\\[1mm]
+\begin{tabular}{@{}lll@{}}
+\toprule
+arm & native & truth\\
+\midrule
+trained on estimate & 97.0\,\% & 97.0\,\%\\
+same $+\sigma$ channel & 97.0\,\% & 98.5\,\%\\
+\bottomrule
+\end{tabular}
+\\[1.5mm]
+No change. The recurrent policy already infers what it needs about the estimate's quality from how the estimate moves.\\[1.5mm]
+{\scriptsize\textcolor{grey}{200 episodes per arm, seed 123, 5\,km / 1\,m/s box. A memoryless control was never run; that ablation is on the list.}}
+\end{column}
+\end{columns}
+\note{If asked "what does it remember": we did not probe the hidden state directly; the evidence is behavioural: the policy suppresses burns three-fold while the filter is blind and spends a median of zero before acquisition, which requires knowing acquisition has not happened, and that is not in the instantaneous observation. Honest gap: no feed-forward ablation.}
+\end{frame}
+
+\begin{frame}{A15 \; Extensions: a maneuvering target, and multiple agents}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\footnotesize
+\textbf{Maneuvering target} \; the navigation stack changes before the policy does.
+\begin{itemize}
+  \item today's filter assumes a ballistic target; an unmodelled burn shows up as a growing innovation and a diverging estimate
+  \item first step: residual monitoring (a $\chi^2$ gate on the innovation) to detect a manoeuvre and inflate the covariance
+  \item then an interacting-multiple-model filter: ballistic and manoeuvring hypotheses run in parallel, weighted by likelihood
+  \item only then retrain the policy on the new estimate statistics, the same recipe as the 51$\to$97 step
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}\footnotesize
+\textbf{Multiple agents} \; the shape I would build, not something I have built.
+\begin{itemize}
+  \item centralised training, decentralised execution: one critic sees every agent during training; each policy acts on its own observations at run time
+  \item a communications model in the simulator (what each agent can see of the others, with delay and dropout), because the policy can only use what it would really have
+  \item the simulator is already vectorised over 1,024 independent episodes; making agents share an episode is the structural change
+\end{itemize}
+{\scriptsize\textcolor{grey}{First reading: MAPPO (Yu et al.\ 2022); Bar-Shalom on IMM.}}
+\end{column}
+\end{columns}
+\note{Do not bluff depth here. The honest line: "I have not built multi-agent; here is the structure I would start from and why the single-agent pieces carry over." The filter-first ordering for a maneuvering target is the defensible engineering point: a policy trained on a filter that cannot see manoeuvres will be confidently wrong.}
+\end{frame}
+
+\begin{frame}{A16 \; PPO details, as configured}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.46\textwidth}\scriptsize
+\begin{tabular}{@{}lp{3.3cm}@{}}
+\toprule
+knob & value\\
+\midrule
+parallel environments & 1,024\\
+steps per stage & 50\,M (mixture 200\,M)\\
+discount $\gamma$ & 0.995\\
+GAE $\lambda$ & 0.90\\
+clip ratio & 0.2\\
+entropy coefficient & 0.01\\
+value loss weight & 2.0\\
+epochs per batch & 1\\
+minibatch & 8,192\\
+BPTT horizon & 64 decisions\\
+learning rate & 0.01 annealed; 0.001 consolidation\\
+optimizer & Muon\\
+reward clamp & $[-1,1]$ before GAE\\
+\bottomrule
+\end{tabular}
+\end{column}
+\begin{column}{0.54\textwidth}\footnotesize
+\textbf{Reward} \; $+1$ success, $-1$ failure, $0$ at the clock cap. Dense term: potential-based shaping $\Phi(s')-\Phi(s)$ on the mean-longitude gap and the orbit-shape mismatch; with $\gamma_s=1$ it telescopes and cannot change the optimal policy.\\[1.5mm]
+\textbf{Why these} \; $\gamma=0.995$ is a credit horizon of about 200 decisions; one epoch and a modest clip keep updates conservative with 1,024 correlated environments; entropy 0.01 kept the long coasts alive early (lower, and they died before the first success was sampled).\\[2mm]
+{\scriptsize\textcolor{grey}{Never ablated: the 128 width, GELU, the LSTM itself. Library defaults, inherited rather than chosen.}}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{A17 \; Fuel awareness: the same weights spend less when they have less}
+\centering
+\includegraphics[width=0.7\textwidth]{fuel_aware.pdf}
+\vspace{-1mm}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\scriptsize
+Trained with the tank sampled per episode (353--656\,m/s) and shown its fuel fraction, the generalist spends about 40\,\% less on a lean tank than on a rich one, for 1 to 11 points of success. No reward term asks for this: the trainer clamps reward to $\pm1$, so budget awareness came from the scenario distribution.
+\end{column}
+\begin{column}{0.5\textwidth}\scriptsize
+\textbf{Caveats} \; lean medians are over successes only; the lean tank is a hard ceiling, so part of the drop is enforced. Against a linearised direct-burn reference the lean spend is 1.02--1.07$\times$; against the Lambert optimum it was not measured and would be higher. A low-learning-rate consolidation stage also cut spend 14--21\,\% unprompted.
+\end{column}
+\end{columns}
 \end{frame}
 
 \end{document}
