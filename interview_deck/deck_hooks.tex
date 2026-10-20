@@ -553,7 +553,7 @@ reward clamp & $[-1,1]$ before GAE\\
 \vspace{-1mm}
 \begin{columns}[T]
 \begin{column}{0.5\textwidth}\scriptsize
-Trained with the tank sampled per episode (353--656\,m/s) and shown its fuel fraction, the generalist spends about 40\,\% less on a lean tank than on a rich one, for 1 to 11 points of success. No reward term asks for this: the trainer clamps reward to $\pm1$, so budget awareness came from the scenario distribution.
+Trained with the tank sampled per episode (353--656\,m/s) and shown its fuel fraction, the generalist spends about 40\,\% less on a lean tank than on a rich one, for 1 to 11 points of success.
 \end{column}
 \begin{column}{0.5\textwidth}\scriptsize
 \textbf{Caveats} \; lean medians are over successes only; the lean tank is a hard ceiling, so part of the drop is enforced. Against a linearised direct-burn reference the lean spend is 1.02--1.07$\times$; against the Lambert optimum it was not measured and would be higher. A low-learning-rate consolidation stage also cut spend 14--21\,\% unprompted.
