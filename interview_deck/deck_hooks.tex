@@ -118,7 +118,7 @@
 \begin{itemize}\setlength{\itemsep}{1.5mm}
   \item \textbf{State} \; orbital elements $(a, e, i, \Omega, \omega, M)$
   \item \textbf{Propagate} \; Kepler's equation, closed form at any step
-  \item \textbf{Burns} \; impulsive, in the chaser's own frame
+  \item \textbf{Burns} \; impulsive, fixed size
   \item \textbf{J2} \; Earth's bulge slowly rotates the orbit plane
 \end{itemize}
 \vspace{2mm}
@@ -439,8 +439,8 @@ mixture & seven cells sampled per episode, tank sampled & slide 8 & 50--200\,M\\
 \vspace{1mm}
 \begin{itemize}\scriptsize
   \item \textbf{Why one variable per stage} \; fresh training at the hard endpoint flat-lined six times; each stage starts from a policy that already solves the previous one, so the new difficulty is the only thing left to learn.
-  \item \textbf{How a stage was declared done} \; a pre-registered gate ($\ge60\,\%$ held-out, 3 seeds); in practice every rung cleared 200/200 before moving on. By the number, not by eye.
-  \item \textbf{Warm start} \; weights copied; new action-head rows zero-initialised so behaviour is unchanged at step zero.
+  \item \textbf{How a stage was declared done} \; a pre-registered gate ($\ge60\,\%$ held-out, 3 seeds); in practice every rung cleared 200/200 before moving on.
+  \item \textbf{Warm start}
 \end{itemize}
 \note{Two-minute answer. The order is "cheapest new information first": phasing is the core skill, so it is learned alone on circular orbits; shape, altitude, plane, estimate, drift are each added once the previous policy is at ceiling. Boundaries were set by what the previous policy failed on, measured, not by intuition. The 60 percent gate was the floor; nothing advanced below 100 percent in practice. Cost: 50M environment steps per rung is about two hours on a laptop CPU at half a million steps per second, so the whole chain is a day or two of compute.}
 \end{frame}
