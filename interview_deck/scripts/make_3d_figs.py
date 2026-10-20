@@ -193,9 +193,10 @@ def load_dense(npz_path):
     dr = rs - rt
     phase = np.degrees(np.arctan2(np.einsum('ni,ni->n', rs, t_hat),
                                   np.einsum('ni,ni->n', rs, r_hat)))
-    # break the +-180 wrap so the phasing loop is not joined by a chord
-    phase_cut = phase.copy()
-    phase_cut[np.flatnonzero(np.abs(np.diff(phase)) > 180.0)] = np.nan
+    # continuous phase: unwrap the +-180 seam so the loop is one curve
+    phase_cut = np.degrees(np.unwrap(np.radians(phase)))
+    # anchor so the final (rendezvous) point sits at the target's 0 deg
+    phase_cut -= 360.0 * np.round(phase_cut[-1] / 360.0)
     return dict(
         t_h=g['sim_time'] / 3600.0,
         rs_km=rs / 1e3, rt_km=rt / 1e3,
@@ -284,17 +285,17 @@ def fig_a(ep, stats, cell, box_r_km, out):
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.plot(D['phase_cut'], D['radial_km'], color=C_CHASER, lw=0.9)
     if len(bi):
-        ax2.scatter(D['phase_deg'][bi], D['radial_km'][bi], marker='^', s=18,
+        ax2.scatter(D['phase_cut'][bi], D['radial_km'][bi], marker='^', s=18,
                     color=C_BURN, zorder=4, label='burn')
-    ax2.scatter([D['phase_deg'][0]], [D['radial_km'][0]], marker='o', s=30,
+    ax2.scatter([D['phase_cut'][0]], [D['radial_km'][0]], marker='o', s=30,
                 facecolor='none', edgecolor=C_CHASER, lw=1.3, label='t=0')
     ax2.scatter([0], [0], marker='*', s=130, color=C_TARGET, zorder=5,
                 label='target')
     ax2.axhline(0, color=GRID, lw=0.8, zorder=0)
     ax2.axvline(0, color=GRID, lw=0.8, zorder=0)
-    ax2.set_xlabel('along-track phase relative to target (deg)')
+    ax2.set_xlabel('along-track phase relative to target (deg, continuous)')
     ax2.set_ylabel('radial offset (km)')
-    ax2.set_title('(b) target-relative: phasing loop (phase wraps at ±180°)',
+    ax2.set_title('(b) target-relative: phasing loop',
                   loc='left')
     ax2.grid(True, alpha=0.6, lw=0.4)
     ax2.legend(loc='best', ncols=2)
